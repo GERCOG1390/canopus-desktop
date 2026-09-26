@@ -131,6 +131,24 @@ export interface InfoAttribute {
   icon?: number
 }
 
+/** A dogma modifier translated for people: "when X, <target>'s <attribute> changes by <value>". */
+export interface InfoModifier {
+  state: 'passive' | 'online' | 'active' | 'overload'
+  target: 'self' | 'ship' | 'char' | 'other' | 'location' | 'group' | 'skill' | 'selfSkill'
+  group?: number
+  skill?: number
+  attr: number
+  attrName: L10n
+  attrIcon?: number
+  op: number
+  value: number
+  unit?: number
+  unitName?: L10n
+  /** The value is per skill level */
+  perLevel?: boolean
+  note?: string
+}
+
 export interface InfoBundle {
   type: SdeType
   group: { id: number; n: L10n }
@@ -142,6 +160,9 @@ export interface InfoBundle {
   description?: L10n
   attributes: InfoAttribute[]
   effects: string[]
+  modifiers: InfoModifier[]
+  /** Skill whose levels scale ship hull bonuses (e.g. Gallente Cruiser) */
+  boostsHullBonuses?: boolean
   traits?: { role?: Bonus[]; misc?: Bonus[]; skills?: { skill: number; bonuses: Bonus[] }[] }
   requirements: ReqNode[]
   skill?: { rank: number; primary: number; secondary: number }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { BlueprintActivity, Bonus, InfoBundle, ReqNode, SkillReq } from '../../../shared/sde'
+import type { BlueprintActivity, Bonus, InfoBundle, InfoModifier, ReqNode, SkillReq } from '../../../shared/sde'
 import { useApp, useLang } from '../AppContext'
 import { useCharacter } from '../CharacterContext'
 import { ACTIVITY_RU, ATTR_NAMES, CATEGORY_RU, formatValue, spForLevel, spPerMinute, trainingMs } from '../lib/dogma'
@@ -15,7 +15,7 @@ import { LevelPips, MissingSkillsBox, SkillStatusIcon } from './skills'
 import { RichText, TypeLink, typeImage } from './TypeLink'
 import { ErrorBox, Loading, Tabs } from './ui'
 
-type TabId = 'desc' | 'attrs' | 'req' | 'skill' | 'mastery' | 'vars' | 'industry' | 'reprocess' | 'market'
+type TabId = 'desc' | 'attrs' | 'effects' | 'req' | 'skill' | 'mastery' | 'vars' | 'industry' | 'reprocess' | 'market'
 
 export function InfoPanel() {
   const { stack, index, back, forward, close } = useInfo()
@@ -83,6 +83,7 @@ function InfoView({ typeId }: { typeId: number }) {
 
   const tabs: { id: TabId; label: string }[] = [{ id: 'desc', label: 'Описание' }]
   if (b.attributes.length) tabs.push({ id: 'attrs', label: 'Атрибуты' })
+  if (b.modifiers.length || b.boostsHullBonuses) tabs.push({ id: 'effects', label: 'Эффекты' })
   if (b.requirements.length) tabs.push({ id: 'req', label: 'Требования' })
   if (b.skill) tabs.push({ id: 'skill', label: 'Навык' })
   if (b.masteries) tabs.push({ id: 'mastery', label: 'Мастерство' })
@@ -134,6 +135,7 @@ function InfoView({ typeId }: { typeId: number }) {
       <div className="info-tab">
         {current === 'desc' && <DescriptionTab b={b} lang={lang} />}
         {current === 'attrs' && <AttributesTab b={b} lang={lang} />}
+        {current === 'effects' && <EffectsTab b={b} lang={lang} />}
         {current === 'req' && <RequirementsTab nodes={b.requirements} />}
         {current === 'skill' && <SkillTab b={b} lang={lang} />}
         {current === 'mastery' && <MasteryTab b={b} lang={lang} />}
@@ -294,14 +296,124 @@ function AttributesTab({ b, lang }: { b: InfoBundle; lang: Lang }) {
           </table>
         </section>
       ))}
-      {b.effects.length > 0 && (
-        <details className="effects">
-          <summary className="muted small">Эффекты догмы ({b.effects.length})</summary>
-          <div className="mono small muted">{b.effects.join(', ')}</div>
-        </details>
-      )}
     </>
   )
+}
+
+// ---------------- Effects (what this item changes) ----------------
+
+const STATE_TITLE: Record<InfoModifier['state'], string> = {
+  passive: 'Постоянно',
+  online: 'Когда модуль в онлайне',
+  active: 'При активации',
+  overload: 'При перегреве'
+}
+
+const num = (v: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(v)
+
+/** "+5%", "×0,89 (−11%)", "+1" … — resonances are shown as resistance gained. */
+function changeText(m: InfoModifier, lang: Lang): string {
+  const perLevel = m.perLevel ? ' за уровень' : ''
+  // Units only make sense for absolute changes; skip placeholder units like "typeID".
+  const unit = m.unitName && ![115, 116, 119, 137].includes(m.unit ?? 0) ? tn(m.unitName, lang) : ''
+  const withUnit = (v: string) => (unit && unit !== '%' ? `${v} ${unit}` : v)
+  const isResonance = m.unit === 108
+  switch (m.op) {
+    case 6:
+      if (isResonance) return `${m.value < 0 ? '+' : '−'}${num(Math.abs(m.value))}% сопротивляемости${perLevel}`
+      return `${m.value > 0 ? '+' : ''}${num(m.value)}%${perLevel}`
+    case 0:
+    case 4: {
+      if (isResonance) return `${m.value <= 1 ? '+' : '−'}${num(Math.abs(1 - m.value) * 100)}% сопротивляемости`
+      const pct = (m.value - 1) * 100
+      return `×${num(m.value)}${Math.abs(pct) >= 0.01 ? ` (${pct > 0 ? '+' : '−'}${num(Math.abs(pct))}%)` : ''}${perLevel}`
+    }
+    case 1:
+    case 5:
+      return `÷${num(m.value)}`
+    case 2:
+      return withUnit(`${m.value < 0 ? '−' : '+'}${num(Math.abs(m.value))}`) + perLevel
+    case 3:
+      return withUnit(`−${num(m.value)}`) + perLevel
+    default:
+      return withUnit(`= ${num(m.value)}`)
+  }
+}
+
+function TargetText({ m, b, lang }: { m: InfoModifier; b: InfoBundle; lang: Lang }) {
+  switch (m.target) {
+    case 'self':
+      return <>Этот предмет</>
+    case 'ship':
+      return <>Корабль</>
+    case 'char':
+      return <>Пилот</>
+    case 'other':
+      return <>{b.category.id === CATEGORY.CHARGE ? 'Оружие с этим зарядом' : 'Заряд в модуле'}</>
+    case 'location':
+      return <>Все модули корабля</>
+    case 'group':
+      return <>Модули группы «{tn(b.groupNames[m.group ?? 0], lang) || m.group}»</>
+    case 'selfSkill':
+      return <>Всё, что требует этот навык</>
+    case 'skill':
+      return m.skill === b.type.id ? (
+        <>Всё, что требует этот навык</>
+      ) : (
+        <>
+          Всё, что требует <TypeLink id={m.skill!} icon={false} />
+        </>
+      )
+  }
+}
+
+function EffectsTab({ b, lang }: { b: InfoBundle; lang: Lang }) {
+  const states = (['passive', 'online', 'active', 'overload'] as const).filter((s) => b.modifiers.some((m) => m.state === s))
+  return (
+    <>
+      {b.boostsHullBonuses && (
+        <p className="effects-note">
+          Каждый уровень этого навыка усиливает бонусы корпуса кораблей, которые его требуют. Сами бонусы указаны в описании кораблей в разделе «Особенности».
+        </p>
+      )}
+      {states.map((s) => (
+        <section key={s}>
+          <h4>{STATE_TITLE[s]}</h4>
+          <table className="table compact effects-table">
+            <tbody>
+              {b.modifiers
+                .filter((m) => m.state === s)
+                .map((m, i) => (
+                  <tr key={i}>
+                    <td className="muted small">
+                      <TargetText m={m} b={b} lang={lang} />
+                    </td>
+                    <td className="attr-name">
+                      <Icon id={m.attrIcon} size={20} />
+                      {tn(m.attrName, lang)}
+                    </td>
+                    <td className={`num ${changeClass(m)}`}>
+                      {changeText(m, lang)}
+                      {m.note && <div className="muted small">{m.note}</div>}
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </section>
+      ))}
+      {!states.length && !b.boostsHullBonuses && <p className="muted">Этот предмет ничего не изменяет.</p>}
+    </>
+  )
+}
+
+/** Green for changes that help, red for penalties (e.g. MWD signature bloom, reduced speed). */
+function changeClass(m: InfoModifier): string {
+  const increases = m.op === 6 ? m.value > 0 : m.op === 0 || m.op === 4 ? m.value > 1 : m.op === 2 ? m.value > 0 : m.op === 3 ? m.value < 0 : null
+  if (increases === null) return ''
+  // Lower-is-better attributes: resonances, cycle time, signature, mass, capacitor need, CPU/PG use…
+  const lowerIsBetter = m.unit === 108 || [51, 73, 552, 4, 6, 50, 30, 1153, 654, 55, 479, 70].includes(m.attr)
+  return increases !== lowerIsBetter ? 'good' : 'bad'
 }
 
 function AttrValue({ a, b, lang }: { a: InfoBundle['attributes'][number]; b: InfoBundle; lang: Lang }) {

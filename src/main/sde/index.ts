@@ -4,6 +4,8 @@ import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import type {
   BlueprintActivity,
+  DogmaEffect,
+  InfoModifier,
   InfoAttribute,
   InfoBundle,
   L10n,
@@ -429,6 +431,93 @@ async function getDescriptions(): Promise<Record<number, L10n>> {
   return descriptions!
 }
 
+const SKILL_LEVEL_ATTR = 280
+const EFFECT_STATE: Record<number, InfoModifier['state']> = { 0: 'passive', 4: 'online', 1: 'active', 5: 'overload' }
+const ITEM_TARGET: Record<string, InfoModifier['target']> = { itemID: 'self', shipID: 'ship', charID: 'char', otherID: 'other' }
+/** Client-coded skill effects (no modifiers in the SDE) — the same set the dogma engine implements. */
+const SELF_SKILL_EFFECTS: Record<string, { attr: number; src: number }> = {
+  missileEMDmgBonus: { attr: 114, src: 292 },
+  missileExplosiveDmgBonus: { attr: 116, src: 292 },
+  missileThermalDmgBonus: { attr: 118, src: 292 },
+  missileKineticDmgBonus2: { attr: 117, src: 292 },
+  selfRof: { attr: 51, src: 293 },
+  droneDmgBonus: { attr: 64, src: 292 }
+}
+
+/** Translates a type's dogma effects into readable "what changes" lines. */
+function describeModifiers(typeId: number): { list: InfoModifier[]; boostsHull: boolean } {
+  const d = need()
+  const dogma = d.dogma[typeId]
+  const list: InfoModifier[] = []
+  let boostsHull = false
+  if (!dogma || d.format < 2) return { list, boostsHull }
+
+  const effects = dogma.e.map((id) => d.effects[id]).filter((e): e is DogmaEffect => !!e && typeof e === 'object')
+  // Attributes the item multiplies by its own skill level are "per level" bonuses.
+  const perLevel = new Set<number>()
+  for (const e of effects) for (const m of e.mods ?? []) if (m.domain === 'itemID' && m.src === SKILL_LEVEL_ATTR && m.op === 0) perLevel.add(m.attr)
+
+  const valueOf = (attr: number) => dogma.a[attr] ?? d.attributes[attr]?.def ?? 0
+  const attrInfo = (attr: number) => {
+    const a = d.attributes[attr]
+    return { attrName: a?.dn ?? ([a?.name ?? String(attr), a?.name ?? String(attr)] as L10n), attrIcon: a?.icon, unit: a?.u, unitName: a?.u ? d.units[a.u] : undefined }
+  }
+
+  for (const e of effects) {
+    if (e.name === 'skillEffect') continue
+    const state = EFFECT_STATE[e.cat]
+    if (!state) continue
+    if (e.name === 'moduleBonusMicrowarpdrive' || e.name === 'moduleBonusAfterburner') {
+      list.push({ state, target: 'ship', attr: 37, ...attrInfo(37), op: 6, value: valueOf(20), note: 'фактический прирост зависит от массы корабля' })
+      list.push({ state, target: 'ship', attr: 4, ...attrInfo(4), op: 2, value: valueOf(796) })
+      if (e.name === 'moduleBonusMicrowarpdrive') list.push({ state, target: 'ship', attr: 552, ...attrInfo(552), op: 6, value: valueOf(554) })
+      continue
+    }
+    const self = SELF_SKILL_EFFECTS[e.name]
+    if (self) {
+      list.push({ state, target: 'selfSkill', attr: self.attr, ...attrInfo(self.attr), op: 6, value: valueOf(self.src), perLevel: true })
+      continue
+    }
+    for (const m of e.mods ?? []) {
+      if (m.src === SKILL_LEVEL_ATTR) {
+        if (m.domain === 'shipID') boostsHull = true
+        continue
+      }
+      if (!['itemID', 'shipID', 'charID', 'otherID'].includes(m.domain)) continue
+      let target: InfoModifier['target'] | undefined
+      if (m.func === 'ItemModifier') target = ITEM_TARGET[m.domain]
+      else if (m.func === 'LocationGroupModifier') target = 'group'
+      else if (m.func === 'LocationRequiredSkillModifier' || m.func === 'OwnerRequiredSkillModifier') target = 'skill'
+      else if (m.func === 'LocationModifier') target = 'location'
+      if (!target) continue
+      // Skills modifying their own bonus attribute are bookkeeping, not an effect on anything.
+      if (target === 'self' && perLevel.has(m.attr)) continue
+      const value = valueOf(m.src)
+      if (value === 0 && m.op !== 7 && m.op !== -1) continue
+      list.push({
+        state,
+        target,
+        group: m.group,
+        skill: m.skill === -1 ? typeId : m.skill,
+        attr: m.attr,
+        ...attrInfo(m.attr),
+        op: m.op,
+        value,
+        // Hull bonus attributes are scaled by the ship skill's level (see the skills' PreMul effects).
+        perLevel: perLevel.has(m.src) || /^(shipBonus|eliteBonus)/.test(d.attributes[m.src]?.name ?? '')
+      })
+    }
+  }
+  const seen = new Set<string>()
+  return {
+    list: list.filter((x) => {
+      const k = `${x.state}|${x.target}|${x.group}|${x.skill}|${x.attr}|${x.op}|${x.value}`
+      return seen.has(k) ? false : (seen.add(k), true)
+    }),
+    boostsHull
+  }
+}
+
 export async function info(typeId: number): Promise<InfoBundle> {
   const d = need()
   const type = d.types[typeId]
@@ -524,6 +613,12 @@ export async function info(typeId: number): Promise<InfoBundle> {
     masteries.forEach((m) => m.certs.forEach((c) => c.skills.forEach(([id]) => refIds.add(id))))
   }
 
+  const described = describeModifiers(typeId)
+  for (const m of described.list) {
+    if (m.skill) refIds.add(m.skill)
+    if (m.group) groupIds.add(m.group)
+  }
+
   const description = (await getDescriptions())[typeId]
   const linkRe = /showinfo:(\d+)/g
   const scanLinks = (text?: string): void => {
@@ -544,6 +639,8 @@ export async function info(typeId: number): Promise<InfoBundle> {
     attributes,
     // Databases built before format 2 stored effect names as plain strings.
     effects: dogma.e.map((e) => { const ef = d.effects[e] as unknown; return typeof ef === 'string' ? ef : (ef as { name?: string } | undefined)?.name }).filter((x): x is string => !!x),
+    modifiers: described.list,
+    boostsHullBonuses: described.boostsHull,
     traits,
     requirements,
     skill,

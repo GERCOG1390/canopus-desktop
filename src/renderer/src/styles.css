@@ -1393,3 +1393,12 @@ td.attr-name {
 .slot-head .ui-icon {
   opacity: 0.9;
 }
+.effects-table td:first-child {
+  width: 34%;
+}
+.effects-note {
+  background: var(--panel-2);
+  border-left: 3px solid var(--accent);
+  padding: 8px 12px;
+  border-radius: 4px;
+}
