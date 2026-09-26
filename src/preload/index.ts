@@ -46,6 +46,7 @@ const api: CanopusApi = {
   fit: {
     calculate: (spec, skills) => invoke('fit:calculate', spec, skills),
     catalog: () => invoke('fit:catalog'),
+    explain: (spec, skills, target, attr) => invoke('fit:explain', spec, skills, target, attr),
     charges: (id) => invoke('fit:charges', id),
     list: () => invoke('fit:list'),
     save: (fit) => invoke('fit:save', fit),

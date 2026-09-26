@@ -58,6 +58,7 @@ export interface CanopusApi {
   fit: {
     calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>
     catalog(): Promise<FittableType[]>
+    explain(spec: FitSpec, skills: SkillSource, target: string, attr: number): Promise<{ base: number; value: number; mods: { type: number; kind: string; op: number; value: number }[] }>
     charges(moduleTypeId: number): Promise<number[]>
     list(): Promise<SavedFit[]>
     save(fit: FitSpec & { id?: string }): Promise<SavedFit>

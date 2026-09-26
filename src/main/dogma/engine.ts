@@ -237,8 +237,35 @@ export class Dogma {
     }
   }
 
-  /** Effects whose behaviour isn't described by modifiers in the SDE. */
+  /** Effects whose behaviour isn't described by modifiers in the SDE (the client implements them in code). */
   private specialEffect(source: Item, e: DogmaEffect): void {
+    // Skills that boost items requiring the skill itself: missile damage per type, rate of fire, drone damage.
+    const requiringSelf = (items: Item[]) => items.filter((i) => i.reqSkills.has(source.typeId))
+    const selfSkill: Record<string, { items: () => Item[]; attr: number; src: number }> = {
+      missileEMDmgBonus: { items: () => requiringSelf(this.charges), attr: 114, src: 292 },
+      missileExplosiveDmgBonus: { items: () => requiringSelf(this.charges), attr: 116, src: 292 },
+      missileThermalDmgBonus: { items: () => requiringSelf(this.charges), attr: 118, src: 292 },
+      missileKineticDmgBonus2: { items: () => requiringSelf(this.charges), attr: 117, src: 292 },
+      selfRof: { items: () => requiringSelf(this.modules), attr: 51, src: 293 },
+      droneDmgBonus: { items: () => requiringSelf(this.drones), attr: 64, src: 292 }
+    }
+    const rule = source.kind === 'skill' ? selfSkill[e.name] : undefined
+    if (rule) {
+      for (const target of rule.items()) this.addModifier(target, rule.attr, { source, srcAttr: rule.src, op: 6 })
+      return
+    }
+    // T3 cruiser subsystems add slots and hardpoints to the ship.
+    if (e.name === 'slotModifier') {
+      this.addModifier(this.ship, 14, { source, srcAttr: 1374, op: 2 })
+      this.addModifier(this.ship, 13, { source, srcAttr: 1375, op: 2 })
+      this.addModifier(this.ship, 12, { source, srcAttr: 1376, op: 2 })
+      return
+    }
+    if (e.name === 'hardPointModifierEffect') {
+      this.addModifier(this.ship, 102, { source, srcAttr: 1368, op: 2 })
+      this.addModifier(this.ship, 101, { source, srcAttr: 1369, op: 2 })
+      return
+    }
     if (e.name === 'moduleBonusMicrowarpdrive' || e.name === 'moduleBonusAfterburner') {
       this.addModifier(this.ship, 4, { source, srcAttr: 796, op: 2 })
       if (e.name === 'moduleBonusMicrowarpdrive') this.addModifier(this.ship, 552, { source, srcAttr: 554, op: 6, noPenalty: true })
@@ -250,6 +277,16 @@ export class Dogma {
         noPenalty: true,
         value: () => (this.attr(source, 20) * this.attr(source, 567)) / this.attr(this.ship, 4)
       })
+    }
+  }
+
+  /** Every modifier acting on an attribute, for explaining (and debugging) a value. */
+  explain(item: Item, attrId: number): { base: number; value: number; mods: { type: number; kind: ItemKind; op: number; value: number }[] } {
+    const mods = item.mods.get(attrId) ?? []
+    return {
+      base: item.base[attrId] ?? this.db.attributes[attrId]?.def ?? 0,
+      value: this.attr(item, attrId),
+      mods: mods.map((m) => ({ type: m.source.typeId, kind: m.source.kind, op: m.op, value: m.value ? m.value() : this.attr(m.source, m.srcAttr) }))
     }
   }
 
