@@ -124,22 +124,21 @@ function registerIpc(): void {
   ipcMain.handle('fit:delete', (_e, id: string) => dogma.deleteFit(id))
 }
 
-// Register Canopus as the handler for eveauthcanopus:// links (the EVE SSO callback).
-// In development electron.exe needs the app path as an extra argument.
-if (process.defaultApp && process.argv[1]) {
-  app.setAsDefaultProtocolClient(auth.PROTOCOL, process.execPath, [resolve(process.argv[1])])
-} else if (process.env.PORTABLE_EXECUTABLE_FILE) {
-  // The portable build unpacks to a temp folder on every start; register the .exe itself.
-  app.setAsDefaultProtocolClient(auth.PROTOCOL, process.env.PORTABLE_EXECUTABLE_FILE)
-} else {
-  app.setAsDefaultProtocolClient(auth.PROTOCOL)
-}
-
 // On Windows the callback link launches a second instance; forward its URL to the first one.
 const primaryInstance = app.requestSingleInstanceLock()
 if (!primaryInstance) {
   app.quit()
 } else {
+  // Register Canopus as the handler for eveauthcanopus:// links (the EVE SSO callback).
+  // In development electron.exe needs the app path as an extra argument. The portable build
+  // registers its unpacked exe, not the launcher: the callback only matters while Canopus runs,
+  // and starting the running copy directly skips re-extracting the whole app.
+  if (process.defaultApp && process.argv[1]) {
+    app.setAsDefaultProtocolClient(auth.PROTOCOL, process.execPath, [resolve(process.argv[1])])
+  } else {
+    app.setAsDefaultProtocolClient(auth.PROTOCOL, process.execPath)
+  }
+
   app.on('second-instance', (_e, argv) => {
     const url = argv.find((a) => a.toLowerCase().startsWith(`${auth.PROTOCOL}://`))
     if (url) auth.handleCallbackUrl(url)

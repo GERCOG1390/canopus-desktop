@@ -1,6 +1,6 @@
 {
   "name": "canopus",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Canopus — desktop companion for EVE Online: character, fitting with a dogma engine, intel, market, map and industry",
   "main": "./out/main/index.js",
   "private": true,
@@ -47,7 +47,8 @@
       "artifactName": "Canopus-Setup-${version}.exe"
     },
     "portable": {
-      "artifactName": "Canopus-${version}-portable.exe"
+      "artifactName": "Canopus-${version}-portable.exe",
+      "unpackDirName": true
     },
     "protocols": [
       {
