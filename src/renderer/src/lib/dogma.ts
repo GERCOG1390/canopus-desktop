@@ -1,4 +1,5 @@
 import type { L10n } from '../../../shared/sde'
+import { locale } from '../i18n'
 
 // ---------- Character attributes & skill training ----------
 
@@ -53,7 +54,7 @@ export const SIZE_CLASS: Record<number, [string, string]> = {
 }
 
 const num = (v: number, max = 2): string =>
-  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: Math.abs(v) < 1 && v !== 0 ? 4 : max }).format(v)
+  new Intl.NumberFormat(locale(), { maximumFractionDigits: Math.abs(v) < 1 && v !== 0 ? 4 : max }).format(v)
 
 /**
  * Formats a raw dogma value according to its unit, like the in-game Show Info window.

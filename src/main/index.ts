@@ -11,6 +11,9 @@ import type { IntelSettings, OverlaySummary } from '../shared/intel'
 import * as intel from './intel'
 import { loadSettings, saveSettings } from './storage'
 
+// A separate profile (settings, tokens, SDE cache) — handy for testing and screenshots.
+if (process.env.CANOPUS_USER_DATA) app.setPath('userData', process.env.CANOPUS_USER_DATA)
+
 let mainWindow: BrowserWindow | null = null
 
 function openExternal(url: string): void {
@@ -125,6 +128,9 @@ function registerIpc(): void {
 // In development electron.exe needs the app path as an extra argument.
 if (process.defaultApp && process.argv[1]) {
   app.setAsDefaultProtocolClient(auth.PROTOCOL, process.execPath, [resolve(process.argv[1])])
+} else if (process.env.PORTABLE_EXECUTABLE_FILE) {
+  // The portable build unpacks to a temp folder on every start; register the .exe itself.
+  app.setAsDefaultProtocolClient(auth.PROTOCOL, process.env.PORTABLE_EXECUTABLE_FILE)
 } else {
   app.setAsDefaultProtocolClient(auth.PROTOCOL)
 }

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { AppProvider, useApp, useLang, type PageId } from './AppContext'
 import { CharacterProvider } from './CharacterContext'
 import { InfoProvider, useInfo } from './components/InfoContext'
@@ -74,6 +74,12 @@ function GlobalSearch() {
   )
 }
 
+/** Remounts the UI when the language changes so every text node is re-rendered. */
+function LanguageScope({ children }: { children: ReactNode }) {
+  const { settings } = useApp()
+  return <Fragment key={settings?.lang ?? 'ru'}>{children}</Fragment>
+}
+
 function Shell() {
   const { active, characters, settings, page, navigate } = useApp()
   const needsSetup = settings !== null && (!settings.clientId || characters.length === 0)
@@ -124,7 +130,9 @@ export default function App() {
         <FittingProvider>
           <IntelProvider>
             <InfoProvider>
-              <Shell />
+              <LanguageScope>
+                <Shell />
+              </LanguageScope>
             </InfoProvider>
           </IntelProvider>
         </FittingProvider>

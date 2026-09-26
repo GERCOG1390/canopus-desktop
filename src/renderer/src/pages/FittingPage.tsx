@@ -13,6 +13,7 @@ import { fmtDate, fmtDuration, fmtNum } from '../lib/format'
 import { chargesFor, defaultState, fromEft, loadCatalog, nextState, SLOT_LABEL, SLOT_ORDER, toEft, useFitting } from '../lib/fitting'
 import { CATEGORY, getBasic, searchTypesSde, tn, useTypeBasics } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
+import { locale } from '../i18n'
 
 type SkillMode = 'all5' | 'char'
 
@@ -562,7 +563,7 @@ const DAMAGE_NAMES = ['ЭМ', 'Термический', 'Кинетически�
 function Bar({ attr, label, used, total, unit = '', digits = 1 }: { attr: number; label: string; used: number; total: number; unit?: string; digits?: number }) {
   const over = used > total + 1e-6
   const pct = total ? Math.min(100, (used / total) * 100) : used ? 100 : 0
-  const f = (v: number) => v.toLocaleString('ru-RU', { maximumFractionDigits: digits })
+  const f = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: digits })
   return (
     <div className="res-bar">
       <div className="res-label">
@@ -620,8 +621,8 @@ function Layer({ name, attr, l }: { name: string; attr: number; l: LayerStats })
   )
 }
 
-const n1 = (v: number) => v.toLocaleString('ru-RU', { maximumFractionDigits: 1 })
-const n2 = (v: number) => v.toLocaleString('ru-RU', { maximumFractionDigits: 2 })
+const n1 = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: 1 })
+const n2 = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: 2 })
 const km = (m: number) => (m >= 1000 ? `${n1(m / 1000)} км` : `${fmtNum(m)} м`)
 
 function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {

@@ -14,6 +14,7 @@ import { useInfo } from './InfoContext'
 import { LevelPips, MissingSkillsBox, SkillStatusIcon } from './skills'
 import { RichText, TypeLink, typeImage } from './TypeLink'
 import { ErrorBox, Loading, Tabs } from './ui'
+import { locale } from '../i18n'
 
 type TabId = 'desc' | 'attrs' | 'effects' | 'req' | 'skill' | 'mastery' | 'vars' | 'industry' | 'reprocess' | 'market'
 
@@ -250,7 +251,7 @@ function DescriptionTab({ b, lang }: { b: InfoBundle; lang: Lang }) {
   )
 }
 
-const fmtNum3 = (v: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 3 }).format(v)
+const fmtNum3 = (v: number) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 3 }).format(v)
 
 function BonusLine({ bonus, lang, unitSuffix }: { bonus: Bonus; lang: Lang; unitSuffix: string }) {
   return (
@@ -309,7 +310,7 @@ const STATE_TITLE: Record<InfoModifier['state'], string> = {
   overload: 'При перегреве'
 }
 
-const num = (v: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(v)
+const num = (v: number) => new Intl.NumberFormat(locale(), { maximumFractionDigits: 2 }).format(v)
 
 /** "+5%", "×0,89 (−11%)", "+1" … — resonances are shown as resistance gained. */
 function changeText(m: InfoModifier, lang: Lang): string {

@@ -3,6 +3,7 @@ import type { ClipboardKind, LogEvent, OverlaySummary, Threat } from '../../shar
 import { useApp } from './AppContext'
 import { loadMe, parseDscan, parseLocalList, scanPilots, sortPilots, THREAT_LABEL, THREAT_ORDER, type Me, type PilotIntel, type ScanRow } from './lib/intel'
 import { requestBasics } from './lib/sde'
+import { translate } from './i18n'
 
 export interface LocalScan {
   pilots: PilotIntel[]
@@ -85,10 +86,10 @@ export function IntelProvider({ children }: { children: ReactNode }) {
     if (!bad.length) return
     const where = systemRef.current?.name ? ` в ${systemRef.current.name}` : ''
     void window.api.intel.notify(
-      `Опасность${where}: ${bad.length}`,
+      translate(`Опасность${where}: ${bad.length}`),
       bad
         .slice(0, 5)
-        .map((p) => `${p.name}${p.allianceTicker ? ` <${p.allianceTicker}>` : p.corpTicker ? ` [${p.corpTicker}]` : ''} — ${THREAT_LABEL[p.threat]}`)
+        .map((p) => `${p.name}${p.allianceTicker ? ` <${p.allianceTicker}>` : p.corpTicker ? ` [${p.corpTicker}]` : ''} — ${translate(THREAT_LABEL[p.threat])}`)
         .join('\n')
     )
     if (intel.sound) beep()

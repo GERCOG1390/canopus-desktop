@@ -6,10 +6,11 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "types": [],
     "jsx": "react-jsx",
+    "jsxImportSource": "@i18n",
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "paths": { "@/*": ["./src/renderer/src/*"] }
+    "paths": { "@/*": ["./src/renderer/src/*"], "@i18n/*": ["./src/renderer/src/i18n/*"] }
   },
   "include": ["src/renderer/src/**/*", "src/preload/*.d.ts", "src/shared/**/*"]
 }

@@ -7,7 +7,13 @@ import type { Settings } from '../shared/types'
 const settingsPath = (): string => join(app.getPath('userData'), 'settings.json')
 const tokensPath = (): string => join(app.getPath('userData'), 'tokens.bin')
 
-const DEFAULT_SETTINGS: Settings = { clientId: '', activeCharacterId: null, alwaysOnTop: false, lang: 'ru', intel: DEFAULT_INTEL }
+/**
+ * Client ID of the Canopus application registered on developers.eveonline.com
+ * (callback eveauthcanopus://callback). Public by design: EVE SSO with PKCE needs no secret.
+ */
+export const DEFAULT_CLIENT_ID = 'a3159d301b8d450a86f4a95f26e55fd9'
+
+const DEFAULT_SETTINGS: Settings = { clientId: DEFAULT_CLIENT_ID, activeCharacterId: null, alwaysOnTop: false, lang: 'ru', intel: DEFAULT_INTEL }
 
 export function loadSettings(): Settings {
   try {

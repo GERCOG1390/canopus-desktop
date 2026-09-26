@@ -1,7 +1,10 @@
-const nf0 = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 })
-const nf2 = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+import { locale } from '../i18n'
 
-export const fmtNum = (n: number | null | undefined): string => (n == null || Number.isNaN(n) ? '—' : nf0.format(n))
+// Created per call so switching the UI language switches number formatting too.
+const nf0 = () => new Intl.NumberFormat(locale(), { maximumFractionDigits: 0 })
+const nf2 = () => new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+export const fmtNum = (n: number | null | undefined): string => (n == null || Number.isNaN(n) ? '—' : nf0().format(n))
 
 export function fmtIsk(n: number | null | undefined, compact = false): string {
   if (n == null || Number.isNaN(n)) return '—'
@@ -12,7 +15,7 @@ export function fmtIsk(n: number | null | undefined, compact = false): string {
     if (abs >= 1e6) return `${(n / 1e6).toFixed(2)}M ISK`
     if (abs >= 1e3) return `${(n / 1e3).toFixed(1)}K ISK`
   }
-  return `${nf2.format(n)} ISK`
+  return `${nf2().format(n)} ISK`
 }
 
 export function fmtDuration(ms: number): string {
@@ -27,7 +30,7 @@ export function fmtDuration(ms: number): string {
 }
 
 export const fmtDate = (iso: string): string =>
-  new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  new Date(iso).toLocaleString(locale(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
 export function fmtAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime()

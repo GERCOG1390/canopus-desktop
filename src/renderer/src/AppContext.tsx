@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { SdeStatus } from '../../shared/sde'
 import type { CharacterAuth, Settings } from '../../shared/types'
+import { setUiLang } from './i18n'
 import { retryMissing, type Lang } from './lib/sde'
 
 export type PageId = 'character' | 'intel' | 'fitting' | 'market' | 'map' | 'industry' | 'pvp' | 'settings'
@@ -75,6 +76,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const active = characters.find((c) => c.id === settings?.activeCharacterId) ?? characters[0] ?? null
   const lang: Lang = settings?.lang === 'en' ? 0 : 1
+  // The UI language follows the same setting as item names (applied before children render).
+  setUiLang(settings?.lang === 'en' ? 'en' : 'ru')
 
   return (
     <Ctx.Provider value={{ settings, characters, active, lang, sde, page, pageArg, navigate, updateSettings, login, logout, setActive }}>

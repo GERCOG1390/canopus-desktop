@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useApp } from '../AppContext'
 import { Card, ErrorBox } from '../components/ui'
 import { imageUrl } from '../lib/esi'
+import { locale } from '../i18n'
 
 export default function SettingsPage() {
   const { settings, characters, active, sde, updateSettings, login, logout, setActive } = useApp()
@@ -104,7 +105,7 @@ export default function SettingsPage() {
         <p className="muted small">
           Статическая база CCP:{' '}
           {sde.state === 'ready'
-            ? `сборка ${sde.build} от ${sde.releaseDate ? new Date(sde.releaseDate).toLocaleDateString('ru-RU') : '?'}`
+            ? `сборка ${sde.build} от ${sde.releaseDate ? new Date(sde.releaseDate).toLocaleDateString(locale()) : '?'}`
             : sde.state === 'error'
               ? `ошибка — ${sde.message}`
               : 'загружается…'}

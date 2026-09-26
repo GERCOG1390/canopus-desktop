@@ -11,8 +11,12 @@ export default defineConfig({
   },
   renderer: {
     resolve: {
-      alias: { '@': resolve(__dirname, 'src/renderer/src') }
+      alias: {
+        '@i18n': resolve(__dirname, 'src/renderer/src/i18n'),
+        '@': resolve(__dirname, 'src/renderer/src')
+      }
     },
-    plugins: [react()]
+    // JSX goes through our runtime, which translates text when the UI is in English.
+    plugins: [react({ jsxImportSource: '@i18n' })]
   }
 })

@@ -4,6 +4,7 @@ import type { Settings } from '../../shared/types'
 import { THREAT_LABEL } from './lib/intel'
 import { secColor, roundSec } from './lib/format'
 import { useTypeBasic } from './lib/sde'
+import { setUiLang } from './i18n'
 
 const SHOWN: Threat[] = ['hostile', 'high', 'medium', 'unknown', 'low', 'friendly']
 
@@ -22,7 +23,10 @@ export default function Overlay() {
   useEffect(() => {
     document.documentElement.classList.add('overlay-mode')
     void window.api.intel.lastSummary().then(setS)
-    void window.api.settings.get().then(setSettings)
+    void window.api.settings.get().then((st) => {
+      setUiLang(st.lang === 'en' ? 'en' : 'ru')
+      setSettings(st)
+    })
     const off = window.api.intel.onSummary(setS)
     const t = setInterval(() => tick((x) => x + 1), 10_000)
     return () => {

@@ -1,7 +1,7 @@
 {
   "name": "canopus",
   "version": "0.1.0",
-  "description": "Canopus — desktop companion app for EVE Online",
+  "description": "Canopus — desktop companion for EVE Online: character, fitting with a dogma engine, intel, market, map and industry",
   "main": "./out/main/index.js",
   "private": true,
   "scripts": {
@@ -14,15 +14,49 @@
   "build": {
     "appId": "app.canopus.eve",
     "productName": "Canopus",
+    "copyright": "Copyright © 2026 oderi. EVE Online is a trademark of CCP hf.",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "out/**/*"
     ],
+    "npmRebuild": false,
     "win": {
-      "target": "nsis"
-    }
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "artifactName": "Canopus-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "Canopus-${version}-portable.exe"
+    },
+    "protocols": [
+      {
+        "name": "Canopus EVE SSO",
+        "schemes": [
+          "eveauthcanopus"
+        ]
+      }
+    ]
   },
   "dependencies": {
     "react": "^19.3.0",
@@ -45,5 +79,7 @@
     "esbuild@0.25.12": true,
     "esbuild@0.28.2": true,
     "electron-winstaller@5.4.0": true
-  }
+  },
+  "author": "oderi",
+  "license": "MIT"
 }
