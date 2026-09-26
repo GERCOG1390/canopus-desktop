@@ -7,7 +7,7 @@ import { createInterface } from 'node:readline'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import yauzl from 'yauzl'
-import type { Bonus, L10n, SdeDb } from '../../shared/sde'
+import { SDE_FORMAT, type Bonus, type L10n, type SdeDb } from '../../shared/sde'
 
 export const SDE_BASE = 'https://developers.eveonline.com/static-data/tranquility'
 
@@ -77,6 +77,7 @@ export async function buildSde(
   await download(`${SDE_BASE}/eve-online-static-data-${build.buildNumber}-jsonl.zip`, zipPath, (p) => onStatus('downloading', p))
 
   const db: SdeDb = {
+    format: SDE_FORMAT,
     build: build.buildNumber,
     releaseDate: build.releaseDate,
     types: {},
@@ -141,15 +142,28 @@ export async function buildSde(
         pub: !!r.published,
         high: r.highIsGood !== false,
         def: r.defaultValue ?? 0,
-        icon: r.iconID
+        icon: r.iconID,
+        stack: r.stackable !== false
       }),
     dogmaAttributeCategories: (r) => (db.attrCategories[r._key] = r.name),
     dogmaUnits: (r) => (db.units[r._key] = l10n(r.displayName ?? '')),
-    dogmaEffects: (r) => (db.effects[r._key] = r.name),
+    dogmaEffects: (r) =>
+      (db.effects[r._key] = {
+        name: r.name,
+        cat: r.effectCategoryID ?? 0,
+        dur: r.durationAttributeID,
+        dis: r.dischargeAttributeID,
+        range: r.rangeAttributeID,
+        falloff: r.falloffAttributeID,
+        mods: (r.modifierInfo as Row[] | undefined)
+          ?.filter((m) => m.modifiedAttributeID && m.modifyingAttributeID && m.operation !== undefined && m.operation !== null)
+          .map((m) => ({ func: m.func, domain: m.domain, attr: m.modifiedAttributeID, src: m.modifyingAttributeID, op: m.operation, group: m.groupID, skill: m.skillTypeID }))
+      }),
     typeDogma: (r) => {
       const a: Record<number, number> = {}
       for (const x of r.dogmaAttributes ?? []) a[x.attributeID] = x.value
-      db.dogma[r._key] = { a, e: (r.dogmaEffects ?? []).map((x: Row) => x.effectID) }
+      const effects = (r.dogmaEffects ?? []) as Row[]
+      db.dogma[r._key] = { a, e: effects.map((x) => x.effectID), de: effects.find((x) => x.isDefault)?.effectID }
     },
     typeBonus: (r) => {
       db.bonuses[r._key] = {

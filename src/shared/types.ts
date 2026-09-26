@@ -1,5 +1,6 @@
 // Types shared between the main process, preload and renderer.
 
+import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
 import type { InfoBundle, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
@@ -53,5 +54,13 @@ export interface CanopusApi {
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
     dogmaAttrs(ids: number[], attrIds: number[]): Promise<Record<number, Record<number, number>>>
     blueprintForProduct(productId: number): Promise<InfoBundle['producedBy'] | null>
+  }
+  fit: {
+    calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>
+    catalog(): Promise<FittableType[]>
+    charges(moduleTypeId: number): Promise<number[]>
+    list(): Promise<SavedFit[]>
+    save(fit: FitSpec & { id?: string }): Promise<SavedFit>
+    delete(id: string): Promise<void>
   }
 }

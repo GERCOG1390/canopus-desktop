@@ -5,6 +5,7 @@ import { useCharacter } from '../CharacterContext'
 import { ACTIVITY_RU, ATTR_NAMES, CATEGORY_RU, formatValue, spForLevel, spPerMinute, trainingMs } from '../lib/dogma'
 import { imageUrl } from '../lib/esi'
 import { fmtDuration, fmtIsk, fmtNum, ROMAN } from '../lib/format'
+import { useFitting } from '../lib/fitting'
 import { HUBS, hubPrices } from '../lib/market'
 import { CATEGORY, primeBasics, tn, type Lang } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
@@ -63,6 +64,8 @@ function flattenReqs(nodes: ReqNode[], out: Record<number, SkillReq> = {}): Reco
 
 function InfoView({ typeId }: { typeId: number }) {
   const lang = useLang()
+  const { openFit } = useFitting()
+  const { close } = useInfo()
   const { data, error, loading } = useAsync(async () => {
     const b = await window.api.sde.info(typeId)
     primeBasics(b.refs)
@@ -110,6 +113,17 @@ function InfoView({ typeId }: { typeId: number }) {
             {b.faction && <span className="meta-badge">{tn(b.faction, lang)}</span>}
             {!t.pub && <span className="meta-badge">не публикуется</span>}
           </div>
+          {isShip && (
+            <button
+              className="small fit-open-btn"
+              onClick={() => {
+                close()
+                openFit({ shipTypeId: t.id, name: `${tn(t.n, lang)} fit`, modules: [], drones: [], implants: [] })
+              }}
+            >
+              Открыть в фитинге
+            </button>
+          )}
         </div>
       </header>
 

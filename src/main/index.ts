@@ -4,6 +4,8 @@ import type { RequestOptions, Settings } from '../shared/types'
 import * as auth from './auth'
 import { request } from './http'
 import * as sde from './sde'
+import * as dogma from './dogma'
+import type { FitSpec, SkillSource } from '../shared/fit'
 import { loadSettings, saveSettings } from './storage'
 
 let mainWindow: BrowserWindow | null = null
@@ -74,6 +76,13 @@ function registerIpc(): void {
   ipcMain.handle('sde:requiredSkills', (_e, ids: number[]) => sde.requiredSkills(ids))
   ipcMain.handle('sde:dogmaAttrs', (_e, ids: number[], attrIds: number[]) => sde.dogmaAttrs(ids, attrIds))
   ipcMain.handle('sde:blueprintForProduct', (_e, id: number) => sde.blueprintForProduct(id))
+
+  ipcMain.handle('fit:calculate', (_e, spec: FitSpec, skills: SkillSource) => dogma.calculateFit(spec, skills))
+  ipcMain.handle('fit:catalog', () => sde.fittingCatalog())
+  ipcMain.handle('fit:charges', (_e, id: number) => sde.chargesFor(id))
+  ipcMain.handle('fit:list', () => dogma.listFits())
+  ipcMain.handle('fit:save', (_e, fit: FitSpec & { id?: string }) => dogma.saveFit(fit))
+  ipcMain.handle('fit:delete', (_e, id: string) => dogma.deleteFit(id))
 }
 
 // Register Canopus as the handler for eveauthcanopus:// links (the EVE SSO callback).

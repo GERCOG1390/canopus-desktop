@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { SkillReq } from '../../../shared/sde'
 import { imageUrl } from '../lib/esi'
+import { fromEsiItems, useFitting } from '../lib/fitting'
 import { getBasic, requestBasics } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 import { MissingSkillsBox } from './skills'
@@ -69,6 +70,7 @@ export function toEft(shipTypeId: number, name: string, items: FitItem[]): strin
 
 export function FitView({ shipTypeId, name, items, showSkills = true }: { shipTypeId: number; name: string; items: FitItem[]; showSkills?: boolean }) {
   const [copied, setCopied] = useState(false)
+  const { openFit } = useFitting()
   requestBasics([shipTypeId, ...items.map((i) => i.typeId)])
 
   const { data } = useAsync(async () => {
@@ -91,6 +93,9 @@ export function FitView({ shipTypeId, name, items, showSkills = true }: { shipTy
           <TypeLink id={shipTypeId} icon={false} className="big" />
           <div className="muted">{name}</div>
         </div>
+        <button className="small" onClick={async () => openFit(await fromEsiItems(shipTypeId, name, items))}>
+          Открыть в фитинге
+        </button>
         <button
           className="ghost small"
           onClick={() => {

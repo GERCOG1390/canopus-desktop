@@ -7,7 +7,9 @@ import { TypeLink } from './components/TypeLink'
 import { SearchBox } from './components/ui'
 import { imageUrl } from './lib/esi'
 import { searchTypesSde } from './lib/sde'
+import { FittingProvider } from './lib/fitting'
 import CharacterPage from './pages/character'
+import FittingPage from './pages/FittingPage'
 import IndustryPage from './pages/IndustryPage'
 import MapPage from './pages/MapPage'
 import MarketPage from './pages/MarketPage'
@@ -16,6 +18,7 @@ import SettingsPage from './pages/SettingsPage'
 
 const PAGES: { id: PageId; label: string; icon: string; render: () => ReactNode }[] = [
   { id: 'character', label: 'Персонаж', icon: '◉', render: () => <CharacterPage /> },
+  { id: 'fitting', label: 'Фитинг', icon: '⬡', render: () => <FittingPage /> },
   { id: 'market', label: 'Рынок', icon: '◈', render: () => <MarketPage /> },
   { id: 'map', label: 'Карта', icon: '✦', render: () => <MapPage /> },
   { id: 'industry', label: 'Индустрия', icon: '⚙', render: () => <IndustryPage /> },
@@ -115,9 +118,11 @@ export default function App() {
   return (
     <AppProvider>
       <CharacterProvider>
-        <InfoProvider>
-          <Shell />
-        </InfoProvider>
+        <FittingProvider>
+          <InfoProvider>
+            <Shell />
+          </InfoProvider>
+        </FittingProvider>
       </CharacterProvider>
     </AppProvider>
   )

@@ -3,7 +3,7 @@ import type { SdeStatus } from '../../shared/sde'
 import type { CharacterAuth, Settings } from '../../shared/types'
 import { retryMissing, type Lang } from './lib/sde'
 
-export type PageId = 'character' | 'market' | 'map' | 'industry' | 'pvp' | 'settings'
+export type PageId = 'character' | 'fitting' | 'market' | 'map' | 'industry' | 'pvp' | 'settings'
 
 interface AppState {
   settings: Settings | null

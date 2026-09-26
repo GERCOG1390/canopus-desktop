@@ -39,7 +39,31 @@ export interface BlueprintActivity {
   skills?: [number, number][]
 }
 
+export interface DogmaModifier {
+  func: string
+  domain: string
+  attr: number
+  src: number
+  op: number
+  group?: number
+  skill?: number
+}
+
+export interface DogmaEffect {
+  name: string
+  cat: number
+  dur?: number
+  dis?: number
+  range?: number
+  falloff?: number
+  mods?: DogmaModifier[]
+}
+
+/** Bumped whenever the DB layout changes, forcing a rebuild from the SDE zip. */
+export const SDE_FORMAT = 2
+
 export interface SdeDb {
+  format: number
   build: number
   releaseDate: string
   types: Record<number, SdeType>
@@ -47,11 +71,12 @@ export interface SdeDb {
   categories: Record<number, { n: L10n; pub: boolean }>
   marketGroups: Record<number, { n: L10n; p?: number }>
   metaGroups: Record<number, L10n>
-  attributes: Record<number, { name: string; dn?: L10n; tt?: L10n; u?: number; cat?: number; pub: boolean; high: boolean; def: number; icon?: number }>
+  attributes: Record<number, { name: string; dn?: L10n; tt?: L10n; u?: number; cat?: number; pub: boolean; high: boolean; def: number; icon?: number; stack: boolean }>
   attrCategories: Record<number, string>
   units: Record<number, L10n>
-  effects: Record<number, string>
-  dogma: Record<number, { a: Record<number, number>; e: number[] }>
+  effects: Record<number, DogmaEffect>
+  /** a: attributes, e: effects, de: default (activatable) effect */
+  dogma: Record<number, { a: Record<number, number>; e: number[]; de?: number }>
   bonuses: Record<number, { role?: Bonus[]; misc?: Bonus[]; skills?: [number, Bonus[]][] }>
   blueprints: Record<number, { max: number; act: Record<string, BlueprintActivity> }>
   reprocess: Record<number, [number, number][]>

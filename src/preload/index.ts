@@ -42,6 +42,14 @@ const api: CanopusApi = {
     requiredSkills: (ids) => invoke('sde:requiredSkills', ids),
     dogmaAttrs: (ids, attrIds) => invoke('sde:dogmaAttrs', ids, attrIds),
     blueprintForProduct: (id) => invoke('sde:blueprintForProduct', id)
+  },
+  fit: {
+    calculate: (spec, skills) => invoke('fit:calculate', spec, skills),
+    catalog: () => invoke('fit:catalog'),
+    charges: (id) => invoke('fit:charges', id),
+    list: () => invoke('fit:list'),
+    save: (fit) => invoke('fit:save', fit),
+    delete: (id) => invoke('fit:delete', id)
   }
 }
 

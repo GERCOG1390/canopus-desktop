@@ -15,6 +15,8 @@ import type {
   SystemBasic,
   TypeBasic
 } from '../../shared/sde'
+import type { FittableType } from '../../shared/fit'
+import { SDE_FORMAT } from '../../shared/sde'
 import { buildSde, latestBuild } from './build'
 
 /** requiredSkillN attribute → requiredSkillNLevel attribute */
@@ -49,6 +51,13 @@ function need(): SdeDb {
   return db
 }
 
+/** The loaded database, for the dogma engine. Throws if the SDE is missing or predates the fitting data. */
+export function sdeForDogma(): SdeDb {
+  const d = need()
+  if (d.format !== SDE_FORMAT) throw new Error('База SDE обновляется для фитинга — подождите минуту')
+  return d
+}
+
 // ---------------- Loading ----------------
 
 interface SearchEntry {
@@ -70,6 +79,7 @@ async function load(build: number): Promise<void> {
   db = next
   descriptions = null
   requiredForIndex = usedInIndex = variationIndex = typesByGroup = null
+  fittables = null
 
   searchIndex = Object.values(next.types)
     .filter((t) => t.pub)
@@ -118,14 +128,14 @@ export function initSde(): Promise<void> {
     try {
       if (!db) setStatus({ state: 'checking' })
       const latest = await latestBuild()
-      if (db && db.build >= latest.buildNumber) {
+      if (db && db.build >= latest.buildNumber && db.format === SDE_FORMAT) {
         setStatus({ state: 'ready', build: db.build, releaseDate: db.releaseDate })
         return
       }
       await buildSde(sdeDir(), latest, (state, progress, message) => setStatus({ state, progress, message, build: db?.build }))
       await load(latest.buildNumber)
       setStatus({ state: 'ready', build: db!.build, releaseDate: db!.releaseDate })
-      for (const old of localBuilds().slice(1)) {
+      for (const old of localBuilds().filter((b) => b !== latest.buildNumber)) {
         await rm(join(sdeDir(), `sde-${old}.json`), { force: true })
         await rm(join(sdeDir(), `sde-${old}-descriptions.json`), { force: true })
       }
@@ -332,6 +342,74 @@ export function skillCatalog(): SkillCatalogGroup[] {
     .sort((a, b) => a.n[0].localeCompare(b.n[0]))
 }
 
+// ---------------- Fitting ----------------
+
+const SLOT_EFFECTS: [number, FittableType['slot']][] = [
+  [12, 'hi'],
+  [13, 'med'],
+  [11, 'lo'],
+  [2663, 'rig'],
+  [3772, 'sub']
+]
+const CHARGE_GROUP_ATTRS = [604, 605, 606, 609, 610, 2076, 2077, 2078]
+const CHARGE_SIZE_ATTR = 128
+let fittables: FittableType[] | null = null
+
+/** Every published module, rig, subsystem, drone and implant with its slot. */
+export function fittingCatalog(): FittableType[] {
+  if (fittables) return fittables
+  const d = sdeForDogma()
+  const out: FittableType[] = []
+  const attrId = (name: string) => Number(Object.entries(d.attributes).find(([, a]) => a.name === name)?.[0] ?? 0)
+  const noRepeatAttr = attrId('disallowRepeatingActivation')
+  for (const t of Object.values(d.types)) {
+    if (!t.pub || !t.mg) continue
+    const cat = d.groups[t.g]?.c
+    const dogma = d.dogma[t.id]
+    let slot: FittableType['slot'] | undefined
+    if (cat === 18) slot = 'drone'
+    else if (cat === 20 && dogma?.a[331]) slot = 'implant'
+    else if (cat === 7 || cat === 32) slot = SLOT_EFFECTS.find(([e]) => dogma?.e.includes(e))?.[1]
+    if (!slot) continue
+    const effects = (dogma?.e ?? []).map((e) => d.effects[e]).filter(Boolean)
+    out.push({
+      id: t.id,
+      slot,
+      g: t.g,
+      mg: t.mg,
+      meta: t.meta,
+      turret: dogma?.e.includes(42),
+      launcher: dogma?.e.includes(40),
+      act: effects.some((e) => (e.cat === 1 || e.cat === 2) && !!e.dur),
+      oh: effects.some((e) => e.cat === 5),
+      burst: !!(noRepeatAttr && dogma?.a[noRepeatAttr]),
+      charges: CHARGE_GROUP_ATTRS.some((x) => dogma?.a[x])
+    })
+  }
+  fittables = out
+  return out
+}
+
+/** Charges that fit a module: matching charge group, charge size and capacity. */
+export function chargesFor(moduleTypeId: number): number[] {
+  const d = sdeForDogma()
+  const a = d.dogma[moduleTypeId]?.a ?? {}
+  const groups = new Set(CHARGE_GROUP_ATTRS.map((x) => a[x]).filter(Boolean))
+  if (!groups.size) return []
+  const size = a[CHARGE_SIZE_ATTR]
+  const capacity = d.types[moduleTypeId]?.cap ?? Infinity
+  const byGroup = getTypesByGroup()
+  return [...groups]
+    .flatMap((g) => byGroup.get(g) ?? [])
+    .filter((id) => {
+      const t = d.types[id]
+      if (!t?.pub) return false
+      if (size && d.dogma[id]?.a[CHARGE_SIZE_ATTR] !== size) return false
+      return (t.vol ?? 0) <= capacity
+    })
+    .sort((x, y) => d.types[x].n[0].localeCompare(d.types[y].n[0]))
+}
+
 async function getDescriptions(): Promise<Record<number, L10n>> {
   if (!descriptions) {
     descriptions = JSON.parse(await readFile(join(sdeDir(), `sde-${need().build}-descriptions.json`), 'utf8'))
@@ -452,7 +530,8 @@ export async function info(typeId: number): Promise<InfoBundle> {
     faction: type.faction ? d.factions[type.faction] : undefined,
     description,
     attributes,
-    effects: dogma.e.map((e) => d.effects[e]).filter(Boolean),
+    // Databases built before format 2 stored effect names as plain strings.
+    effects: dogma.e.map((e) => { const ef = d.effects[e] as unknown; return typeof ef === 'string' ? ef : (ef as { name?: string } | undefined)?.name }).filter((x): x is string => !!x),
     traits,
     requirements,
     skill,
