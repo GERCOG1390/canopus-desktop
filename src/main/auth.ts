@@ -1,10 +1,14 @@
 // EVE SSO (OAuth 2.0 authorization code + PKCE) for a native desktop client.
 // No client secret is needed: register the app at https://developers.eveonline.com
 // with the callback URL below and paste its Client ID into Canopus settings.
-// The browser hands the callback back to Canopus through a custom URL scheme
-// registered with Windows (see index.ts), so no local port is opened.
+// The login page opens in a Canopus window that catches the redirect to the custom
+// callback scheme itself, so it works regardless of the default browser and of how
+// Windows routes eveauthcanopus:// links (that route, see index.ts, stays as a fallback).
+// No local port is opened.
 
-import { shell } from 'electron'
+import { app, BrowserWindow } from 'electron'
+import { appendFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { createHash, randomBytes } from 'node:crypto'
 import type { CharacterAuth } from '../shared/types'
 import { loadSettings, loadTokens, saveTokens, type StoredToken } from './storage'
@@ -148,13 +152,73 @@ export async function login(): Promise<CharacterAuth> {
   }).toString()
 
   const codePromise = waitForCallback(state)
-  await shell.openExternal(authUrl.toString())
-  const code = await codePromise
+  const win = openLoginWindow(authUrl.toString())
+  let code: string
+  try {
+    code = await codePromise
+  } catch (err) {
+    log(`login failed: ${(err as Error).message}`)
+    throw err
+  } finally {
+    if (!win.isDestroyed()) win.close()
+  }
 
-  const token = storeToken(
-    await tokenRequest({ grant_type: 'authorization_code', code, client_id: id, code_verifier: verifier })
-  )
-  return { id: token.characterId, name: token.characterName, scopes: token.scopes }
+  try {
+    const token = storeToken(
+      await tokenRequest({ grant_type: 'authorization_code', code, client_id: id, code_verifier: verifier })
+    )
+    log(`logged in: ${token.characterName}`)
+    return { id: token.characterId, name: token.characterName, scopes: token.scopes }
+  } catch (err) {
+    log(`token exchange failed: ${(err as Error).message}`)
+    throw err
+  }
+}
+
+/** Login trace in %APPDATA%\canopus\auth.log (no codes or tokens), for diagnosing SSO problems. */
+function log(line: string): void {
+  try {
+    appendFileSync(join(app.getPath('userData'), 'auth.log'), `${new Date().toISOString()} ${line}\n`)
+  } catch {
+    // logging is best effort
+  }
+}
+
+const redact = (url: string): string =>
+  url.replace(/((?:code|state|code_challenge)(?:=|%3D))[^&%]+/gi, '$1…').replace(/(scope(?:=|%3D)).+?(?=&|%26|$)/i, '$1…')
+
+function openLoginWindow(url: string): BrowserWindow {
+  const win = new BrowserWindow({
+    width: 520,
+    height: 760,
+    title: 'EVE Online — login',
+    autoHideMenuBar: true,
+    backgroundColor: '#000000',
+    // A persistent session keeps "remember me" between logins; it is separate from the app's own.
+    webPreferences: { partition: 'persist:eve-sso', contextIsolation: true, sandbox: true }
+  })
+  const catchCallback = (e: Electron.Event, target: string): void => {
+    log(`navigate ${redact(target)}`)
+    if (target.toLowerCase().startsWith(`${PROTOCOL}:`)) {
+      e.preventDefault()
+      handleCallbackUrl(target)
+    }
+  }
+  win.webContents.on('will-navigate', catchCallback)
+  win.webContents.on('will-redirect', catchCallback)
+  win.webContents.on('did-fail-load', (_e, errorCode, desc, failedUrl) => {
+    log(`load failed ${errorCode} ${desc} ${redact(failedUrl)}`)
+    if (failedUrl.toLowerCase().startsWith(`${PROTOCOL}:`)) handleCallbackUrl(failedUrl)
+  })
+  win.webContents.on('console-message', (details) => {
+    // The SSO page's own errors, minus its analytics blocked by CCP's content security policy.
+    if (details.level === 'error' && !/Content Security Policy/.test(details.message)) log(`page error: ${details.message.slice(0, 300)}`)
+  })
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  win.on('closed', () => pendingLogin?.finish(new Error('Вход отменён'), ''))
+  log(`open ${redact(url)}`)
+  void win.loadURL(url)
+  return win
 }
 
 export function characters(): CharacterAuth[] {

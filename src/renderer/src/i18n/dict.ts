@@ -716,6 +716,7 @@ export const EXACT: Record<string, string> = {
   'Персонаж не авторизован': 'Character is not authorized',
   'Время ожидания входа истекло': 'Login timed out',
   'Вход отменён: начат новый': 'Login cancelled: a new one was started',
+  'Вход отменён': 'Login cancelled',
   'EVE SSO вернул неверный ответ': 'EVE SSO returned an invalid response',
   'База SDE обновляется для фитинга — подождите минуту': 'The SDE database is updating for fitting — wait a minute',
   'Папка логов чата EVE не найдена': 'EVE chat log folder not found',
