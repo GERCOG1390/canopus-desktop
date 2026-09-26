@@ -86,6 +86,9 @@ function registerIpc(): void {
       intel.applyOverlay(loadRenderer, PRELOAD)
     }
     if (patch.activeCharacterId !== undefined || patch.intel?.logDir !== prev.intel.logDir) intel.restartLog()
+    if (patch.intel && (patch.intel.logDir !== prev.intel.logDir || patch.intel.channels.join('\n') !== prev.intel.channels.join('\n'))) {
+      intel.restartChannels()
+    }
     return next
   })
 
@@ -98,6 +101,11 @@ function registerIpc(): void {
     sendToMain('intel:settingsChanged', null)
   })
   ipcMain.handle('intel:resolveTypeNames', (_e, names: string[]) => sde.resolveTypeNames(names))
+  ipcMain.handle('intel:listChannels', () => intel.listChannels())
+  ipcMain.handle('intel:channelStatus', () => intel.channelStatus())
+  ipcMain.handle('intel:recentReports', () => intel.recentReports())
+  ipcMain.handle('intel:jumpsFrom', (_e, fromId: number, ids: number[]) => sde.jumpsFrom(fromId, ids))
+  ipcMain.handle('intel:systemId', (_e, name: string) => sde.systemIdByName(name))
 
   ipcMain.handle('shell:openExternal', (_e, url: string) => openExternal(url))
 

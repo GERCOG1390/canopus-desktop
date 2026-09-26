@@ -4,7 +4,7 @@ import type { Settings } from '../../shared/types'
 import { THREAT_LABEL } from './lib/intel'
 import { secColor, roundSec } from './lib/format'
 import { useTypeBasic } from './lib/sde'
-import { setUiLang } from './i18n'
+import { setUiLang, translate } from './i18n'
 
 const SHOWN: Threat[] = ['hostile', 'high', 'medium', 'unknown', 'low', 'friendly']
 
@@ -27,7 +27,11 @@ export default function Overlay() {
       setUiLang(st.lang === 'en' ? 'en' : 'ru')
       setSettings(st)
     })
-    const off = window.api.intel.onSummary(setS)
+    // Settings (alert radius, click-through) may change in the main window: re-read with each update.
+    const off = window.api.intel.onSummary((next) => {
+      setS(next)
+      void window.api.settings.get().then(setSettings)
+    })
     const t = setInterval(() => tick((x) => x + 1), 10_000)
     return () => {
       off()
@@ -42,7 +46,25 @@ export default function Overlay() {
   }
 
   const agoMin = s?.scannedAt ? Math.floor((Date.now() - new Date(s.scannedAt).getTime()) / 60_000) : null
-  const danger = (s?.counts.hostile ?? 0) + (s?.counts.high ?? 0)
+  const alertJumps = settings?.intel.channelJumps ?? -1
+  const reports = s?.reports ?? []
+  const nearReport = reports.some((r) => !r.clear && r.jumps <= alertJumps)
+  const danger = (s?.counts.hostile ?? 0) + (s?.counts.high ?? 0) + (nearReport ? 1 : 0)
+  const reportList = reports.length > 0 && (
+    <ul className="ov-reports">
+      {reports.map((r) => {
+        const min = Math.floor((Date.now() - new Date(r.at).getTime()) / 60_000)
+        return (
+          <li key={r.id} className={r.clear ? 'clear' : r.jumps <= alertJumps ? 'near' : ''} title={r.text} translate="no">
+            <span className="ov-report-sys">{r.system}</span>
+            <span className="ov-report-jumps">{r.jumps === 0 ? translate('здесь') : `${r.jumps}j`}</span>
+            <span className="ov-report-text">{r.clear ? translate('чисто') : r.text}</span>
+            <span className="ov-report-ago">{min < 1 ? translate('сейчас') : `${min}m`}</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
 
   return (
     <div className={`ov ${danger ? 'ov-danger' : ''}`}>
@@ -60,6 +82,7 @@ export default function Overlay() {
           </button>
         </span>
       </div>
+      {reportList}
       {!s || !s.total ? (
         <div className="ov-empty">
           Скопируйте Local в игре

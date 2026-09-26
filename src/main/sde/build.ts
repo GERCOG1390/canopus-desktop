@@ -98,6 +98,7 @@ export async function buildSde(
     systems: {},
     regions: {},
     constellations: {},
+    jumps: {},
     factions: {},
     races: {},
     icons: {}
@@ -195,6 +196,13 @@ export async function buildSde(
     masteries: (r) => (db.masteries[r._key] = (r._value as Row[]).sort((a, b) => a._key - b._key).map((l) => l._value as number[])),
     mapSolarSystems: (r) =>
       (db.systems[r._key] = { n: l10n(r.name)[0], sec: r.securityStatus ?? 0, r: r.regionID, c: r.constellationID }),
+    mapStargates: (r) => {
+      const from = r.solarSystemID as number
+      const to = r.destination?.solarSystemID as number | undefined
+      if (!to) return
+      const list = (db.jumps[from] ??= [])
+      if (!list.includes(to)) list.push(to)
+    },
     mapRegions: (r) => (db.regions[r._key] = l10n(r.name)),
     mapConstellations: (r) => (db.constellations[r._key] = l10n(r.name)[0]),
     factions: (r) => (db.factions[r._key] = l10n(r.name)),

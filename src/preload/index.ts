@@ -61,7 +61,14 @@ const api: CanopusApi = {
     lastSummary: () => invoke('intel:lastSummary'),
     notify: (title, body) => invoke('intel:notify', title, body),
     setOverlay: (patch) => invoke('intel:setOverlay', patch),
-    resolveTypeNames: (names) => invoke('intel:resolveTypeNames', names)
+    resolveTypeNames: (names) => invoke('intel:resolveTypeNames', names),
+    onReport: (listener) => on('intel:report', listener),
+    onChannels: (listener) => on('intel:channels', listener),
+    listChannels: () => invoke('intel:listChannels'),
+    channelStatus: () => invoke('intel:channelStatus'),
+    recentReports: () => invoke('intel:recentReports'),
+    jumpsFrom: (fromId, ids) => invoke('intel:jumpsFrom', fromId, ids),
+    systemId: (name) => invoke('intel:systemId', name)
   },
   onSettingsChanged: (listener) => on('intel:settingsChanged', listener),
   fit: {

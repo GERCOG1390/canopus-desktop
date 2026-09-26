@@ -4,7 +4,8 @@
 import { app, BrowserWindow, clipboard, globalShortcut, Notification, screen } from 'electron'
 import { existsSync, openSync, readSync, closeSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import type { ClipboardKind, IntelSettings, LogEvent, OverlaySummary } from '../shared/intel'
+import type { ChannelInfo, ClipboardKind, IntelReport, IntelSettings, LogEvent, OverlaySummary } from '../shared/intel'
+import { isLoaded as sdeLoaded, parseIntelMessage } from './sde'
 import { loadSettings, saveSettings } from './storage'
 
 type Send = (channel: string, payload: unknown) => void
@@ -34,19 +35,31 @@ function readUtf16(file: string, start: number, end: number): string {
   }
 }
 
-const localHeaderCache = new Map<string, boolean>()
-function isLocalLog(file: string): boolean {
-  let known = localHeaderCache.get(file)
-  if (known === undefined) {
-    try {
-      known = /Channel ID:\s+local\b/i.test(readUtf16(file, 0, Math.min(2000, statSync(file).size)))
-    } catch {
-      known = false
-    }
-    localHeaderCache.set(file, known)
-  }
-  return known
+interface LogHeader {
+  id: string
+  name: string
 }
+
+const headerCache = new Map<string, LogHeader>()
+
+/** "Channel ID" and "Channel Name" from a chat log's header (cached per file). */
+function readHeader(file: string): LogHeader | null {
+  let known = headerCache.get(file)
+  if (!known) {
+    try {
+      const head = readUtf16(file, 0, Math.min(2000, statSync(file).size))
+      const id = /Channel ID:\s+(.+)/.exec(head)?.[1].trim()
+      const name = /Channel Name:\s+(.+)/.exec(head)?.[1].trim()
+      // A header still being written may be incomplete: only complete ones are cached.
+      if (id && name) headerCache.set(file, (known = { id, name }))
+    } catch {
+      // unreadable file
+    }
+  }
+  return known ?? null
+}
+
+const isLocalLog = (file: string): boolean => readHeader(file)?.id.toLowerCase() === 'local'
 
 class LocalLogWatcher {
   private timer: NodeJS.Timeout | null = null
@@ -150,6 +163,152 @@ class LocalLogWatcher {
 function parseLogTime(at: string): number {
   const [d, t] = at.split(' ')
   return Date.parse(`${d.replace(/\./g, '-')}T${t}Z`)
+}
+
+// ---------------- Intel channels ----------------
+
+const CLEAR_RE = /(^|[^\p{L}])(clr|clear|nv|no visual|чисто|клир)([^\p{L}]|$)/iu
+/** Chat logs older than this are not considered when looking for channels. */
+const CHANNEL_MAX_AGE = 14 * 86400_000
+
+const logDir = (): string | null => {
+  const dir = loadSettings().intel.logDir || defaultLogDir()
+  return dir && existsSync(dir) ? dir : null
+}
+
+/** Session start from a log file name ("Channel_20260926_034108_2112345678.txt"), ms UTC. */
+function sessionStart(file: string): number | null {
+  const m = /_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})(?:_\d+)?\.txt$/.exec(file)
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : null
+}
+
+/** Chat channels seen in recent logs, newest first (Local is left out). */
+export function listChannels(maxAge = CHANNEL_MAX_AGE): ChannelInfo[] {
+  const dir = logDir()
+  if (!dir) return []
+  const seen = new Map<string, ChannelInfo>()
+  const cutoff = Date.now() - maxAge
+  for (const f of readdirSync(dir)) {
+    if (!f.endsWith('.txt')) continue
+    // Skip old sessions by name, without touching the file.
+    const started = sessionStart(f)
+    if (started !== null && started < cutoff) continue
+    const file = join(dir, f)
+    const mtime = statSync(file).mtimeMs
+    if (mtime < cutoff) continue
+    const h = readHeader(file)
+    if (!h || h.id.toLowerCase() === 'local') continue
+    const key = h.name.toLowerCase()
+    const prev = seen.get(key)
+    if (!prev || prev.lastSeen < mtime) seen.set(key, { name: h.name, lastSeen: mtime, file })
+  }
+  return [...seen.values()].sort((a, b) => b.lastSeen - a.lastSeen)
+}
+
+interface Followed {
+  channel: string
+  file: string
+  offset: number
+  partial: string
+}
+
+/** Follows the newest log of every watched intel channel and reports new lines. */
+class ChannelWatcher {
+  private timer: NodeJS.Timeout | null = null
+  private followed = new Map<string, Followed>()
+  private lastScan = 0
+  private startedAt = Date.now()
+  /** Recent reports, so a window opened (or reloaded) later still gets the history. */
+  readonly recent: IntelReport[] = []
+
+  constructor(private readonly send: Send) {}
+
+  restart(): void {
+    this.stop()
+    this.followed.clear()
+    this.lastScan = 0
+    this.startedAt = Date.now()
+    if (!loadSettings().intel.channels.length) return
+    this.timer = setInterval(() => this.tick(), 1000)
+    this.tick()
+  }
+
+  stop(): void {
+    if (this.timer) clearInterval(this.timer)
+    this.timer = null
+  }
+
+  status(): ChannelInfo[] {
+    return loadSettings().intel.channels.map((name) => {
+      const f = this.followed.get(name.toLowerCase())
+      return { name, lastSeen: f ? statSync(f.file).mtimeMs : 0, file: f?.file }
+    })
+  }
+
+  private tick(): void {
+    // Messages are parsed against the SDE (systems, ships, stargates): wait until it is loaded.
+    if (!sdeLoaded()) return
+    try {
+      const watched = loadSettings().intel.channels
+      if (Date.now() - this.lastScan > 5000) {
+        this.lastScan = Date.now()
+        const known = new Map(listChannels(7 * 86400_000).map((c) => [c.name.toLowerCase(), c]))
+        let changed = false
+        for (const name of watched) {
+          const key = name.toLowerCase()
+          const newest = known.get(key)
+          const current = this.followed.get(key)
+          if (newest?.file && newest.file !== current?.file) {
+            this.followed.set(key, { channel: newest.name, file: newest.file, offset: 0, partial: '' })
+            changed = true
+          }
+        }
+        if (changed) this.send('intel:channels', this.status())
+      }
+      for (const f of this.followed.values()) this.read(f)
+    } catch {
+      // A log rotated away mid-read: picked up again on the next scan.
+    }
+  }
+
+  private read(f: Followed): void {
+    const size = statSync(f.file).size
+    if (size < f.offset) f.offset = 0
+    if (size === f.offset) return
+    const firstRead = f.offset === 0
+    const end = size - ((size - f.offset) % 2)
+    const text = f.partial + readUtf16(f.file, f.offset, end)
+    f.offset = end
+    const lines = text.split(/\r?\n/)
+    f.partial = lines.pop() ?? ''
+    // On the first read of a log only the last 20 minutes matter.
+    const cutoff = firstRead ? Date.now() - 20 * 60_000 : 0
+    for (const line of lines) {
+      const m = LINE_RE.exec(line)
+      if (!m) continue
+      const [, at, speaker, message] = m
+      if (SYSTEM_SPEAKERS.has(speaker)) continue
+      const time = parseLogTime(at)
+      if (time < cutoff) continue
+      const { systems, ships } = parseIntelMessage(message)
+      const report: IntelReport = {
+        // Stable across re-reads, so the window can de-duplicate.
+        id: `${f.channel}|${time}|${speaker}|${message.length}|${message.slice(0, 40)}`,
+        channel: f.channel,
+        at: new Date(time).toISOString(),
+        speaker,
+        message: message.trim(),
+        systems,
+        ships,
+        clear: CLEAR_RE.test(message),
+        // Lines written before Canopus started are history, not alerts.
+        initial: time < this.startedAt - 2000
+      }
+      this.recent.push(report)
+      if (this.recent.length > 300) this.recent.splice(0, this.recent.length - 300)
+      this.send('intel:report', report)
+    }
+  }
 }
 
 // ---------------- Clipboard ----------------
@@ -275,17 +434,29 @@ export function setOverlay(patch: Partial<IntelSettings['overlay']>, load: (w: B
 
 let logWatcher: LocalLogWatcher | null = null
 let clipWatcher: ClipboardWatcher | null = null
+let channelWatcher: ChannelWatcher | null = null
 
 export function initIntel(send: Send): void {
   logWatcher = new LocalLogWatcher(send)
   clipWatcher = new ClipboardWatcher(send)
+  channelWatcher = new ChannelWatcher(send)
   logWatcher.restart()
+  channelWatcher.restart()
   applyClipboardSetting()
 }
 
 export function restartLog(): void {
   logWatcher?.restart()
 }
+
+/** Re-read the watched intel channels (after the channel list or log folder changed). */
+export function restartChannels(): void {
+  channelWatcher?.restart()
+}
+
+export const channelStatus = (): ChannelInfo[] => channelWatcher?.status() ?? []
+
+export const recentReports = (): IntelReport[] => channelWatcher?.recent ?? []
 
 export function applyClipboardSetting(): void {
   if (loadSettings().intel.clipboard) clipWatcher?.start()

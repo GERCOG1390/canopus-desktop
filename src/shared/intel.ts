@@ -10,6 +10,10 @@ export interface IntelSettings {
   /** Notify when pilots at or above this threat level enter local. */
   alertLevel: 'off' | 'hostile' | 'high' | 'medium'
   sound: boolean
+  /** Intel channels to watch (names as shown in the chat window). */
+  channels: string[]
+  /** Alert when a report in an intel channel is this many jumps away or closer; -1 = off. */
+  channelJumps: number
   overlay: {
     enabled: boolean
     opacity: number
@@ -24,6 +28,8 @@ export const DEFAULT_INTEL: IntelSettings = {
   scanSpeakers: true,
   alertLevel: 'high',
   sound: true,
+  channels: [],
+  channelJumps: 3,
   overlay: { enabled: false, opacity: 0.85, clickThrough: false }
 }
 
@@ -60,4 +66,40 @@ export interface OverlaySummary {
   counts: Record<Threat, number>
   pilots: OverlayPilot[]
   left: number
+  /** Recent reports from intel channels near the current system */
+  reports: OverlayReport[]
+}
+
+/** A message in a watched intel channel, with the systems and ships found in it. */
+export interface IntelReport {
+  id: string
+  channel: string
+  /** EVE time (UTC) from the log line, ISO format */
+  at: string
+  speaker: string
+  message: string
+  systems: number[]
+  ships: number[]
+  /** "clear", "clr", "nv", "чисто"… */
+  clear: boolean
+  /** Read from the log when Canopus started, not live. */
+  initial: boolean
+}
+
+export interface ChannelInfo {
+  name: string
+  /** Last write to the channel's newest log file, ms */
+  lastSeen: number
+  /** Log file currently followed, when the channel is watched */
+  file?: string
+}
+
+/** Intel channel report as shown in the overlay. */
+export interface OverlayReport {
+  id: string
+  at: string
+  system: string
+  jumps: number
+  clear: boolean
+  text: string
 }

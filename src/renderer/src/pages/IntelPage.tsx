@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
-import type { Threat } from '../../../shared/intel'
+import type { IntelReport, Threat } from '../../../shared/intel'
 import { useApp } from '../AppContext'
-import { useIntel } from '../IntelContext'
+import { REPORT_FRESH_MS, useIntel } from '../IntelContext'
 import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, Sec, Stat, Tabs } from '../components/ui'
 import { imageUrl } from '../lib/esi'
@@ -11,7 +11,7 @@ import { getBasic, tn, useTypeBasics } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
 import { useLang } from '../AppContext'
 
-type Tab = 'local' | 'dscan' | 'fleet' | 'settings'
+type Tab = 'local' | 'dscan' | 'fleet' | 'channels' | 'settings'
 
 export default function IntelPage() {
   const [tab, setTab] = useState<Tab>('local')
@@ -23,12 +23,13 @@ export default function IntelPage() {
           { id: 'local', label: 'Локал' },
           { id: 'dscan', label: 'D-scan' },
           { id: 'fleet', label: 'Флот' },
+          { id: 'channels', label: 'Каналы разведки' },
           { id: 'settings', label: 'Настройки разведки' }
         ]}
         value={tab}
         onChange={setTab}
       />
-      {lastClipboard && Date.now() - lastClipboard.at < 4000 && lastClipboard.kind !== tab && tab !== 'settings' && (
+      {lastClipboard && Date.now() - lastClipboard.at < 4000 && lastClipboard.kind !== tab && tab !== 'settings' && tab !== 'channels' && (
         <div className="clip-toast" onClick={() => setTab(lastClipboard.kind)}>
           Из буфера получен {lastClipboard.kind === 'local' ? 'список локала' : lastClipboard.kind === 'dscan' ? 'D-scan' : 'состав флота'} — открыть
         </div>
@@ -36,6 +37,7 @@ export default function IntelPage() {
       {tab === 'local' && <LocalTab />}
       {tab === 'dscan' && <DscanTab />}
       {tab === 'fleet' && <FleetTab />}
+      {tab === 'channels' && <ChannelsTab />}
       {tab === 'settings' && <IntelSettingsTab />}
     </div>
   )
@@ -415,6 +417,176 @@ function FleetTab() {
           </Card>
         </div>
       )}
+    </>
+  )
+}
+
+// ---------------- Intel channels ----------------
+
+const JUMP_OPTIONS = [0, 1, 2, 3, 4, 5, 7, 10]
+
+function JumpsBadge({ jumps, alert }: { jumps: number | undefined; alert: number }) {
+  if (jumps === undefined) return <span className="jumps jumps-far">далеко</span>
+  const cls = jumps <= Math.max(alert, 0) ? 'jumps-near' : jumps <= 10 ? 'jumps-mid' : 'jumps-far'
+  return <span className={`jumps ${cls}`}>{jumps === 0 ? 'здесь' : `${jumps} прыж.`}</span>
+}
+
+function ChannelsTab() {
+  const { settings, updateSettings } = useApp()
+  const { reports, channels, jumps, systems, system } = useIntel()
+  const now = useTick(5000)
+  const [onlyNear, setOnlyNear] = useState(false)
+  const [custom, setCustom] = useState('')
+  const known = useAsync(() => window.api.intel.listChannels(), [])
+  useTypeBasics(reports.flatMap((r) => r.ships))
+  if (!settings) return null
+  const intel = settings.intel
+  const watched = intel.channels
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
+  const setChannels = (list: string[]) => updateSettings({ intel: { ...intel, channels: list } })
+  const toggle = (name: string) => setChannels(watched.some((w) => same(w, name)) ? watched.filter((w) => !same(w, name)) : [...watched, name])
+  const addCustom = () => {
+    const name = custom.trim()
+    if (name && !watched.some((w) => same(w, name))) setChannels([...watched, name])
+    setCustom('')
+  }
+  const candidates = [
+    ...new Map([...watched.map((n) => [n.toLowerCase(), n] as const), ...(known.data ?? []).map((c) => [c.name.toLowerCase(), c.name] as const)]).values()
+  ]
+  const radius = intel.channelJumps
+  const nearest = (r: IntelReport) => r.systems.filter((id) => jumps[id] !== undefined).sort((a, b) => jumps[a] - jumps[b])[0]
+  const feed = [...reports].reverse().filter((r) => {
+    if (!onlyNear) return true
+    const n = nearest(r)
+    return n !== undefined && jumps[n] <= Math.max(radius, 5)
+  })
+  const fresh = reports.filter((r) => now - new Date(r.at).getTime() < REPORT_FRESH_MS && !r.clear)
+  const closest = fresh
+    .filter((r) => nearest(r) !== undefined)
+    .sort((a, b) => jumps[nearest(a)] - jumps[nearest(b)] || b.at.localeCompare(a.at))[0]
+
+  return (
+    <>
+      <div className="two-col">
+        <Card title="Каналы для отслеживания">
+          <p className="muted small">
+            Canopus читает логи выбранных каналов (как RIFT), находит в сообщениях системы и корабли и считает прыжки от вашей текущей системы. Канал должен быть открыт в игре.
+          </p>
+          {candidates.length === 0 ? (
+            <p className="muted small">В логах за последние две недели каналов не найдено — впишите название вручную.</p>
+          ) : (
+            <div className="channel-list">
+              {candidates.map((name) => {
+                const on = watched.some((w) => same(w, name))
+                const st = channels.find((c) => same(c.name, name))
+                return (
+                  <label key={name} className="check">
+                    <input type="checkbox" checked={on} onChange={() => toggle(name)} />
+                    {name}
+                    {on && <span className={`small ${st?.file ? 'good' : 'muted'}`}>{st?.file ? 'лог найден' : 'лог не найден — откройте канал в игре'}</span>}
+                  </label>
+                )
+              })}
+            </div>
+          )}
+          <div className="row">
+            <input
+              className="grow"
+              value={custom}
+              placeholder="Название канала, например Delve Intel"
+              onChange={(e) => setCustom(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') addCustom()
+              }}
+            />
+            <button disabled={!custom.trim()} onClick={addCustom}>
+              Добавить
+            </button>
+            <button className="ghost" onClick={known.reload}>
+              Обновить список
+            </button>
+          </div>
+        </Card>
+        <Card title="Оповещения">
+          <label>
+            Уведомлять о репортах в радиусе
+            <select value={radius} onChange={(e) => updateSettings({ intel: { ...intel, channelJumps: Number(e.target.value) } })}>
+              <option value={-1}>Не уведомлять</option>
+              {JUMP_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n === 0 ? 'Только моя система' : `До ${n} прыж.`}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="muted small">
+            Уведомление Windows (и звук, если он включён) приходит, когда в канале пишут о системе в этом радиусе. Сообщения «clr», «clear», «nv», «чисто» не тревожат.
+          </p>
+          <p className="small">
+            <span className="muted">Текущая система (из лога Local):</span> <b>{system?.name ?? 'неизвестна'}</b>
+          </p>
+          <div className="stats-row">
+            <Stat label="Репортов за 15 мин" value={fresh.length} />
+            <Stat
+              label="Ближайший"
+              value={closest ? (systems[nearest(closest)]?.n ?? '…') : '—'}
+              sub={closest ? <JumpsBadge jumps={jumps[nearest(closest)]} alert={radius} /> : 'нет свежих репортов'}
+            />
+          </div>
+        </Card>
+      </div>
+
+      <Card
+        title="Лента"
+        actions={
+          <label className="check small">
+            <input type="checkbox" checked={onlyNear} onChange={(e) => setOnlyNear(e.target.checked)} />
+            Только рядом
+          </label>
+        }
+      >
+        {!watched.length ? (
+          <Empty>Выберите хотя бы один канал разведки выше.</Empty>
+        ) : !feed.length ? (
+          <Empty>Сообщений пока нет — они появятся, как только в канале кто-то напишет.</Empty>
+        ) : (
+          <table className="table intel-feed">
+            <tbody>
+              {feed.map((r) => {
+                const near = nearest(r)
+                const age = now - new Date(r.at).getTime()
+                const alert = !r.clear && near !== undefined && radius >= 0 && jumps[near] <= radius
+                return (
+                  <tr key={r.id} className={`${alert ? 'report-alert' : ''} ${r.clear ? 'report-clear' : ''} ${age > REPORT_FRESH_MS ? 'report-old' : ''}`}>
+                    <td className="muted small nowrap">{ago(age)}</td>
+                    <td className="nowrap">
+                      {r.systems.map((id) => (
+                        <span key={id} className="report-system">
+                          {systems[id] && <Sec value={systems[id].sec} />}
+                          <span>{systems[id]?.n ?? '…'}</span>
+                          <JumpsBadge jumps={jumps[id]} alert={radius} />
+                        </span>
+                      ))}
+                      {r.clear && <span className="threat threat-friendly">чисто</span>}
+                    </td>
+                    <td>
+                      <span className="ship-icons">
+                        {r.ships.map((id) => (
+                          <TypeLink key={id} id={id} size={24} className="icon-only" />
+                        ))}
+                      </span>
+                    </td>
+                    <td className="report-text">
+                      <span className="muted small" translate="no">{`${r.channel} · ${r.speaker}`}</span>
+                      <div translate="no">{r.message}</div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </Card>
     </>
   )
 }

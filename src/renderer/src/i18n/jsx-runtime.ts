@@ -12,6 +12,8 @@ type Props = Record<string, unknown> & { children?: unknown }
 
 export function translateProps(type: unknown, props: Props): Props {
   if (uiLang() === 'ru' || !props) return props
+  // Player-written text (chat messages, names) opts out with the standard HTML attribute.
+  if (props.translate === 'no') return props
   let out = props
   const set = (key: string, value: unknown) => {
     if (out === props) out = { ...props }

@@ -1,7 +1,7 @@
 // Types shared between the main process, preload and renderer.
 
 import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
-import type { ClipboardEvent, IntelSettings, LogEvent, OverlaySummary } from './intel'
+import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
 import type { InfoBundle, L10n, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
@@ -75,6 +75,18 @@ export interface CanopusApi {
     setOverlay(patch: Partial<IntelSettings['overlay']>): Promise<void>
     /** Exact (case-insensitive) type name → type ID, English or Russian. */
     resolveTypeNames(names: string[]): Promise<Record<string, number>>
+    /** New lines in watched intel channels. */
+    onReport(listener: (r: IntelReport) => void): () => void
+    /** The set of followed channel logs changed. */
+    onChannels(listener: (c: ChannelInfo[]) => void): () => void
+    /** Channels found in recent chat logs. */
+    listChannels(): Promise<ChannelInfo[]>
+    channelStatus(): Promise<ChannelInfo[]>
+    /** Reports already read before the window subscribed. */
+    recentReports(): Promise<IntelReport[]>
+    /** Stargate jumps from a system to others (unreachable / far ones omitted). */
+    jumpsFrom(fromId: number, ids: number[]): Promise<Record<number, number>>
+    systemId(name: string): Promise<number | null>
   }
   fit: {
     calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>

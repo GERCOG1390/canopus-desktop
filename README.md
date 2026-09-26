@@ -34,6 +34,7 @@ Every ship, module, skill, implant and item is clickable and opens a panel like 
 - Press **Ctrl+A, Ctrl+C** in the Local window — Canopus picks the list up from the clipboard and checks every pilot: corporation and alliance, age, kills and losses, recent activity, danger ratio, what they fly.
 - Current system is read from the Local chat log; new arrivals are highlighted, leavers listed, and a Windows notification with sound fires when a dangerous pilot enters.
 - D-scan and fleet window analysis: ships by class and type, on-grid count, warnings for interdictors, bombers, recons, logistics and capitals.
+- Intel channel monitor: pick your alliance's intel channels and Canopus follows their chat logs, finds systems (including shorthand like "1DQ") and ships in every report and shows how many stargate jumps away they are. Reports within your chosen range trigger a notification; "clr" / "nv" are recognised as all-clear.
 - An always-on-top overlay for windowed / borderless mode (**Ctrl+Shift+L** show / hide, **Ctrl+Shift+K** click-through).
 
 | Local scan | D-scan | Overlay |

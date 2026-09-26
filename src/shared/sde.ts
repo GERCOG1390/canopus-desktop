@@ -60,7 +60,7 @@ export interface DogmaEffect {
 }
 
 /** Bumped whenever the DB layout changes, forcing a rebuild from the SDE zip. */
-export const SDE_FORMAT = 3
+export const SDE_FORMAT = 4
 
 export interface SdeDb {
   format: number
@@ -85,6 +85,8 @@ export interface SdeDb {
   systems: Record<number, { n: string; sec: number; r: number; c: number }>
   regions: Record<number, L10n>
   constellations: Record<number, string>
+  /** Stargate connections: system → neighbouring systems. */
+  jumps: Record<number, number[]>
   factions: Record<number, L10n>
   races: Record<number, L10n>
   /** iconID → client resource path (res:/ui/texture/...) */

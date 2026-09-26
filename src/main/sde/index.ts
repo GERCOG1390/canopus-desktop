@@ -48,6 +48,9 @@ function setStatus(next: SdeStatus): void {
 
 export const getStatus = (): SdeStatus => status
 
+/** True once a database with the stargate graph (current format) is loaded. */
+export const isLoaded = (): boolean => db?.format === SDE_FORMAT
+
 function need(): SdeDb {
   if (!db) throw new Error('База SDE ещё не загружена')
   return db
@@ -83,6 +86,8 @@ async function load(build: number): Promise<void> {
   requiredForIndex = usedInIndex = variationIndex = typesByGroup = null
   fittables = null
   nameIndex = null
+  intelIndex = null
+  distanceCache.clear()
 
   searchIndex = Object.values(next.types)
     .filter((t) => t.pub)
@@ -684,4 +689,117 @@ export async function info(typeId: number): Promise<InfoBundle> {
     groupNames: Object.fromEntries([...groupIds].map((g) => [g, d.groups[g]?.n ?? ['?', '?']])),
     attrNames: Object.fromEntries([...attrIds].map((a) => [a, d.attributes[a]?.dn ?? [d.attributes[a]?.name ?? '?', d.attributes[a]?.name ?? '?']]))
   }
+}
+
+// ---------------- Intel channel messages ----------------
+
+const SHIP_CATEGORY = 6
+
+interface IntelIndex {
+  /** lower-case system name → system ID */
+  systems: Map<string, number>
+  /** lower-case ship name (English or Russian) → type ID */
+  ships: Map<string, number>
+  /** Names made of several words, so n-grams are only tried when needed. */
+  maxWords: number
+  /** Nullsec-style names ("1DQ1-A"), for abbreviations like "1DQ". */
+  coded: [string, number][]
+}
+
+let intelIndex: IntelIndex | null = null
+
+function getIntelIndex(): IntelIndex {
+  if (intelIndex) return intelIndex
+  const d = need()
+  const systems = new Map<string, number>()
+  const coded: [string, number][] = []
+  let maxWords = 1
+  for (const [id, s] of Object.entries(d.systems)) {
+    const key = s.n.toLowerCase()
+    systems.set(key, Number(id))
+    maxWords = Math.max(maxWords, key.split(' ').length)
+    if (/[0-9-]/.test(key)) coded.push([key, Number(id)])
+  }
+  const ships = new Map<string, number>()
+  for (const t of Object.values(d.types)) {
+    if (!t.pub || d.groups[t.g]?.c !== SHIP_CATEGORY) continue
+    for (const n of t.n) {
+      const key = n.toLowerCase()
+      if (!key || systems.has(key)) continue
+      ships.set(key, t.id)
+      maxWords = Math.max(maxWords, key.split(' ').length)
+    }
+  }
+  intelIndex = { systems, ships, maxWords: Math.min(maxWords, 4), coded }
+  return intelIndex
+}
+
+/**
+ * Systems and ships mentioned in an intel channel message, in the order they appear.
+ * Players paste full names ("1DQ1-A", "Jita") or abbreviate nullsec names ("1DQ"),
+ * so an unambiguous prefix of a coded name (3+ characters with a digit or dash) counts too.
+ */
+export function parseIntelMessage(text: string): { systems: number[]; ships: number[] } {
+  if (!db) return { systems: [], ships: [] }
+  const idx = getIntelIndex()
+  const words = text
+    .split(/[\s,;:!?()[\]{}<>"*|/\\]+/)
+    .map((w) => w.replace(/^[.'-]+|[.']+$/g, ''))
+    .filter(Boolean)
+  const systems: number[] = []
+  const ships: number[] = []
+  for (let i = 0; i < words.length; ) {
+    let matched = 0
+    for (let n = Math.min(idx.maxWords, words.length - i); n >= 1 && !matched; n--) {
+      const phrase = words.slice(i, i + n).join(' ').toLowerCase()
+      const sys = idx.systems.get(phrase)
+      const ship = sys ? undefined : idx.ships.get(phrase)
+      if (sys) systems.push(sys)
+      else if (ship) ships.push(ship)
+      else if (n === 1 && phrase.length >= 3 && /[0-9-]/.test(phrase) && /[a-z]/.test(phrase)) {
+        const hits = idx.coded.filter(([name]) => name.startsWith(phrase))
+        if (hits.length === 1) systems.push(hits[0][1])
+        else continue
+      } else continue
+      matched = n
+    }
+    i += matched || 1
+  }
+  return { systems: [...new Set(systems)], ships: [...new Set(ships)] }
+}
+
+const distanceCache = new Map<number, Map<number, number>>()
+
+/** Jumps by stargate from one system to others (breadth-first, up to `max` jumps; farther ones are omitted). */
+export function jumpsFrom(fromId: number, targets: number[], max = 40): Record<number, number> {
+  const d = need()
+  if (!d.jumps) return {}
+  let dist = distanceCache.get(fromId)
+  if (!dist) {
+    dist = new Map([[fromId, 0]])
+    let frontier = [fromId]
+    for (let depth = 1; depth <= max && frontier.length; depth++) {
+      const next: number[] = []
+      for (const s of frontier)
+        for (const n of d.jumps[s] ?? []) {
+          if (dist.has(n)) continue
+          dist.set(n, depth)
+          next.push(n)
+        }
+      frontier = next
+    }
+    if (distanceCache.size > 50) distanceCache.clear()
+    distanceCache.set(fromId, dist)
+  }
+  const out: Record<number, number> = {}
+  for (const t of targets) {
+    const j = dist.get(t)
+    if (j !== undefined) out[t] = j
+  }
+  return out
+}
+
+export function systemIdByName(name: string): number | null {
+  if (!db) return null
+  return getIntelIndex().systems.get(name.trim().toLowerCase()) ?? null
 }

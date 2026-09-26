@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import type { ClipboardKind, LogEvent, OverlaySummary, Threat } from '../../shared/intel'
+import type { ChannelInfo, ClipboardKind, IntelReport, LogEvent, OverlayReport, OverlaySummary, Threat } from '../../shared/intel'
+import type { SystemBasic } from '../../shared/sde'
 import { useApp } from './AppContext'
 import { loadMe, parseDscan, parseLocalList, scanPilots, sortPilots, THREAT_LABEL, THREAT_ORDER, type Me, type PilotIntel, type ScanRow } from './lib/intel'
 import { requestBasics } from './lib/sde'
@@ -32,7 +33,17 @@ interface IntelState {
   scanText: (text: string) => void
   setDscanText: (text: string) => void
   setFleetText: (text: string) => Promise<void>
+  /** Messages from watched intel channels, oldest first */
+  reports: IntelReport[]
+  channels: ChannelInfo[]
+  /** Jumps from the current system to systems mentioned in reports */
+  jumps: Record<number, number>
+  systems: Record<number, SystemBasic>
 }
+
+const MAX_REPORTS = 300
+/** Reports older than this are not "active" (overlay, nearest-threat summary). */
+export const REPORT_FRESH_MS = 15 * 60_000
 
 const Ctx = createContext<IntelState | null>(null)
 const THREAT_RANK: Record<Threat, number> = { hostile: 4, high: 3, medium: 2, low: 1, friendly: 0, unknown: 0 }
@@ -64,6 +75,10 @@ export function IntelProvider({ children }: { children: ReactNode }) {
   const [dscan, setDscan] = useState<IntelState['dscan']>(null)
   const [fleet, setFleet] = useState<IntelState['fleet']>(null)
   const [lastClipboard, setLastClipboard] = useState<IntelState['lastClipboard']>(null)
+  const [reports, setReports] = useState<IntelReport[]>([])
+  const [channels, setChannels] = useState<ChannelInfo[]>([])
+  const [jumps, setJumps] = useState<Record<number, number>>({})
+  const [systems, setSystems] = useState<Record<number, SystemBasic>>({})
   const me = useRef<Me | null>(null)
   const scanSeq = useRef(0)
   const scanRef = useRef<LocalScan | null>(null)
@@ -159,6 +174,58 @@ export function IntelProvider({ children }: { children: ReactNode }) {
     setFleet({ rows, at: Date.now() })
   }, [])
 
+  /** A live report close enough to the current system raises an alert. */
+  const reportAlert = useCallback(async (r: IntelReport) => {
+    const intel = settingsRef.current?.intel
+    const here = systemRef.current?.id
+    if (!intel || intel.channelJumps < 0 || r.initial || r.clear || !r.systems.length || !here) return
+    const dist = await window.api.intel.jumpsFrom(here, r.systems)
+    const near = r.systems.filter((id) => dist[id] !== undefined && dist[id] <= intel.channelJumps).sort((a, b) => dist[a] - dist[b])
+    if (!near.length) return
+    const sys = await window.api.sde.system(near[0])
+    const j = dist[near[0]]
+    void window.api.intel.notify(
+      translate(j === 0 ? `Разведка: ${sys?.n ?? '?'} — в вашей системе` : `Разведка: ${sys?.n ?? '?'} — ${j} прыж.`),
+      `${r.speaker}: ${r.message}`.slice(0, 250)
+    )
+    if (intel.sound) beep()
+  }, [])
+
+  // Intel channel reports.
+  useEffect(() => {
+    // Reports have stable IDs: merge instead of appending, a log can be re-read after a restart.
+    const merge = (list: IntelReport[], add: IntelReport[]) => {
+      const seen = new Set(list.map((r) => r.id))
+      const fresh = add.filter((r) => !seen.has(r.id))
+      return fresh.length ? [...list, ...fresh].sort((a, b) => a.at.localeCompare(b.at)).slice(-MAX_REPORTS) : list
+    }
+    const offReport = window.api.intel.onReport((r) => {
+      setReports((list) => merge(list, [r]))
+      void reportAlert(r)
+    })
+    void window.api.intel.recentReports().then((list) => setReports((cur) => merge(cur, list)))
+    const offChannels = window.api.intel.onChannels(setChannels)
+    void window.api.intel.channelStatus().then(setChannels)
+    return () => {
+      offReport()
+      offChannels()
+    }
+  }, [reportAlert])
+
+  // Distances and names for every system mentioned in the feed.
+  const mentionedKey = [...new Set(reports.flatMap((r) => r.systems))].sort().join(',')
+  useEffect(() => {
+    const ids = mentionedKey ? mentionedKey.split(',').map(Number) : []
+    const missing = ids.filter((id) => !systems[id])
+    if (missing.length)
+      void Promise.all(missing.map((id) => window.api.sde.system(id))).then((list) =>
+        setSystems((prev) => ({ ...prev, ...Object.fromEntries(list.filter(Boolean).map((s) => [s!.id, s!])) }))
+      )
+    if (system?.id && ids.length) void window.api.intel.jumpsFrom(system.id, ids).then(setJumps)
+    else setJumps({})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mentionedKey, system?.id])
+
   // Clipboard & log events from the main process.
   useEffect(() => {
     const offClip = window.api.intel.onClipboard((e) => {
@@ -196,6 +263,7 @@ export function IntelProvider({ children }: { children: ReactNode }) {
       total: pilots.length,
       counts,
       left: scan?.left.length ?? 0,
+      reports: nearbyReports(reports, jumps, systems),
       pilots: pilots.slice(0, 60).map((p) => ({
         id: p.id,
         name: p.name,
@@ -207,9 +275,23 @@ export function IntelProvider({ children }: { children: ReactNode }) {
     }
     const t = setTimeout(() => void window.api.intel.publish(summary), 150)
     return () => clearTimeout(t)
-  }, [scan, system])
+  }, [scan, system, reports, jumps, systems])
 
-  return <Ctx.Provider value={{ system, logStatus, scan, dscan, fleet, lastClipboard, scanText, setDscanText, setFleetText }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ system, logStatus, scan, dscan, fleet, lastClipboard, scanText, setDscanText, setFleetText, reports, channels, jumps, systems }}>{children}</Ctx.Provider>
+}
+
+/** Fresh reports within 10 jumps for the overlay: nearest system of each, newest first. */
+function nearbyReports(reports: IntelReport[], jumps: Record<number, number>, systems: Record<number, SystemBasic>): OverlayReport[] {
+  const out: OverlayReport[] = []
+  const fresh = Date.now() - REPORT_FRESH_MS
+  for (let i = reports.length - 1; i >= 0 && out.length < 6; i--) {
+    const r = reports[i]
+    if (new Date(r.at).getTime() < fresh) break
+    const near = r.systems.filter((id) => jumps[id] !== undefined && jumps[id] <= 10).sort((a, b) => jumps[a] - jumps[b])[0]
+    if (near === undefined) continue
+    out.push({ id: r.id, at: r.at, system: systems[near]?.n ?? '?', jumps: jumps[near], clear: r.clear, text: `${r.speaker}: ${r.message}`.slice(0, 120) })
+  }
+  return out
 }
 
 export function useIntel(): IntelState {
