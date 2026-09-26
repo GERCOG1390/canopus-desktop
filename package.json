@@ -14,7 +14,7 @@
   "build": {
     "appId": "app.canopus.eve",
     "productName": "Canopus",
-    "copyright": "Copyright © 2026 oderi. EVE Online is a trademark of CCP hf.",
+    "copyright": "Copyright © 2026 GERCOG1390. EVE Online is a trademark of CCP hf.",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -80,6 +80,6 @@
     "esbuild@0.28.2": true,
     "electron-winstaller@5.4.0": true
   },
-  "author": "oderi",
+  "author": "GERCOG1390",
   "license": "MIT"
 }
