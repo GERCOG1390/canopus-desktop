@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, shell } from 'electron'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import type { RequestOptions, Settings } from '../shared/types'
 import * as auth from './auth'
 import { request } from './http'
@@ -62,7 +62,31 @@ function registerIpc(): void {
   ipcMain.handle('shell:openExternal', (_e, url: string) => openExternal(url))
 }
 
+// Register Canopus as the handler for eveauthcanopus:// links (the EVE SSO callback).
+// In development electron.exe needs the app path as an extra argument.
+if (process.defaultApp && process.argv[1]) {
+  app.setAsDefaultProtocolClient(auth.PROTOCOL, process.execPath, [resolve(process.argv[1])])
+} else {
+  app.setAsDefaultProtocolClient(auth.PROTOCOL)
+}
+
+// On Windows the callback link launches a second instance; forward its URL to the first one.
+const primaryInstance = app.requestSingleInstanceLock()
+if (!primaryInstance) {
+  app.quit()
+} else {
+  app.on('second-instance', (_e, argv) => {
+    const url = argv.find((a) => a.toLowerCase().startsWith(`${auth.PROTOCOL}://`))
+    if (url) auth.handleCallbackUrl(url)
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.focus()
+    }
+  })
+}
+
 app.whenReady().then(() => {
+  if (!primaryInstance) return
   auth.initAuth()
   registerIpc()
   createWindow()

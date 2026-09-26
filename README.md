@@ -23,7 +23,7 @@ npm run dist       # установщик Windows в release/
 
 1. Создайте приложение на https://developers.eveonline.com/applications
    (Authentication & API Access, отметьте нужные scopes).
-2. Callback URL: `http://127.0.0.1:51789/callback`
+2. Callback URL: `eveauthcanopus://callback`. Canopus регистрирует эту схему в Windows при запуске.
 3. Вставьте Client ID в «Настройки». Secret Key не нужен: используется PKCE.
 
 Токены хранятся в `%APPDATA%\canopus\tokens.bin`, зашифрованные через Windows DPAPI.

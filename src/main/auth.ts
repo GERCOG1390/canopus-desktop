@@ -1,18 +1,18 @@
 // EVE SSO (OAuth 2.0 authorization code + PKCE) for a native desktop client.
 // No client secret is needed: register the app at https://developers.eveonline.com
 // with the callback URL below and paste its Client ID into Canopus settings.
+// The browser hands the callback back to Canopus through a custom URL scheme
+// registered with Windows (see index.ts), so no local port is opened.
 
 import { shell } from 'electron'
 import { createHash, randomBytes } from 'node:crypto'
-import { createServer } from 'node:http'
 import type { CharacterAuth } from '../shared/types'
 import { loadSettings, loadTokens, saveTokens, type StoredToken } from './storage'
 
 const AUTHORIZE_URL = 'https://login.eveonline.com/v2/oauth/authorize'
 const TOKEN_URL = 'https://login.eveonline.com/v2/oauth/token'
-const CALLBACK_HOST = '127.0.0.1'
-const CALLBACK_PORT = 51789
-export const CALLBACK_URL = `http://${CALLBACK_HOST}:${CALLBACK_PORT}/callback`
+export const PROTOCOL = 'eveauthcanopus'
+export const CALLBACK_URL = `${PROTOCOL}://callback`
 const LOGIN_TIMEOUT_MS = 5 * 60_000
 
 export const SCOPES = [
@@ -87,32 +87,34 @@ function storeToken(res: TokenResponse): StoredToken {
   return token
 }
 
+let pendingLogin: { state: string; finish: (err: Error | null, code: string) => void } | null = null
+
 function waitForCallback(state: string): Promise<string> {
+  pendingLogin?.finish(new Error('Вход отменён: начат новый'), '')
   return new Promise((resolve, reject) => {
-    const server = createServer((req, res) => {
-      const url = new URL(req.url ?? '/', CALLBACK_URL)
-      if (url.pathname !== '/callback') {
-        res.writeHead(404).end()
-        return
-      }
-      const ok = url.searchParams.get('state') === state && url.searchParams.get('code')
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-      res.end(
-        `<html><body style="font-family:sans-serif;background:#0b0f14;color:#d6e2ee;text-align:center;padding-top:80px">` +
-          `<h2>${ok ? 'Вход выполнен' : 'Ошибка входа'}</h2><p>Можно закрыть эту вкладку и вернуться в Canopus.</p></body></html>`
-      )
-      finish(ok ? null : new Error('EVE SSO вернул неверный ответ'), url.searchParams.get('code') ?? '')
-    })
     const timer = setTimeout(() => finish(new Error('Время ожидания входа истекло'), ''), LOGIN_TIMEOUT_MS)
     function finish(err: Error | null, code: string): void {
       clearTimeout(timer)
-      server.close()
+      pendingLogin = null
       if (err) reject(err)
       else resolve(code)
     }
-    server.on('error', (err) => finish(err, ''))
-    server.listen(CALLBACK_PORT, CALLBACK_HOST)
+    pendingLogin = { state, finish }
   })
+}
+
+/** Called by the main process when Windows opens an eveauthcanopus:// link. Returns true if it was ours. */
+export function handleCallbackUrl(raw: string): boolean {
+  if (!raw.toLowerCase().startsWith(`${PROTOCOL}://`)) return false
+  if (!pendingLogin) return true
+  const url = new URL(raw)
+  const code = url.searchParams.get('code')
+  if (url.searchParams.get('state') !== pendingLogin.state || !code) {
+    pendingLogin.finish(new Error(url.searchParams.get('error_description') ?? 'EVE SSO вернул неверный ответ'), '')
+  } else {
+    pendingLogin.finish(null, code)
+  }
+  return true
 }
 
 export async function login(): Promise<CharacterAuth> {
