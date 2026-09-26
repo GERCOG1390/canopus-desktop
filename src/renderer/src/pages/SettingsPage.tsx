@@ -4,7 +4,10 @@ import { Card, ErrorBox } from '../components/ui'
 import { imageUrl } from '../lib/esi'
 
 export default function SettingsPage() {
-  const { settings, characters, active, updateSettings, login, logout, setActive } = useApp()
+  const { settings, characters, active, sde, updateSettings, login, logout, setActive } = useApp()
+  const [wantedScopes, setWantedScopes] = useState<string[]>([])
+  useEffect(() => void window.api.auth.scopes().then(setWantedScopes), [])
+  const missingScopes = active ? wantedScopes.filter((s) => !active.scopes.includes(s)) : []
   const [clientId, setClientId] = useState('')
   const [callbackUrl, setCallbackUrl] = useState('')
   const [busy, setBusy] = useState(false)
@@ -87,6 +90,39 @@ export default function SettingsPage() {
           {saved && <span className="good">Сохранено</span>}
         </div>
       </Card>
+
+      <Card title="Язык и данные EVE (SDE)">
+        <div className="row">
+          <label>
+            Язык названий и описаний
+            <select value={settings?.lang ?? 'ru'} onChange={(e) => updateSettings({ lang: e.target.value as 'ru' | 'en' })}>
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+        </div>
+        <p className="muted small">
+          Статическая база CCP:{' '}
+          {sde.state === 'ready'
+            ? `сборка ${sde.build} от ${sde.releaseDate ? new Date(sde.releaseDate).toLocaleDateString('ru-RU') : '?'}`
+            : sde.state === 'error'
+              ? `ошибка — ${sde.message}`
+              : 'загружается…'}
+          {sde.message && sde.state === 'ready' ? ` (${sde.message})` : ''}
+        </p>
+        <button className="ghost" onClick={() => void window.api.sde.update()} disabled={sde.state === 'downloading' || sde.state === 'building'}>
+          Проверить обновление SDE
+        </button>
+      </Card>
+
+      {active && missingScopes.length > 0 && (
+        <Card title="Нужно обновить доступ">
+          <div className="warn">
+            Токену персонажа {active.name} не хватает разрешений ({missingScopes.length}) для имплантов, клонов, фитов, чертежей, контрактов, LP и репутации. Отметьте в приложении на developers.eveonline.com эти scopes и нажмите «Добавить персонажа» ещё раз:
+            <div className="mono small">{missingScopes.join(' ')}</div>
+          </div>
+        </Card>
+      )}
 
       <Card title="Окно">
         <label className="check">

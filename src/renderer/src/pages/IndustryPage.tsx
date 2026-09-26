@@ -1,15 +1,23 @@
-import { useState, type ChangeEvent } from 'react'
-import { useApp } from '../AppContext'
-import { Card, Empty, ErrorBox, Loading, ProgressBar, RequireLogin, SearchBox, Sec, Stat, Tabs, TypeIcon } from '../components/ui'
-import { esi, resolveIds, resolveNames, searchSystems, searchTypes, systemInfo } from '../lib/esi'
+import { useEffect, useState, type ChangeEvent } from 'react'
+import type { SkillReq } from '../../../shared/sde'
+import { useApp, useLang } from '../AppContext'
+import { MissingSkillsBox } from '../components/skills'
+import { TypeLink } from '../components/TypeLink'
+import { Card, Empty, ErrorBox, Loading, ProgressBar, RequireLogin, SearchBox, Sec, Stat, Tabs } from '../components/ui'
+import { esi, resolveNames, systemInfo } from '../lib/esi'
 import { fmtDate, fmtDuration, fmtIsk, fmtNum } from '../lib/format'
 import { jitaPrices } from '../lib/market'
+import { getBasic, searchSystemsSde, searchTypesSde, tn } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
 
 type Tab = 'calc' | 'jobs' | 'pi'
 
 export default function IndustryPage() {
+  const { pageArg } = useApp()
   const [tab, setTab] = useState<Tab>('calc')
+  useEffect(() => {
+    if (pageArg) setTab('calc')
+  }, [pageArg])
   return (
     <div className="page">
       <Tabs
@@ -30,40 +38,47 @@ export default function IndustryPage() {
 
 // ---------------- Manufacturing calculator ----------------
 
-interface BlueprintData {
-  blueprintDetails: {
-    productTypeID: number
-    productTypeName: string
-    productQuantity: number
-    maxProductionLimit: number
-    times: Record<string, number>
-    techLevel: number
-  }
-  activityMaterials: Record<string, { typeid: number; name: string; quantity: number }[]>
-}
-
-const MANUFACTURING = '1'
-const REACTION = '11'
+const REACTION = 'reaction'
 /** SCC surcharge added to every industry job. */
 const SCC_SURCHARGE = 0.04
 
-async function findBlueprint(product: { id: number; name: string }) {
-  const candidates = product.name.endsWith(' Blueprint') || product.name.endsWith(' Reaction Formula')
-    ? [product.name]
-    : [`${product.name} Blueprint`, `${product.name} Reaction Formula`]
-  const ids = await resolveIds(candidates)
-  const bp = ids.inventory_types?.[0]
-  if (!bp) throw new Error(`Для «${product.name}» не найден чертёж или формула реакции`)
-  const data = await window.api.request<BlueprintData>(`https://www.fuzzwork.co.uk/blueprint/api/blueprint.php?typeid=${bp.id}`)
-  const activity = data.activityMaterials[MANUFACTURING]?.length ? MANUFACTURING : REACTION
-  const materials = data.activityMaterials[activity] ?? []
-  if (!materials.length) throw new Error('У чертежа нет данных о материалах')
-  return { blueprint: bp, data, activity, materials }
+/** Blueprint (or reaction formula) data from the local SDE; accepts a product or the blueprint itself. */
+async function findBlueprint(typeId: number) {
+  let bp = await window.api.sde.blueprintForProduct(typeId)
+  if (!bp) {
+    // Maybe the user picked the blueprint: use its product.
+    const info = await window.api.sde.info(typeId)
+    const act = info.blueprint?.act.manufacturing ?? info.blueprint?.act.reaction
+    const product = act?.prod?.[0]?.[0]
+    if (product) bp = await window.api.sde.blueprintForProduct(product)
+  }
+  if (!bp?.data.mat?.length || !bp.data.prod?.length) throw new Error('Для этого предмета нет чертежа или формулы реакции')
+  const skillIds = (bp.data.skills ?? []).map(([id]) => id)
+  const skillDogma = await window.api.sde.dogmaAttrs(skillIds, [275, 180, 181])
+  const skillReqs: Record<number, SkillReq> = Object.fromEntries(
+    (bp.data.skills ?? []).map(([id, level]) => [id, { level, rank: skillDogma[id][275] || 1, primary: skillDogma[id][180], secondary: skillDogma[id][181] }])
+  )
+  return {
+    skillReqs,
+    bpId: bp.bp,
+    activity: bp.activity,
+    time: bp.data.time,
+    maxRuns: bp.maxRuns,
+    productTypeID: bp.data.prod[0][0],
+    productQuantity: bp.data.prod[0][1],
+    materials: bp.data.mat.map(([typeid, quantity]) => ({ typeid, quantity })),
+    skills: bp.data.skills ?? []
+  }
 }
 
 function Calculator() {
-  const { active } = useApp()
+  const { pageArg } = useApp()
+  const lang = useLang()
   const [product, setProduct] = useState<{ id: number; name: string } | null>(null)
+  useEffect(() => {
+    if (pageArg) setProduct({ id: pageArg, name: tn(getBasic(pageArg)?.n, lang) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageArg])
   const [runs, setRuns] = useState(1)
   const [me, setMe] = useState(10)
   const [te, setTe] = useState(20)
@@ -73,11 +88,11 @@ function Calculator() {
   const [priceBasis, setPriceBasis] = useState<'sell' | 'buy'>('sell')
   const [system, setSystem] = useState<{ id: number; name: string }>({ id: 30000142, name: 'Jita' })
 
-  const bp = useAsync(async () => (product ? findBlueprint(product) : null), [product?.id])
+  const bp = useAsync(async () => (product ? findBlueprint(product.id) : null), [product?.id])
 
   const market = useAsync(async () => {
     if (!bp.data) return null
-    const ids = [bp.data.data.blueprintDetails.productTypeID, ...bp.data.materials.map((m) => m.typeid)]
+    const ids = [bp.data.productTypeID, ...bp.data.materials.map((m) => m.typeid)]
     const [prices, adjusted, indices, sys] = await Promise.all([
       jitaPrices(ids),
       esi<{ type_id: number; adjusted_price?: number }[]>('/markets/prices/'),
@@ -94,15 +109,15 @@ function Calculator() {
   const effectiveMe = isReaction ? 0 : me
   const effectiveTe = isReaction ? 0 : te
 
-  let body = <Empty>Выберите предмет, который хотите произвести. Нужен английский вариант названия, как в игре.</Empty>
+  let body = <Empty>Выберите предмет, который хотите произвести (поиск на русском или английском).</Empty>
   if (product && bp.loading) body = <Loading label="Загружаю чертёж…" />
   else if (bp.error) body = <ErrorBox error={bp.error} />
   else if (bp.data && market.loading) body = <Loading label="Загружаю цены и индексы…" />
   else if (market.error) body = <ErrorBox error={market.error} />
   else if (bp.data && market.data) {
-    const { data, materials } = bp.data
+    const details = bp.data
+    const { materials } = details
     const { prices, adj, costIndex, sys } = market.data
-    const details = data.blueprintDetails
     const price = (id: number) => (priceBasis === 'sell' ? prices.get(id)?.sell.best : prices.get(id)?.buy.best) ?? 0
 
     const rows = materials.map((m) => {
@@ -118,8 +133,7 @@ function Calculator() {
     const tax = revenue * (salesTax / 100)
     const totalCost = materialCost + jobCost
     const profit = revenue - tax - totalCost
-    const activityTime = details.times[bp.data.activity] ?? 0
-    const time = activityTime * runs * (1 - effectiveTe / 100)
+    const time = details.time * runs * (1 - effectiveTe / 100)
 
     body = (
       <>
@@ -148,7 +162,7 @@ function Calculator() {
                 {rows.map((r) => (
                   <tr key={r.typeid}>
                     <td>
-                      <TypeIcon typeId={r.typeid} size={20} /> {r.name}
+                      <TypeLink id={r.typeid} />
                     </td>
                     <td className="num">{fmtNum(r.qty)}</td>
                     <td className="num">{fmtIsk(r.unit)}</td>
@@ -194,10 +208,22 @@ function Calculator() {
               </tbody>
             </table>
             <p className="muted small">
-              Tech {details.techLevel} · выход {details.productQuantity} шт за прогон · макс. прогонов на копии: {details.maxProductionLimit}. Данные чертежей: Fuzzwork SDE.
+              Чертёж: <TypeLink id={details.bpId} icon={false} /> · выход {details.productQuantity} шт за прогон · макс. прогонов на копии: {details.maxRuns}. Данные: SDE CCP.
             </p>
           </Card>
         </div>
+        {details.skills.length > 0 && (
+          <Card title="Навыки для запуска работы">
+            <MissingSkillsBox reqs={details.skillReqs} title="Работа" />
+            <div className="small">
+              {details.skills.map(([id, lvl]) => (
+                <span key={id} className="chip">
+                  <TypeLink id={id} icon={false} /> {lvl}
+                </span>
+              ))}
+            </div>
+          </Card>
+        )}
       </>
     )
   }
@@ -213,11 +239,13 @@ function Calculator() {
             Продукт
             <SearchBox
               placeholder="Например: Rifter, Hobgoblin II, Fernite Carbide"
-              search={(q) => searchTypes(q, active?.id ?? null)}
+              search={(q) => searchTypesSde(q, lang)}
               onSelect={setProduct}
+              initial={product?.name ?? ''}
               renderItem={(t) => (
                 <>
-                  <TypeIcon typeId={t.id} size={20} /> {t.name}
+                  <TypeLink id={t.id} />
+                  {t.alt && <span className="muted small"> {t.alt}</span>}
                 </>
               )}
             />
@@ -255,7 +283,7 @@ function Calculator() {
           </label>
           <label>
             Система производства
-            <SearchBox placeholder="Система…" search={(q) => searchSystems(q, active?.id ?? null)} onSelect={setSystem} initial={system.name} />
+            <SearchBox placeholder="Система…" search={searchSystemsSde} onSelect={setSystem} initial={system.name} />
           </label>
         </div>
       </Card>
@@ -334,7 +362,12 @@ function Jobs() {
               return (
                 <tr key={j.job_id}>
                   <td>
-                    <TypeIcon typeId={j.blueprint_type_id} size={20} /> {data.names.get(j.blueprint_type_id)}
+                    <TypeLink id={j.blueprint_type_id} />
+                    {j.product_type_id && j.product_type_id !== j.blueprint_type_id && (
+                      <div className="small muted">
+                        → <TypeLink id={j.product_type_id} icon={false} />
+                      </div>
+                    )}
                   </td>
                   <td>{ACTIVITY[j.activity_id] ?? j.activity_id}</td>
                   <td className="num">{j.runs}</td>
@@ -390,7 +423,7 @@ function Planets() {
         name: names.get(c.planet_id) ?? String(c.planet_id),
         system: systems[i],
         extractors,
-        products: [...new Set(extractors.map((p) => names.get(p.extractor_details?.product_type_id ?? 0)).filter(Boolean))],
+        products: [...new Set(extractors.map((p) => p.extractor_details?.product_type_id ?? 0).filter(Boolean))],
         expiry: expiries.length ? Math.min(...expiries) : null,
         factories: details[i].pins.filter((p) => p.schematic_id).length
       }
@@ -439,7 +472,7 @@ function Planets() {
                       <Sec value={c.system.security_status} /> {c.name}
                     </td>
                     <td className="muted">{c.planet_type}</td>
-                    <td>{c.products.join(', ') || <span className="muted">—</span>}</td>
+                    <td>{c.products.length ? c.products.map((p) => <TypeLink key={p} id={p} />) : <span className="muted">—</span>}</td>
                     <td className="num">{c.factories}</td>
                     <td className="num muted">{c.expiry ? fmtDate(new Date(c.expiry).toISOString()) : '—'}</td>
                     <td className={`num ${left !== null && left <= 0 ? 'bad' : left !== null && left < 6 * 3600_000 ? 'warn-text' : ''}`}>

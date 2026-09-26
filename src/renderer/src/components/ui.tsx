@@ -68,13 +68,15 @@ export function SearchBox<T extends { id: number; name: string }>({
   search,
   onSelect,
   initial = '',
-  renderItem
+  renderItem,
+  clearOnSelect = false
 }: {
   placeholder: string
   search: (q: string) => Promise<T[]>
   onSelect: (item: T) => void
   initial?: string
   renderItem?: (item: T) => ReactNode
+  clearOnSelect?: boolean
 }) {
   const [query, setQuery] = useState(initial)
   const [items, setItems] = useState<T[]>([])
@@ -109,7 +111,7 @@ export function SearchBox<T extends { id: number; name: string }>({
   }
 
   function pick(item: T) {
-    setQuery(item.name)
+    setQuery(clearOnSelect ? '' : item.name)
     setOpen(false)
     setItems([])
     onSelect(item)
@@ -125,7 +127,12 @@ export function SearchBox<T extends { id: number; name: string }>({
           setQuery(q)
           setOpen(true)
           clearTimeout(debounce.current)
-          if (q.trim().length >= 3) debounce.current = setTimeout(() => void run(q, false), 350)
+          if (q.trim().length >= 2) debounce.current = setTimeout(() => void run(q, false), 250)
+          else {
+            seq.current++
+            setItems([])
+            setHint('')
+          }
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {

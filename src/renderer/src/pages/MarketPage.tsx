@@ -1,15 +1,21 @@
-import { useState } from 'react'
-import { useApp } from '../AppContext'
-import { Card, Empty, ErrorBox, Loading, RequireLogin, SearchBox, Sparkline, Stat, Tabs, TypeIcon } from '../components/ui'
-import { esi, imageUrl, resolveIds, resolveNames, searchTypes, typeInfo } from '../lib/esi'
+import { useEffect, useState } from 'react'
+import { useApp, useLang } from '../AppContext'
+import { TypeLink } from '../components/TypeLink'
+import { Card, Empty, ErrorBox, Loading, RequireLogin, SearchBox, Sparkline, Stat, Tabs } from '../components/ui'
+import { esi, imageUrl, resolveIds, resolveLocations } from '../lib/esi'
 import { fmtDate, fmtIsk, fmtNum } from '../lib/format'
 import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/market'
+import { getBasic, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 
 type Tab = 'prices' | 'appraisal' | 'orders'
 
 export default function MarketPage() {
+  const { pageArg } = useApp()
   const [tab, setTab] = useState<Tab>('prices')
+  useEffect(() => {
+    if (pageArg) setTab('prices')
+  }, [pageArg])
   return (
     <div className="page">
       <Tabs
@@ -31,23 +37,27 @@ export default function MarketPage() {
 // ---------------- Prices ----------------
 
 function Prices() {
-  const { active } = useApp()
+  const { pageArg } = useApp()
+  const lang = useLang()
   const [type, setType] = useState<{ id: number; name: string } | null>(null)
+  useEffect(() => {
+    if (pageArg) setType({ id: pageArg, name: '' })
+  }, [pageArg])
 
   return (
     <>
       <div className="toolbar">
         <SearchBox
-          placeholder={active ? 'Название предмета (от 3 букв)…' : 'Точное название предмета, Enter…'}
-          search={(q) => searchTypes(q, active?.id ?? null)}
+          placeholder="Название предмета (рус/англ)…"
+          search={(q) => searchTypesSde(q, lang, { marketOnly: true })}
           onSelect={setType}
           renderItem={(t) => (
             <>
-              <TypeIcon typeId={t.id} size={20} /> {t.name}
+              <TypeLink id={t.id} />
+              {t.alt && <span className="muted small"> {t.alt}</span>}
             </>
           )}
         />
-        {!active && <span className="muted">Без входа поиск работает только по точному названию на английском</span>}
       </div>
       {type ? <TypeMarket typeId={type.id} /> : <Empty>Найдите предмет, чтобы сравнить цены в торговых хабах.</Empty>}
     </>
@@ -74,15 +84,13 @@ interface HistoryDay {
 function TypeMarket({ typeId }: { typeId: number }) {
   const { data, error, loading } = useAsync(async () => {
     const jita = HUBS[0]
-    const [info, hubs, orders, history] = await Promise.all([
-      typeInfo(typeId),
+    const [hubs, orders, history] = await Promise.all([
       Promise.all(HUBS.map((h) => hubPrices(h.stationId, [typeId]).then((m) => ({ hub: h, price: m.get(typeId) })))),
       esi<Order[]>(`/markets/${jita.regionId}/orders/?type_id=${typeId}&order_type=all`, { allPages: true }).catch(() => [] as Order[]),
       esi<HistoryDay[]>(`/markets/${jita.regionId}/history/?type_id=${typeId}`).catch(() => [] as HistoryDay[])
     ])
     const inJita = orders.filter((o) => o.location_id === jita.stationId)
     return {
-      info,
       hubs,
       sells: inJita.filter((o) => !o.is_buy_order).sort((a, b) => a.price - b.price).slice(0, 10),
       buys: inJita.filter((o) => o.is_buy_order).sort((a, b) => b.price - a.price).slice(0, 10),
@@ -92,7 +100,8 @@ function TypeMarket({ typeId }: { typeId: number }) {
 
   if (loading) return <Loading />
   if (!data) return <ErrorBox error={error} />
-  const { info, hubs, sells, buys, history } = data
+  const { hubs, sells, buys, history } = data
+  const basic = getBasic(typeId)
 
   const sellPrices = hubs.map((h) => h.price?.sell.best).filter((p): p is number => !!p)
   const buyPrices = hubs.map((h) => h.price?.buy.best).filter((p): p is number => !!p)
@@ -108,9 +117,11 @@ function TypeMarket({ typeId }: { typeId: number }) {
         <div className="type-head">
           <img src={imageUrl.typeIcon(typeId, 64)} width={64} height={64} alt="" />
           <div>
-            <h2>{info.name}</h2>
+            <h2>
+              <TypeLink id={typeId} icon={false} />
+            </h2>
             <div className="muted">
-              Объём: {info.packaged_volume ?? info.volume} м³ · type_id {typeId}
+              {basic && basic.n[1] !== basic.n[0] ? `${basic.n[0]} · ` : ''}type_id {typeId} · нажмите на название — полная информация
             </div>
           </div>
         </div>
@@ -234,25 +245,31 @@ function Appraisal() {
     setError(null)
     try {
       const items = parseItemList(text)
-      const ids = await resolveIds(items.map((i) => i.name))
+      const ids = await resolveIds(items.map((i) => i.name)).catch(() => ({ inventory_types: [] as { id: number; name: string }[] }))
       const byName = new Map((ids.inventory_types ?? []).map((t) => [t.name.toLowerCase(), t]))
+      // Names ESI doesn't know (e.g. from a Russian client) are matched exactly against the SDE.
+      for (const i of items) {
+        const key = i.name.toLowerCase()
+        if (byName.has(key)) continue
+        const hit = (await window.api.sde.search(i.name, { limit: 5 })).find((t) => t.n.some((n) => n.toLowerCase() === key))
+        if (hit) byName.set(key, { id: hit.id, name: hit.n[0] })
+      }
       const known = items.filter((i) => byName.has(i.name.toLowerCase()))
       setUnknown(items.filter((i) => !byName.has(i.name.toLowerCase())).map((i) => i.name))
       const prices = await jitaPrices(known.map((i) => byName.get(i.name.toLowerCase())!.id))
-      const volumes = await Promise.all(known.map((i) => typeInfo(byName.get(i.name.toLowerCase())!.id).catch(() => null)))
+      const basics = await window.api.sde.basics(known.map((i) => byName.get(i.name.toLowerCase())!.id)).catch(() => ({}) as Record<number, { v?: number }>)
       setRows(
         known
-          .map((i, idx) => {
+          .map((i) => {
             const t = byName.get(i.name.toLowerCase())!
             const p = prices.get(t.id)
-            const v = volumes[idx]
             return {
               typeId: t.id,
               name: t.name,
               qty: i.qty,
               sell: (p?.sell.best ?? 0) * i.qty,
               buy: (p?.buy.best ?? 0) * i.qty,
-              volume: (v?.packaged_volume ?? v?.volume ?? 0) * i.qty
+              volume: (basics[t.id]?.v ?? 0) * i.qty
             }
           })
           .sort((a, b) => b.sell - a.sell)
@@ -309,7 +326,7 @@ function Appraisal() {
                 {rows.map((r) => (
                   <tr key={r.typeId}>
                     <td>
-                      <TypeIcon typeId={r.typeId} size={20} /> {r.name}
+                      <TypeLink id={r.typeId} fallback={r.name} />
                     </td>
                     <td className="num">{fmtNum(r.qty)}</td>
                     <td className="num">{fmtIsk(r.sell, true)}</td>
@@ -345,7 +362,7 @@ function MyOrders() {
   const { data, error, loading } = useAsync(async () => {
     if (!active) return null
     const orders = await esi<CharOrder[]>(`/characters/${active.id}/orders/`, { characterId: active.id })
-    const names = await resolveNames([...orders.map((o) => o.type_id), ...orders.map((o) => o.location_id).filter((l) => l < 1e12)])
+    const names = await resolveLocations(orders.map((o) => o.location_id), active.id)
     const prices = new Map<number, Price>()
     // Compare against the market at each order's station when it is a known hub.
     for (const hub of HUBS) {
@@ -383,7 +400,7 @@ function MyOrders() {
             return (
               <tr key={o.order_id}>
                 <td>
-                  <TypeIcon typeId={o.type_id} size={20} /> {data.names.get(o.type_id)}
+                  <TypeLink id={o.type_id} />
                 </td>
                 <td>{o.is_buy_order ? 'Покупка' : 'Продажа'}</td>
                 <td className="num">{fmtIsk(o.price)}</td>

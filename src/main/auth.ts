@@ -30,8 +30,18 @@ export const SCOPES = [
   'esi-universe.read_structures.v1',
   'esi-killmails.read_killmails.v1',
   'esi-markets.read_character_orders.v1',
-  'esi-ui.write_waypoint.v1'
-]
+  'esi-ui.write_waypoint.v1',
+  'esi-clones.read_clones.v1',
+  'esi-clones.read_implants.v1',
+  'esi-fittings.read_fittings.v1',
+  'esi-characters.read_blueprints.v1',
+  'esi-characters.read_loyalty.v1',
+  'esi-characters.read_standings.v1',
+  'esi-characters.read_fatigue.v1',
+  'esi-contracts.read_character_contracts.v1',
+  'esi-industry.read_character_mining.v1',
+  'esi-wallet.read_character_wallet.v1'
+].filter((s, i, all) => all.indexOf(s) === i)
 
 let tokens: StoredToken[] = []
 const refreshing = new Map<number, Promise<string>>()

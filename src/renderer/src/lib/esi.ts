@@ -64,6 +64,34 @@ export async function resolveIds(names: string[]): Promise<IdsResult> {
   return result
 }
 
+const structureCache = new Map<number, string>()
+
+/**
+ * Names for location IDs of any kind: NPC stations and systems via /universe/names,
+ * player structures (IDs above 1e12) via the authenticated structure endpoint.
+ */
+export async function resolveLocations(ids: Iterable<number>, characterId: number | null): Promise<Map<number, string>> {
+  const unique = [...new Set(ids)].filter((id) => id > 0)
+  const out = await resolveNames(unique.filter((id) => id < 1e12))
+  await Promise.all(
+    unique
+      .filter((id) => id >= 1e12)
+      .map(async (id) => {
+        if (!structureCache.has(id)) {
+          const name = characterId
+            ? await esi<{ name: string }>(`/universe/structures/${id}/`, { characterId })
+                .then((s) => s.name)
+                .catch(() => `Структура ${id}`)
+            : `Структура ${id}`
+          structureCache.set(id, name)
+        }
+        out.set(id, structureCache.get(id)!)
+      })
+  )
+  if (unique.includes(2004)) out.set(2004, 'Asset Safety')
+  return out
+}
+
 // ---------- Static-ish universe data ----------
 
 export interface TypeInfo {

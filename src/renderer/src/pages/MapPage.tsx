@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../AppContext'
 import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat, Tabs } from '../components/ui'
-import { esi, searchSystems, systemInfo, systemRegion } from '../lib/esi'
+import { esi, systemInfo, systemRegion } from '../lib/esi'
+import { searchSystemsSde } from '../lib/sde'
 import { fmtNum, roundSec } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 
@@ -69,7 +70,7 @@ function RoutePlanner() {
     if (current && !origin) setOrigin(current)
   }, [current, origin])
 
-  const search = (q: string) => searchSystems(q, active?.id ?? null)
+  const search = searchSystemsSde
 
   const route = useAsync(async () => {
     if (!origin || !dest) return null
@@ -291,7 +292,7 @@ function WormholeConnections() {
           </label>
           <label>
             Считать прыжки от
-            <SearchBox placeholder="Система…" search={(q) => searchSystems(q, active?.id ?? null)} onSelect={setOrigin} initial={origin?.name ?? ''} />
+            <SearchBox placeholder="Система…" search={searchSystemsSde} onSelect={setOrigin} initial={origin?.name ?? ''} />
           </label>
           <div className="route-actions">
             <button onClick={countJumps} disabled={!origin || counting}>

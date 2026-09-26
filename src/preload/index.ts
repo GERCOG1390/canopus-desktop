@@ -17,13 +17,32 @@ const api: CanopusApi = {
     login: () => invoke('auth:login'),
     characters: () => invoke('auth:characters'),
     logout: (characterId) => invoke('auth:logout', characterId),
-    callbackUrl: () => invoke('auth:callbackUrl')
+    callbackUrl: () => invoke('auth:callbackUrl'),
+    scopes: () => invoke('auth:scopes')
   },
   settings: {
     get: () => invoke('settings:get'),
     set: (patch) => invoke('settings:set', patch)
   },
-  openExternal: (url) => invoke('shell:openExternal', url)
+  openExternal: (url) => invoke('shell:openExternal', url),
+  sde: {
+    status: () => invoke('sde:status'),
+    onStatus: (listener) => {
+      const handler = (_e: Electron.IpcRendererEvent, status: Parameters<typeof listener>[0]) => listener(status)
+      ipcRenderer.on('sde:status', handler)
+      return () => ipcRenderer.removeListener('sde:status', handler)
+    },
+    update: () => invoke('sde:update'),
+    basics: (ids) => invoke('sde:basics', ids),
+    search: (q, opts) => invoke('sde:search', q, opts),
+    searchSystems: (q, limit) => invoke('sde:searchSystems', q, limit),
+    system: (id) => invoke('sde:system', id),
+    info: (id) => invoke('sde:info', id),
+    skillCatalog: () => invoke('sde:skillCatalog'),
+    requiredSkills: (ids) => invoke('sde:requiredSkills', ids),
+    dogmaAttrs: (ids, attrIds) => invoke('sde:dogmaAttrs', ids, attrIds),
+    blueprintForProduct: (id) => invoke('sde:blueprintForProduct', id)
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

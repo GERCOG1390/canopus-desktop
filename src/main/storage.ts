@@ -6,7 +6,7 @@ import type { Settings } from '../shared/types'
 const settingsPath = (): string => join(app.getPath('userData'), 'settings.json')
 const tokensPath = (): string => join(app.getPath('userData'), 'tokens.bin')
 
-const DEFAULT_SETTINGS: Settings = { clientId: '', activeCharacterId: null, alwaysOnTop: false }
+const DEFAULT_SETTINGS: Settings = { clientId: '', activeCharacterId: null, alwaysOnTop: false, lang: 'ru' }
 
 export function loadSettings(): Settings {
   try {

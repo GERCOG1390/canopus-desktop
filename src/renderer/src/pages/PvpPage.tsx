@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
+import { FitView, type FitItem } from '../components/FitView'
 import { useApp } from '../AppContext'
-import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat, TypeIcon } from '../components/ui'
+import { TypeLink } from '../components/TypeLink'
+import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat } from '../components/ui'
 import { esi, imageUrl, resolveIds, resolveNames, systemInfo, type SystemInfo } from '../lib/esi'
 import { fmtAgo, fmtIsk, fmtNum } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
@@ -27,8 +29,15 @@ interface Killmail {
   killmail_id: number
   killmail_time: string
   solar_system_id: number
-  victim: { character_id?: number; corporation_id?: number; alliance_id?: number; ship_type_id: number }
-  attackers: { character_id?: number; final_blow: boolean; ship_type_id?: number }[]
+  victim: {
+    character_id?: number
+    corporation_id?: number
+    alliance_id?: number
+    ship_type_id: number
+    damage_taken?: number
+    items?: { flag: number; item_type_id: number; quantity_dropped?: number; quantity_destroyed?: number }[]
+  }
+  attackers: { character_id?: number; corporation_id?: number; final_blow: boolean; ship_type_id?: number; weapon_type_id?: number; damage_done?: number }[]
   zkb: { hash: string; totalValue: number; solo: boolean; npc: boolean; awox: boolean }
 }
 
@@ -88,7 +97,44 @@ export default function PvpPage() {
   )
 }
 
+function KillDetails({ k, names }: { k: Killmail; names: Map<number, string> }) {
+  const items: FitItem[] = (k.victim.items ?? []).map((i) => ({
+    typeId: i.item_type_id,
+    flag: i.flag,
+    qty: (i.quantity_dropped ?? 0) + (i.quantity_destroyed ?? 0)
+  }))
+  const attackers = [...k.attackers].sort((a, b) => (b.damage_done ?? 0) - (a.damage_done ?? 0))
+  return (
+    <div className="two-col">
+      <FitView shipTypeId={k.victim.ship_type_id} name={names.get(k.victim.character_id ?? 0) ?? 'Жертва'} items={items} showSkills={false} />
+      <div>
+        <h4>
+          Атакующие ({attackers.length}) · урон {fmtNum(k.victim.damage_taken ?? 0)}
+        </h4>
+        <table className="table compact">
+          <tbody>
+            {attackers.slice(0, 30).map((a, i) => (
+              <tr key={i}>
+                <td>
+                  {a.final_blow && <span className="badge kill" title="Последний удар">FB</span>} {a.character_id ? names.get(a.character_id) ?? a.character_id : <span className="muted">NPC</span>}
+                </td>
+                <td>{a.ship_type_id ? <TypeLink id={a.ship_type_id} /> : null}</td>
+                <td>{a.weapon_type_id && a.weapon_type_id !== a.ship_type_id ? <TypeLink id={a.weapon_type_id} /> : null}</td>
+                <td className="num">{fmtNum(a.damage_done ?? 0)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <a href={`https://zkillboard.com/kill/${k.killmail_id}/`} target="_blank" rel="noreferrer">
+          Открыть на zKillboard
+        </a>
+      </div>
+    </div>
+  )
+}
+
 function PilotBoard({ pilot }: { pilot: Pilot }) {
+  const [open, setOpen] = useState<number | null>(null)
   const { data, error, loading } = useAsync(async () => {
     const [stats, kills] = await Promise.all([
       window.api.request<ZkbStats>(`https://zkillboard.com/api/stats/characterID/${pilot.id}/`),
@@ -96,7 +142,7 @@ function PilotBoard({ pilot }: { pilot: Pilot }) {
     ])
     const recent = (Array.isArray(kills) ? kills : []).slice(0, 40)
     const names = await resolveNames([
-      ...recent.flatMap((k) => [k.victim.ship_type_id, k.victim.character_id ?? 0, k.victim.corporation_id ?? 0]),
+      ...recent.flatMap((k) => [k.victim.character_id ?? 0, k.victim.corporation_id ?? 0, ...k.attackers.slice(0, 30).map((a) => a.character_id ?? 0)]),
       stats?.info?.corporation_id ?? 0,
       stats?.info?.alliance_id ?? 0
     ])
@@ -172,13 +218,15 @@ function PilotBoard({ pilot }: { pilot: Pilot }) {
               {recent.map((k) => {
                 const loss = k.victim.character_id === pilot.id
                 const sys = systems.get(k.solar_system_id)
+                const isOpen = open === k.killmail_id
                 return (
-                  <tr key={k.killmail_id} className="clickable" onClick={() => window.api.openExternal(`https://zkillboard.com/kill/${k.killmail_id}/`)}>
+                  <Fragment key={k.killmail_id}>
+                  <tr className="clickable" onClick={() => setOpen(isOpen ? null : k.killmail_id)}>
                     <td>
                       <span className={`badge ${loss ? 'loss' : 'kill'}`}>{loss ? 'Лосс' : 'Килл'}</span>
                     </td>
                     <td>
-                      <TypeIcon typeId={k.victim.ship_type_id} size={24} /> {names.get(k.victim.ship_type_id)}
+                      <TypeLink id={k.victim.ship_type_id} size={24} />
                     </td>
                     <td>
                       {names.get(k.victim.character_id ?? 0) ?? <span className="muted">—</span>}
@@ -192,12 +240,20 @@ function PilotBoard({ pilot }: { pilot: Pilot }) {
                     <td className="num">{fmtIsk(k.zkb.totalValue, true)}</td>
                     <td className="num muted">{fmtAgo(k.killmail_time)}</td>
                   </tr>
+                  {isOpen && (
+                    <tr className="sub-row">
+                      <td colSpan={7}>
+                        <KillDetails k={k} names={names} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 )
               })}
             </tbody>
           </table>
         )}
-        <p className="muted small">Данные: zKillboard. Нажмите на строку, чтобы открыть киллмейл.</p>
+        <p className="muted small">Данные: zKillboard. Нажмите на строку — фит жертвы и список атакующих.</p>
       </Card>
     </>
   )

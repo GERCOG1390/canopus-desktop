@@ -3,6 +3,7 @@ import { join, resolve } from 'node:path'
 import type { RequestOptions, Settings } from '../shared/types'
 import * as auth from './auth'
 import { request } from './http'
+import * as sde from './sde'
 import { loadSettings, saveSettings } from './storage'
 
 let mainWindow: BrowserWindow | null = null
@@ -50,6 +51,7 @@ function registerIpc(): void {
   ipcMain.handle('auth:characters', () => auth.characters())
   ipcMain.handle('auth:logout', (_e, characterId: number) => auth.logout(characterId))
   ipcMain.handle('auth:callbackUrl', () => auth.CALLBACK_URL)
+  ipcMain.handle('auth:scopes', () => auth.SCOPES)
 
   ipcMain.handle('settings:get', () => loadSettings())
   ipcMain.handle('settings:set', (_e, patch: Partial<Settings>) => {
@@ -60,6 +62,18 @@ function registerIpc(): void {
   })
 
   ipcMain.handle('shell:openExternal', (_e, url: string) => openExternal(url))
+
+  ipcMain.handle('sde:status', () => sde.getStatus())
+  ipcMain.handle('sde:update', () => sde.initSde())
+  ipcMain.handle('sde:basics', (_e, ids: number[]) => sde.basics(ids))
+  ipcMain.handle('sde:search', (_e, q: string, opts) => sde.search(q, opts))
+  ipcMain.handle('sde:searchSystems', (_e, q: string, limit?: number) => sde.searchSystems(q, limit))
+  ipcMain.handle('sde:system', (_e, id: number) => sde.system(id))
+  ipcMain.handle('sde:info', (_e, id: number) => sde.info(id))
+  ipcMain.handle('sde:skillCatalog', () => sde.skillCatalog())
+  ipcMain.handle('sde:requiredSkills', (_e, ids: number[]) => sde.requiredSkills(ids))
+  ipcMain.handle('sde:dogmaAttrs', (_e, ids: number[], attrIds: number[]) => sde.dogmaAttrs(ids, attrIds))
+  ipcMain.handle('sde:blueprintForProduct', (_e, id: number) => sde.blueprintForProduct(id))
 }
 
 // Register Canopus as the handler for eveauthcanopus:// links (the EVE SSO callback).
@@ -90,6 +104,7 @@ app.whenReady().then(() => {
   auth.initAuth()
   registerIpc()
   createWindow()
+  void sde.initSde()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
