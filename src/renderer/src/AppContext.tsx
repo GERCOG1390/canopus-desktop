@@ -3,7 +3,7 @@ import type { SdeStatus } from '../../shared/sde'
 import type { CharacterAuth, Settings } from '../../shared/types'
 import { retryMissing, type Lang } from './lib/sde'
 
-export type PageId = 'character' | 'fitting' | 'market' | 'map' | 'industry' | 'pvp' | 'settings'
+export type PageId = 'character' | 'intel' | 'fitting' | 'market' | 'map' | 'industry' | 'pvp' | 'settings'
 
 interface AppState {
   settings: Settings | null
@@ -35,10 +35,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     void window.api.settings.get().then(setSettings)
     void window.api.auth.characters().then(setCharacters)
     void window.api.sde.status().then(setSde)
-    return window.api.sde.onStatus((s) => {
+    const offSettings = window.api.onSettingsChanged(() => void window.api.settings.get().then(setSettings))
+    const offSde = window.api.sde.onStatus((s) => {
       setSde(s)
       if (s.state === 'ready') retryMissing()
     })
+    return () => {
+      offSettings()
+      offSde()
+    }
   }, [])
 
   const navigate = useCallback((p: PageId, arg: number | null = null) => {

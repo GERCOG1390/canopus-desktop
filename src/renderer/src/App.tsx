@@ -10,6 +10,8 @@ import { searchTypesSde } from './lib/sde'
 import { FittingProvider } from './lib/fitting'
 import CharacterPage from './pages/character'
 import FittingPage from './pages/FittingPage'
+import IntelPage from './pages/IntelPage'
+import { IntelProvider } from './IntelContext'
 import IndustryPage from './pages/IndustryPage'
 import MapPage from './pages/MapPage'
 import MarketPage from './pages/MarketPage'
@@ -18,6 +20,7 @@ import SettingsPage from './pages/SettingsPage'
 
 const PAGES: { id: PageId; label: string; icon: string; render: () => ReactNode }[] = [
   { id: 'character', label: 'Персонаж', icon: '◉', render: () => <CharacterPage /> },
+  { id: 'intel', label: 'Разведка', icon: '◎', render: () => <IntelPage /> },
   { id: 'fitting', label: 'Фитинг', icon: '⬡', render: () => <FittingPage /> },
   { id: 'market', label: 'Рынок', icon: '◈', render: () => <MarketPage /> },
   { id: 'map', label: 'Карта', icon: '✦', render: () => <MapPage /> },
@@ -119,9 +122,11 @@ export default function App() {
     <AppProvider>
       <CharacterProvider>
         <FittingProvider>
-          <InfoProvider>
-            <Shell />
-          </InfoProvider>
+          <IntelProvider>
+            <InfoProvider>
+              <Shell />
+            </InfoProvider>
+          </IntelProvider>
         </FittingProvider>
       </CharacterProvider>
     </AppProvider>

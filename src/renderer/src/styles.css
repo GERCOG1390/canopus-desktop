@@ -1393,6 +1393,232 @@ td.attr-name {
 .slot-head .ui-icon {
   opacity: 0.9;
 }
+/* ---------- intel ---------- */
+
+.threat {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.threat-hostile {
+  background: rgba(229, 83, 75, 0.25);
+  color: #ff8a80;
+}
+.threat-high {
+  background: rgba(230, 120, 40, 0.25);
+  color: #ffb070;
+}
+.threat-medium {
+  background: rgba(230, 190, 60, 0.18);
+  color: #f0d070;
+}
+.threat-low {
+  background: rgba(125, 143, 163, 0.15);
+  color: var(--muted);
+}
+.threat-friendly {
+  background: rgba(79, 179, 232, 0.2);
+  color: #8fd0f5;
+}
+.threat-unknown {
+  color: var(--muted);
+}
+.new-badge {
+  margin-left: 6px;
+  font-size: 10px;
+  color: #ffd27a;
+  text-transform: uppercase;
+}
+.intel-head {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.intel-system {
+  font-size: 20px;
+  font-weight: 600;
+}
+.intel-help {
+  max-width: 420px;
+  text-align: right;
+}
+.intel-table tr.arrived td {
+  background: rgba(255, 210, 122, 0.07);
+}
+.intel-table tr.rel-red td:first-child,
+.intel-table tr.rel-red td:nth-child(2) {
+  color: #ff8a80;
+}
+.portrait-sm {
+  border-radius: 3px;
+}
+.ticker {
+  color: var(--accent);
+  font-family: Consolas, monospace;
+}
+.ship-icons {
+  display: inline-flex;
+  gap: 4px;
+}
+.type-link.icon-only .type-name {
+  display: none;
+}
+.group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.group-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.group-chip.active {
+  border-color: var(--accent);
+}
+.clip-toast {
+  background: var(--accent-2);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.hotkeys {
+  padding-left: 18px;
+  line-height: 1.8;
+}
+
+/* ---------- overlay window ---------- */
+
+html.overlay-mode,
+html.overlay-mode body {
+  background: transparent;
+  overflow: hidden;
+}
+.ov {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: rgba(11, 15, 20, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  overflow: hidden;
+}
+.ov.ov-danger {
+  border-color: rgba(229, 83, 75, 0.8);
+  box-shadow: inset 0 0 12px rgba(229, 83, 75, 0.35);
+}
+.ov-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: rgba(24, 33, 44, 0.9);
+  -webkit-app-region: drag;
+  cursor: move;
+}
+.ov-system {
+  font-weight: 600;
+  font-size: 13px;
+}
+.ov-actions {
+  display: flex;
+  gap: 4px;
+  -webkit-app-region: no-drag;
+}
+.ov-actions button {
+  padding: 1px 6px;
+  font-size: 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.ov-actions button.on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.ov-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 6px 8px;
+  align-items: center;
+}
+.ov-stale {
+  padding: 4px 8px;
+  color: #f3c983;
+}
+.ov-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 4px;
+  overflow-y: auto;
+  flex: 1;
+}
+.ov-pilot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.ov-pilot.new {
+  background: rgba(255, 210, 122, 0.12);
+}
+.ov-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ov-ticker {
+  color: var(--accent);
+  font-family: Consolas, monospace;
+}
+.ov-ship {
+  margin-left: auto;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ov-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #56626f;
+}
+.ov-dot-hostile {
+  background: #ff5b50;
+}
+.ov-dot-high {
+  background: #ff9a3c;
+}
+.ov-dot-medium {
+  background: #f0d070;
+}
+.ov-dot-friendly {
+  background: #4fb3e8;
+}
+.ov-empty {
+  padding: 20px 10px;
+  text-align: center;
+  color: var(--muted);
+}
+.ov-foot {
+  padding: 4px 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 .effects-table td:first-child {
   width: 34%;
 }

@@ -82,6 +82,7 @@ async function load(build: number): Promise<void> {
   descriptions = null
   requiredForIndex = usedInIndex = variationIndex = typesByGroup = null
   fittables = null
+  nameIndex = null
 
   searchIndex = Object.values(next.types)
     .filter((t) => t.pub)
@@ -342,6 +343,33 @@ export function skillCatalog(): SkillCatalogGroup[] {
     }))
     .filter((g) => g.skills.length)
     .sort((a, b) => a.n[0].localeCompare(b.n[0]))
+}
+
+export function groupNames(ids: number[]): Record<number, L10n> {
+  const d = need()
+  return Object.fromEntries(ids.filter((id) => d.groups[id]).map((id) => [id, d.groups[id].n]))
+}
+
+let nameIndex: Map<string, number> | null = null
+
+/** Exact, case-insensitive type name (English or Russian) → type ID. Published types win. */
+export function resolveTypeNames(names: string[]): Record<string, number> {
+  const d = need()
+  if (!nameIndex) {
+    nameIndex = new Map()
+    for (const t of Object.values(d.types)) {
+      for (const n of t.n) {
+        const key = n.toLowerCase()
+        if (!nameIndex.has(key) || t.pub) nameIndex.set(key, t.id)
+      }
+    }
+  }
+  const out: Record<string, number> = {}
+  for (const name of names) {
+    const id = nameIndex.get(name.trim().toLowerCase())
+    if (id) out[name] = id
+  }
+  return out
 }
 
 /** attributeID → iconID for every attribute that has an icon. */

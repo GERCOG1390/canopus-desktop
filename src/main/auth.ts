@@ -40,7 +40,10 @@ export const SCOPES = [
   'esi-characters.read_fatigue.v1',
   'esi-contracts.read_character_contracts.v1',
   'esi-industry.read_character_mining.v1',
-  'esi-wallet.read_character_wallet.v1'
+  'esi-wallet.read_character_wallet.v1',
+  'esi-characters.read_contacts.v1',
+  'esi-corporations.read_contacts.v1',
+  'esi-alliances.read_contacts.v1'
 ].filter((s, i, all) => all.indexOf(s) === i)
 
 let tokens: StoredToken[] = []

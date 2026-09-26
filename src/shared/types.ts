@@ -1,7 +1,8 @@
 // Types shared between the main process, preload and renderer.
 
 import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
-import type { InfoBundle, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
+import type { ClipboardEvent, IntelSettings, LogEvent, OverlaySummary } from './intel'
+import type { InfoBundle, L10n, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
   method?: 'GET' | 'POST'
@@ -24,6 +25,7 @@ export interface Settings {
   alwaysOnTop: boolean
   /** Language for item names and descriptions from the SDE. */
   lang: 'ru' | 'en'
+  intel: IntelSettings
 }
 
 export interface CanopusApi {
@@ -53,9 +55,26 @@ export interface CanopusApi {
     skillCatalog(): Promise<SkillCatalogGroup[]>
     /** attributeID → iconID */
     attributeIcons(): Promise<Record<number, number>>
+    groupNames(ids: number[]): Promise<Record<number, L10n>>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
     dogmaAttrs(ids: number[], attrIds: number[]): Promise<Record<number, Record<number, number>>>
     blueprintForProduct(productId: number): Promise<InfoBundle['producedBy'] | null>
+  }
+  /** Settings changed outside the renderer (e.g. overlay hotkeys). */
+  onSettingsChanged(listener: () => void): () => void
+  intel: {
+    onClipboard(listener: (e: ClipboardEvent) => void): () => void
+    onLog(listener: (e: LogEvent) => void): () => void
+    /** Re-read the Local log (e.g. after the active character or log folder changed). */
+    restartLog(): Promise<void>
+    /** Main window → overlay. */
+    publish(summary: OverlaySummary): Promise<void>
+    onSummary(listener: (s: OverlaySummary) => void): () => void
+    lastSummary(): Promise<OverlaySummary | null>
+    notify(title: string, body: string): Promise<void>
+    setOverlay(patch: Partial<IntelSettings['overlay']>): Promise<void>
+    /** Exact (case-insensitive) type name → type ID, English or Russian. */
+    resolveTypeNames(names: string[]): Promise<Record<string, number>>
   }
   fit: {
     calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>

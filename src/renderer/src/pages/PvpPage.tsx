@@ -65,12 +65,19 @@ async function searchPilots(q: string, characterId: number | null): Promise<Pilo
 }
 
 export default function PvpPage() {
-  const { active } = useApp()
+  const { active, pageArg } = useApp()
   const [pilot, setPilot] = useState<Pilot | null>(null)
 
   useEffect(() => {
-    if (active && !pilot) setPilot({ id: active.id, name: active.name })
-  }, [active, pilot])
+    if (active && !pilot && !pageArg) setPilot({ id: active.id, name: active.name })
+  }, [active, pilot, pageArg])
+
+  // Opened from another page (e.g. a Local scan) with a character ID.
+  useEffect(() => {
+    if (!pageArg) return
+    setPilot({ id: pageArg, name: '…' })
+    void resolveNames([pageArg]).then((n) => setPilot({ id: pageArg, name: n.get(pageArg) ?? String(pageArg) }))
+  }, [pageArg])
 
   return (
     <div className="page">
