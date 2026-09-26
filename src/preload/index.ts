@@ -39,6 +39,7 @@ const api: CanopusApi = {
     system: (id) => invoke('sde:system', id),
     info: (id) => invoke('sde:info', id),
     skillCatalog: () => invoke('sde:skillCatalog'),
+    attributeIcons: () => invoke('sde:attributeIcons'),
     requiredSkills: (ids) => invoke('sde:requiredSkills', ids),
     dogmaAttrs: (ids, attrIds) => invoke('sde:dogmaAttrs', ids, attrIds),
     blueprintForProduct: (id) => invoke('sde:blueprintForProduct', id)

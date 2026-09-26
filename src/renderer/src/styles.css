@@ -1303,7 +1303,8 @@ td.res {
 }
 .resist-table th:first-child,
 .resist-table td:first-child {
-  width: 64px;
+  width: 104px;
+  white-space: nowrap;
 }
 .resist-table th:last-child,
 .resist-table td:last-child {
@@ -1337,4 +1338,58 @@ td.res span {
 }
 .fit-open-btn {
   margin-top: 8px;
+}
+
+/* ---------- game UI icons ---------- */
+
+.ui-icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+  object-fit: contain;
+}
+.ui-icon.placeholder {
+  display: inline-block;
+}
+.with-icon,
+td.attr-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+td.attr-name {
+  display: flex;
+}
+.resist-table th .ui-icon {
+  display: block;
+  margin: 0 auto;
+}
+.big-stats .ui-icon {
+  align-self: center;
+}
+.damage-profile {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.dmg {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.dmg-em {
+  color: #6fb0ec;
+}
+.dmg-th {
+  color: #ef7a72;
+}
+.dmg-ki {
+  color: #c3cad1;
+}
+.dmg-ex {
+  color: #f0b060;
+}
+.slot-head .ui-icon {
+  opacity: 0.9;
 }

@@ -51,6 +51,8 @@ export interface CanopusApi {
     system(id: number): Promise<SystemBasic | null>
     info(typeId: number): Promise<InfoBundle>
     skillCatalog(): Promise<SkillCatalogGroup[]>
+    /** attributeID → iconID */
+    attributeIcons(): Promise<Record<number, number>>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
     dogmaAttrs(ids: number[], attrIds: number[]): Promise<Record<number, Record<number, number>>>
     blueprintForProduct(productId: number): Promise<InfoBundle['producedBy'] | null>

@@ -60,7 +60,7 @@ export interface DogmaEffect {
 }
 
 /** Bumped whenever the DB layout changes, forcing a rebuild from the SDE zip. */
-export const SDE_FORMAT = 2
+export const SDE_FORMAT = 3
 
 export interface SdeDb {
   format: number
@@ -87,6 +87,8 @@ export interface SdeDb {
   constellations: Record<number, string>
   factions: Record<number, L10n>
   races: Record<number, L10n>
+  /** iconID → client resource path (res:/ui/texture/...) */
+  icons: Record<number, string>
 }
 
 // ---------- IPC payloads ----------
@@ -126,6 +128,7 @@ export interface InfoAttribute {
   value: number
   unit?: number
   high: boolean
+  icon?: number
 }
 
 export interface InfoBundle {

@@ -9,6 +9,7 @@ import { useFitting } from '../lib/fitting'
 import { HUBS, hubPrices } from '../lib/market'
 import { CATEGORY, primeBasics, tn, type Lang } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
+import { AttrIcon, Icon } from './Icon'
 import { useInfo } from './InfoContext'
 import { LevelPips, MissingSkillsBox, SkillStatusIcon } from './skills'
 import { RichText, TypeLink, typeImage } from './TypeLink'
@@ -280,7 +281,10 @@ function AttributesTab({ b, lang }: { b: InfoBundle; lang: Lang }) {
             <tbody>
               {attrs.map((a) => (
                 <tr key={a.id} title={a.tt ? tn(a.tt, lang) : undefined}>
-                  <td>{tn(a.n, lang)}</td>
+                  <td className="attr-name">
+                    <Icon id={a.icon} size={22} />
+                    {tn(a.n, lang)}
+                  </td>
                   <td className="num">
                     <AttrValue a={a} b={b} lang={lang} />
                   </td>
@@ -361,11 +365,15 @@ function SkillTab({ b, lang }: { b: InfoBundle; lang: Lang }) {
           </tr>
           <tr>
             <td>Основной атрибут</td>
-            <td>{tn(ATTR_NAMES[s.primary], lang)}</td>
+            <td className="attr-name">
+              <AttrIcon attr={s.primary} /> {tn(ATTR_NAMES[s.primary], lang)}
+            </td>
           </tr>
           <tr>
             <td>Вторичный атрибут</td>
-            <td>{tn(ATTR_NAMES[s.secondary], lang)}</td>
+            <td className="attr-name">
+              <AttrIcon attr={s.secondary} /> {tn(ATTR_NAMES[s.secondary], lang)}
+            </td>
           </tr>
           {rate > 0 && (
             <tr>

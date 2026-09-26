@@ -1,5 +1,6 @@
 import { useLang } from '../../AppContext'
 import { useCharacter } from '../../CharacterContext'
+import { AttrIcon } from '../../components/Icon'
 import { TypeLink } from '../../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, Stat } from '../../components/ui'
 import { ATTR_NAMES, IMPLANT_BONUS, IMPLANT_SLOT_ATTR } from '../../lib/dogma'
@@ -78,7 +79,10 @@ export default function ClonesTab({ id }: { id: number }) {
                   const base = char.baseAttributes?.[Number(aid)] ?? total
                   return (
                     <tr key={aid}>
-                      <td>{tn(n, lang)}</td>
+                      <td className="attr-name">
+                        <AttrIcon attr={Number(aid)} />
+                        {tn(n, lang)}
+                      </td>
                       <td className="num">{base}</td>
                       <td className="num good">{total - base ? `+${total - base}` : ''}</td>
                       <td className="num">

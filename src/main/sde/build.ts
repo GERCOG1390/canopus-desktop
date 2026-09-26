@@ -99,7 +99,8 @@ export async function buildSde(
     regions: {},
     constellations: {},
     factions: {},
-    races: {}
+    races: {},
+    icons: {}
   }
   const descriptions: Record<number, L10n> = {}
 
@@ -197,7 +198,10 @@ export async function buildSde(
     mapRegions: (r) => (db.regions[r._key] = l10n(r.name)),
     mapConstellations: (r) => (db.constellations[r._key] = l10n(r.name)[0]),
     factions: (r) => (db.factions[r._key] = l10n(r.name)),
-    races: (r) => (db.races[r._key] = l10n(r.name))
+    races: (r) => (db.races[r._key] = l10n(r.name)),
+    icons: (r) => {
+      if (r.iconFile) db.icons[r._key] = String(r.iconFile).toLowerCase()
+    }
   }
 
   const files = Object.keys(handlers)

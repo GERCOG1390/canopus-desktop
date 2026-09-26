@@ -1,4 +1,5 @@
 import { useCharacter } from '../../CharacterContext'
+import { AttrIcon } from '../../components/Icon'
 import { Card, Empty, ErrorBox, Loading, ProgressBar, Sec, Stat } from '../../components/ui'
 import { TypeLink } from '../../components/TypeLink'
 import { ATTR_NAMES } from '../../lib/dogma'
@@ -159,7 +160,10 @@ export default function Overview({ id }: { id: number }) {
                     const base = char.baseAttributes?.[Number(aid)] ?? total
                     return (
                       <tr key={aid}>
-                        <td>{tn(n, lang)}</td>
+                        <td className="attr-name">
+                          <AttrIcon attr={Number(aid)} />
+                          {tn(n, lang)}
+                        </td>
                         <td className="num">
                           <b>{total}</b>
                           {total !== base && <span className="good small"> (+{total - base} импланты)</span>}

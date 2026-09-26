@@ -5,6 +5,7 @@ import * as auth from './auth'
 import { request } from './http'
 import * as sde from './sde'
 import * as dogma from './dogma'
+import { handleIconScheme, registerIconScheme } from './icons'
 import type { FitSpec, SkillSource } from '../shared/fit'
 import { loadSettings, saveSettings } from './storage'
 
@@ -73,6 +74,7 @@ function registerIpc(): void {
   ipcMain.handle('sde:system', (_e, id: number) => sde.system(id))
   ipcMain.handle('sde:info', (_e, id: number) => sde.info(id))
   ipcMain.handle('sde:skillCatalog', () => sde.skillCatalog())
+  ipcMain.handle('sde:attributeIcons', () => sde.attributeIcons())
   ipcMain.handle('sde:requiredSkills', (_e, ids: number[]) => sde.requiredSkills(ids))
   ipcMain.handle('sde:dogmaAttrs', (_e, ids: number[], attrIds: number[]) => sde.dogmaAttrs(ids, attrIds))
   ipcMain.handle('sde:blueprintForProduct', (_e, id: number) => sde.blueprintForProduct(id))
@@ -109,8 +111,11 @@ if (!primaryInstance) {
   })
 }
 
+registerIconScheme()
+
 app.whenReady().then(() => {
   if (!primaryInstance) return
+  handleIconScheme()
   auth.initAuth()
   registerIpc()
   createWindow()

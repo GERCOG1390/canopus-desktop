@@ -342,6 +342,18 @@ export function skillCatalog(): SkillCatalogGroup[] {
     .sort((a, b) => a.n[0].localeCompare(b.n[0]))
 }
 
+/** attributeID → iconID for every attribute that has an icon. */
+export function attributeIcons(): Record<number, number> {
+  const out: Record<number, number> = {}
+  for (const [id, a] of Object.entries(need().attributes)) if (a.icon) out[Number(id)] = a.icon
+  return out
+}
+
+/** Client resource path of an icon, or null. */
+export function iconPath(iconId: number): string | null {
+  return db?.icons?.[iconId] ?? null
+}
+
 // ---------------- Fitting ----------------
 
 const SLOT_EFFECTS: [number, FittableType['slot']][] = [
@@ -442,7 +454,7 @@ export async function info(typeId: number): Promise<InfoBundle> {
   for (const [aid, value] of Object.entries(dogma.a)) {
     const meta = d.attributes[Number(aid)]
     if (!meta?.pub || !meta.dn?.[0] || reqAttrIds.has(Number(aid)) || value === 0) continue
-    attributes.push({ id: Number(aid), n: meta.dn, tt: meta.tt, cat: d.attrCategories[meta.cat ?? 0] ?? 'Other', value, unit: meta.u, high: meta.high })
+    attributes.push({ id: Number(aid), n: meta.dn, tt: meta.tt, cat: d.attrCategories[meta.cat ?? 0] ?? 'Other', value, unit: meta.u, high: meta.high, icon: meta.icon })
     if (meta.u) unitIds.add(meta.u)
     if (meta.u === 116) refIds.add(value)
     if (meta.u === 115) groupIds.add(value)

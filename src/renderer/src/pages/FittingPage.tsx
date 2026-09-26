@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { FitSpec, FitStats, FittableType, LayerStats, ModuleState, SavedFit, SkillSource, Slot } from '../../../shared/fit'
 import type { SkillReq } from '../../../shared/sde'
 import { useApp, useLang } from '../AppContext'
 import { useCharacter } from '../CharacterContext'
+import { AttrIcon } from '../components/Icon'
 import { useInfo } from '../components/InfoContext'
 import { MissingSkillsBox } from '../components/skills'
 import { TypeLink, TypeName } from '../components/TypeLink'
@@ -14,6 +15,9 @@ import { CATEGORY, getBasic, searchTypesSde, tn, useTypeBasics } from '../lib/sd
 import { useAsync } from '../lib/useAsync'
 
 type SkillMode = 'all5' | 'char'
+
+/** Ship attributes holding the slot counts; their icons head each slot group. */
+const SLOT_ATTR: Record<Slot, number> = { hi: 14, med: 13, lo: 12, rig: 1137, sub: 1367 }
 
 export default function FittingPage() {
   const { fit } = useFitting()
@@ -250,6 +254,7 @@ function Editor() {
             return (
               <div key={slot} className={`slot-group ${browserSlot === slot ? 'focused' : ''}`}>
                 <div className="slot-head" onClick={() => setBrowserSlot(slot)}>
+                  <AttrIcon attr={SLOT_ATTR[slot]} size={20} />
                   {SLOT_LABEL[slot]}{' '}
                   <span className={mods.length > total ? 'bad' : 'muted'}>
                     {mods.length}/{total}
@@ -522,14 +527,49 @@ function ModuleBrowser({
 
 // ---------------- Stats ----------------
 
-function Bar({ label, used, total, unit = '', digits = 1 }: { label: string; used: number; total: number; unit?: string; digits?: number }) {
+/** Dogma attribute IDs whose in-game icons label the stats. */
+const ICON = {
+  cpu: 48,
+  power: 11,
+  calibration: 1132,
+  turrets: 102,
+  launchers: 101,
+  droneBandwidth: 1271,
+  droneBay: 283,
+  shield: 263,
+  armor: 265,
+  hull: 9,
+  resist: [271, 274, 273, 272],
+  damage: [114, 118, 117, 116],
+  capacitor: 482,
+  recharge: 55,
+  velocity: 37,
+  agility: 70,
+  signature: 552,
+  mass: 4,
+  targetRange: 76,
+  scanRes: 564,
+  maxTargets: 192,
+  cargo: 38,
+  shieldRecharge: 479,
+  rof: 51,
+  optimal: 54,
+  explosionRadius: 654
+}
+const SENSOR_ATTR: Record<string, number> = { Радар: 208, Ладар: 209, Магнитометрия: 210, Гравиметрия: 211 }
+const DAMAGE_NAMES = ['ЭМ', 'Термический', 'Кинетический', 'Фугасный']
+
+function Bar({ attr, label, used, total, unit = '', digits = 1 }: { attr: number; label: string; used: number; total: number; unit?: string; digits?: number }) {
   const over = used > total + 1e-6
   const pct = total ? Math.min(100, (used / total) * 100) : used ? 100 : 0
   const f = (v: number) => v.toLocaleString('ru-RU', { maximumFractionDigits: digits })
   return (
     <div className="res-bar">
       <div className="res-label">
-        <span>{label}</span>
+        <span className="with-icon">
+          <AttrIcon attr={attr} size={20} />
+          {label}
+        </span>
         <span className={over ? 'bad' : ''}>
           {f(used)} / {f(total)}
           {unit}
@@ -542,14 +582,32 @@ function Bar({ label, used, total, unit = '', digits = 1 }: { label: string; use
   )
 }
 
+/** One label/value line of a stats section, with the game's icon. */
+function KV({ attr, label, children, className = '' }: { attr?: number; label: string; children: ReactNode; className?: string }) {
+  return (
+    <>
+      <span className="with-icon">
+        {attr ? <AttrIcon attr={attr} size={20} /> : <span className="ui-icon placeholder" style={{ width: 20, height: 20 }} />}
+        {label}
+      </span>
+      <b className={className}>{children}</b>
+    </>
+  )
+}
+
 const RES_CLASS = ['em', 'th', 'ki', 'ex']
 
-function Layer({ name, l }: { name: string; l: LayerStats }) {
+function Layer({ name, attr, l }: { name: string; attr: number; l: LayerStats }) {
   return (
     <tr>
       <td>
-        {name}
-        <div className="muted small">{fmtNum(l.hp)} HP</div>
+        <span className="with-icon">
+          <AttrIcon attr={attr} size={22} />
+          <span>
+            {name}
+            <div className="muted small">{fmtNum(l.hp)} HP</div>
+          </span>
+        </span>
       </td>
       {l.resist.map((r, i) => (
         <td key={i} className={`res res-${RES_CLASS[i]}`}>
@@ -567,6 +625,8 @@ const n2 = (v: number) => v.toLocaleString('ru-RU', { maximumFractionDigits: 2 }
 const km = (m: number) => (m >= 1000 ? `${n1(m / 1000)} км` : `${fmtNum(m)} м`)
 
 function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
+  const damage = s.offense.weapons.reduce((acc, w) => acc.map((x, i) => x + w.damage[i] / (w.cycle || 1)) as number[], [0, 0, 0, 0])
+  const damageTotal = damage.reduce((a, b) => a + b, 0)
   return (
     <div className="stats-panel">
       {s.problems.length > 0 && (
@@ -579,24 +639,30 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
 
       <section>
         <h4>Ресурсы</h4>
-        <Bar label="CPU" used={s.ship.cpu.used} total={s.ship.cpu.total} unit=" tf" />
-        <Bar label="Реактор (PG)" used={s.ship.power.used} total={s.ship.power.total} unit=" MW" />
-        <Bar label="Калибровка" used={s.ship.calibration.used} total={s.ship.calibration.total} digits={0} />
+        <Bar attr={ICON.cpu} label="ЦПУ" used={s.ship.cpu.used} total={s.ship.cpu.total} unit=" tf" />
+        <Bar attr={ICON.power} label="Реактор" used={s.ship.power.used} total={s.ship.power.total} unit=" MW" />
+        <Bar attr={ICON.calibration} label="Калибровка" used={s.ship.calibration.used} total={s.ship.calibration.total} digits={0} />
         <div className="res-row">
-          <span>
+          <span className="with-icon">
+            <AttrIcon attr={ICON.turrets} size={20} />
             Турели {s.ship.turrets.used}/{s.ship.turrets.total}
           </span>
-          <span>
+          <span className="with-icon">
+            <AttrIcon attr={ICON.launchers} size={20} />
             Пусковые {s.ship.launchers.used}/{s.ship.launchers.total}
           </span>
         </div>
-        {s.ship.droneBandwidth.total > 0 && <Bar label="Канал дронов" used={s.ship.droneBandwidth.used} total={s.ship.droneBandwidth.total} unit=" Мбит/с" digits={0} />}
+        {s.ship.droneBandwidth.total > 0 && (
+          <Bar attr={ICON.droneBandwidth} label="Канал дронов" used={s.ship.droneBandwidth.used} total={s.ship.droneBandwidth.total} unit=" Мбит/с" digits={0} />
+        )}
+        {s.ship.droneBay.total > 0 && <Bar attr={ICON.droneBay} label="Отсек дронов" used={s.ship.droneBay.used} total={s.ship.droneBay.total} unit=" м³" digits={0} />}
       </section>
 
       <section>
-        <h4>Урон</h4>
+        <h4>Огневая мощь</h4>
         <div className="big-stats">
           <div>
+            <AttrIcon attr={ICON.rof} size={24} />
             <b>{n1(s.offense.totalDps)}</b>
             <span>DPS</span>
           </div>
@@ -605,6 +671,16 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
             <span>залп</span>
           </div>
         </div>
+        {damageTotal > 0 && (
+          <div className="damage-profile">
+            {damage.map((d, i) => (
+              <span key={i} className={`dmg dmg-${RES_CLASS[i]}`} title={`${DAMAGE_NAMES[i]}: ${n1(d)} DPS`}>
+                <AttrIcon attr={ICON.damage[i]} size={18} />
+                {Math.round((d / damageTotal) * 100)}%
+              </span>
+            ))}
+          </div>
+        )}
         {s.offense.weapons.length ? (
           <table className="table compact">
             <tbody>
@@ -612,7 +688,7 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
                 <tr key={`${w.kind}-${w.typeId}-${w.chargeTypeId}`}>
                   <td>
                     {w.count > 1 && <span className="muted">{w.count}× </span>}
-                    <TypeLink id={w.typeId} icon={false} />
+                    <TypeLink id={w.typeId} />
                     {w.chargeTypeId && (
                       <div className="muted small">
                         <TypeName id={w.chargeTypeId} />
@@ -621,11 +697,14 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
                   </td>
                   <td className="num">{n1(w.dps)} DPS</td>
                   <td className="num muted small">
-                    {w.kind === 'missile'
-                      ? `${km(w.optimal ?? 0)} · взрыв ${fmtNum(w.explosionRadius ?? 0)} м`
-                      : w.optimal !== undefined
-                        ? `${km(w.optimal)} + ${km(w.falloff ?? 0)}`
-                        : ''}
+                    <span className="with-icon">
+                      <AttrIcon attr={w.kind === 'missile' ? ICON.explosionRadius : ICON.optimal} size={16} />
+                      {w.kind === 'missile'
+                        ? `${km(w.optimal ?? 0)} · ${fmtNum(w.explosionRadius ?? 0)} м`
+                        : w.optimal !== undefined
+                          ? `${km(w.optimal)} + ${km(w.falloff ?? 0)}`
+                          : ''}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -637,7 +716,7 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
       </section>
 
       <section>
-        <h4>Защита</h4>
+        <h4>Системы защиты</h4>
         <div className="big-stats">
           <div>
             <b>{fmtNum(s.defense.ehp)}</b>
@@ -652,92 +731,93 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
           <thead>
             <tr>
               <th />
-              <th title="ЭМ">ЭМ</th>
-              <th title="Термический">Терм</th>
-              <th title="Кинетический">Кин</th>
-              <th title="Фугасный">Фуг</th>
+              {ICON.resist.map((a, i) => (
+                <th key={a} title={`${DAMAGE_NAMES[i]} урон`}>
+                  <AttrIcon attr={a} size={20} />
+                </th>
+              ))}
               <th className="num">EHP</th>
             </tr>
           </thead>
           <tbody>
-            <Layer name="Щит" l={s.defense.shield} />
-            <Layer name="Броня" l={s.defense.armor} />
-            <Layer name="Корпус" l={s.defense.hull} />
+            <Layer name="Щит" attr={ICON.shield} l={s.defense.shield} />
+            <Layer name="Броня" attr={ICON.armor} l={s.defense.armor} />
+            <Layer name="Корпус" attr={ICON.hull} l={s.defense.hull} />
           </tbody>
         </table>
         <div className="kv-list">
-          <span>Пассивная регенерация щита</span>
-          <b>{n1(s.defense.passiveShieldRegen)} HP/с</b>
+          <KV attr={ICON.shieldRecharge} label="Регенерация щита">
+            {n1(s.defense.passiveShieldRegen)} HP/с · {fmtNum(s.defense.shieldRechargeSec)} с
+          </KV>
           {s.defense.shieldBoost > 0 && (
-            <>
-              <span>Накачка щита</span>
-              <b>{n1(s.defense.shieldBoost)} HP/с</b>
-            </>
+            <KV attr={ICON.shield} label="Накачка щита">
+              {n1(s.defense.shieldBoost)} HP/с
+            </KV>
           )}
           {s.defense.armorRepair > 0 && (
-            <>
-              <span>Ремонт брони</span>
-              <b>{n1(s.defense.armorRepair)} HP/с</b>
-            </>
+            <KV attr={ICON.armor} label="Ремонт брони">
+              {n1(s.defense.armorRepair)} HP/с
+            </KV>
           )}
-          {s.defense.activeTankEhp > 0 && (
-            <>
-              <span>Активный танк</span>
-              <b>{n1(s.defense.activeTankEhp)} EHP/с</b>
-            </>
-          )}
+          {s.defense.activeTankEhp > 0 && <KV label="Активный танк">{n1(s.defense.activeTankEhp)} EHP/с</KV>}
         </div>
       </section>
 
       <section>
-        <h4>Накопитель</h4>
+        <h4>Накопитель энергии</h4>
         <div className="kv-list">
-          <span>Ёмкость</span>
-          <b>{fmtNum(s.capacitor.capacity)} ГДж</b>
-          <span>Перезарядка</span>
-          <b>{n1(s.capacitor.rechargeSec)} с</b>
-          <span>Расход / пик регена</span>
-          <b>
+          <KV attr={ICON.capacitor} label="Ёмкость">
+            {fmtNum(s.capacitor.capacity)} ГДж
+          </KV>
+          <KV attr={ICON.recharge} label="Перезарядка">
+            {n1(s.capacitor.rechargeSec)} с
+          </KV>
+          <KV label="Расход / пик регена">
             {n2(s.capacitor.usePerSecond)} / {n2(s.capacitor.peakRecharge)} ГДж/с
-          </b>
-          <span>Стабильность</span>
-          <b className={s.capacitor.stable ? 'good' : 'bad'}>
+          </KV>
+          <KV label="Стабильность" className={s.capacitor.stable ? 'good' : 'bad'}>
             {s.capacitor.stable ? `стабилен ${((s.capacitor.stableLevel ?? 1) * 100).toFixed(1)}%` : `кончится за ${fmtDuration((s.capacitor.lastsSec ?? 0) * 1000)}`}
-          </b>
+          </KV>
         </div>
       </section>
 
       <section>
-        <h4>Навигация</h4>
+        <h4>Ходовые характеристики</h4>
         <div className="kv-list">
-          <span>Скорость</span>
-          <b>{n1(s.navigation.maxVelocity)} м/с</b>
-          <span>Разгон до варпа</span>
-          <b>{n2(s.navigation.alignSec)} с</b>
-          <span>Скорость варпа</span>
-          <b>{n2(s.navigation.warpSpeed)} а.е./с</b>
-          <span>Сигнатура</span>
-          <b>{n1(s.navigation.signatureRadius)} м</b>
-          <span>Масса</span>
-          <b>{fmtNum(s.navigation.mass)} кг</b>
+          <KV attr={ICON.velocity} label="Скорость">
+            {n1(s.navigation.maxVelocity)} м/с
+          </KV>
+          <KV attr={ICON.agility} label="Разгон до варпа">
+            {n2(s.navigation.alignSec)} с · {n2(s.navigation.agility)}x
+          </KV>
+          <KV label="Скорость варпа">{n2(s.navigation.warpSpeed)} а.е./с</KV>
+          <KV attr={ICON.signature} label="Сигнатура">
+            {n1(s.navigation.signatureRadius)} м
+          </KV>
+          <KV attr={ICON.mass} label="Масса">
+            {fmtNum(s.navigation.mass / 1000)} т
+          </KV>
         </div>
       </section>
 
       <section>
-        <h4>Захват целей</h4>
+        <h4>Целеуказание</h4>
         <div className="kv-list">
-          <span>Дальность</span>
-          <b>{km(s.targeting.maxRange)}</b>
-          <span>Разрешение сканера</span>
-          <b>{n1(s.targeting.scanResolution)} мм</b>
-          <span>Целей</span>
-          <b>{s.targeting.maxTargets}</b>
-          <span>Сенсоры</span>
-          <b>
-            {n1(s.targeting.sensorStrength)} ({s.targeting.sensorType})
-          </b>
-          <span>Трюм</span>
-          <b>{fmtNum(s.ship.cargo)} м³</b>
+          <KV attr={ICON.targetRange} label="Дальность захвата">
+            {km(s.targeting.maxRange)}
+          </KV>
+          <KV attr={ICON.scanRes} label="Разрешение сканера">
+            {n1(s.targeting.scanResolution)} мм
+          </KV>
+          <KV attr={ICON.maxTargets} label="Целей одновременно">
+            {s.targeting.maxTargets}
+          </KV>
+          <KV attr={SENSOR_ATTR[s.targeting.sensorType]} label={`Сенсоры (${s.targeting.sensorType})`}>
+            {n2(s.targeting.sensorStrength)}
+          </KV>
+          <KV attr={ICON.cargo} label="Грузовой отсек">
+            {fmtNum(s.ship.cargo)} м³
+          </KV>
         </div>
       </section>
       <p className="muted small">Расчёт по данным догмы SDE: навыки, бонусы корпуса, модули, заряды, импланты, штрафы за стакинг. Модулей: {fit.modules.length}.</p>
