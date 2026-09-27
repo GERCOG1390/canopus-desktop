@@ -105,6 +105,12 @@ export async function buildSde(
   }
   const descriptions: Record<number, L10n> = {}
 
+  // Wormhole class is set on the system, or inherited from its constellation / region; effects come
+  // from "secondary suns" (effect beacons). Files arrive in any order, so these are joined afterwards.
+  const constellationClass = new Map<number, number>()
+  const regionClass = new Map<number, number>()
+  const systemEffect = new Map<number, number>()
+
   const handlers: Record<string, Handler> = {
     types: (r) => {
       db.types[r._key] = {
@@ -195,7 +201,7 @@ export async function buildSde(
       }),
     masteries: (r) => (db.masteries[r._key] = (r._value as Row[]).sort((a, b) => a._key - b._key).map((l) => l._value as number[])),
     mapSolarSystems: (r) =>
-      (db.systems[r._key] = { n: l10n(r.name)[0], sec: r.securityStatus ?? 0, r: r.regionID, c: r.constellationID }),
+      (db.systems[r._key] = { n: l10n(r.name)[0], sec: r.securityStatus ?? 0, r: r.regionID, c: r.constellationID, ...(r.wormholeClassID ? { wc: r.wormholeClassID } : {}) }),
     mapStargates: (r) => {
       const from = r.solarSystemID as number
       const to = r.destination?.solarSystemID as number | undefined
@@ -203,8 +209,17 @@ export async function buildSde(
       const list = (db.jumps[from] ??= [])
       if (!list.includes(to)) list.push(to)
     },
-    mapRegions: (r) => (db.regions[r._key] = l10n(r.name)),
-    mapConstellations: (r) => (db.constellations[r._key] = l10n(r.name)[0]),
+    mapRegions: (r) => {
+      db.regions[r._key] = l10n(r.name)
+      if (r.wormholeClassID) regionClass.set(r._key, r.wormholeClassID)
+    },
+    mapConstellations: (r) => {
+      db.constellations[r._key] = l10n(r.name)[0]
+      if (r.wormholeClassID) constellationClass.set(r._key, r.wormholeClassID)
+    },
+    mapSecondarySuns: (r) => {
+      if (r.effectBeaconTypeID) systemEffect.set(r.solarSystemID, r.effectBeaconTypeID)
+    },
     factions: (r) => (db.factions[r._key] = l10n(r.name)),
     races: (r) => (db.races[r._key] = l10n(r.name)),
     icons: (r) => {
@@ -216,6 +231,12 @@ export async function buildSde(
   let seen = 0
   onStatus('building', 0)
   await readZip(zipPath, handlers, (name) => onStatus('building', seen++ / files.length, name))
+  for (const [id, s] of Object.entries(db.systems)) {
+    const wc = s.wc ?? constellationClass.get(s.c) ?? regionClass.get(s.r)
+    if (wc) s.wc = wc
+    const fx = systemEffect.get(Number(id))
+    if (fx) s.fx = fx
+  }
 
   const dbPath = `${dir}/sde-${build.buildNumber}.json`
   const descPath = `${dir}/sde-${build.buildNumber}-descriptions.json`

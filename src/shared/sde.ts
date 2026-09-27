@@ -60,7 +60,7 @@ export interface DogmaEffect {
 }
 
 /** Bumped whenever the DB layout changes, forcing a rebuild from the SDE zip. */
-export const SDE_FORMAT = 5
+export const SDE_FORMAT = 6
 
 export interface SdeDb {
   format: number
@@ -82,7 +82,8 @@ export interface SdeDb {
   reprocess: Record<number, [number, number][]>
   certificates: Record<number, { n: L10n; g: number; skills: [number, number, number, number, number, number][] }>
   masteries: Record<number, number[][]>
-  systems: Record<number, { n: string; sec: number; r: number; c: number }>
+  /** wc: wormhole class (1–6 J-space, 7 high, 8 low, 9 null, 12 Thera, 13 shattered, 25 Pochven…); fx: system effect beacon type */
+  systems: Record<number, { n: string; sec: number; r: number; c: number; wc?: number; fx?: number }>
   regions: Record<number, L10n>
   constellations: Record<number, string>
   /** Stargate connections: system → neighbouring systems. */
@@ -106,6 +107,8 @@ export interface TypeBasic {
   v?: number
   /** Cargo / charge capacity (m³) */
   cap?: number
+  /** kg */
+  mass?: number
 }
 
 /** A market group as shown in the market / ship browser. */
@@ -217,4 +220,24 @@ export interface SystemBasic {
   n: string
   sec: number
   region: L10n
+  /** Wormhole class of the system (see SdeDb.systems) */
+  wc?: number
+  /** Wormhole system effect beacon (Pulsar, Magnetar…) */
+  fx?: number
+}
+
+/** A wormhole type (the signature's code, e.g. "C247") with its limits. */
+export interface WormholeType {
+  id: number
+  code: string
+  /** Class of the system it leads to (wormhole class IDs, see SdeDb.systems) */
+  target: number
+  /** Minutes */
+  lifetime: number
+  /** kg */
+  mass: number
+  /** Heaviest ship that may pass, kg */
+  jumpMass: number
+  /** kg regenerated per day */
+  regen: number
 }

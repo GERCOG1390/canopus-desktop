@@ -4,6 +4,7 @@ import type { CombatPilot, CombatResult, CombatScenario } from './combat'
 import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
 import type { NotifyEvent, NotifySettings } from './notify'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
+import type { WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
@@ -67,6 +68,7 @@ export interface CanopusApi {
     marketPath(typeId: number): Promise<number[]>
     /** Published items anywhere under a market group. */
     marketTypesIn(groupId: number): Promise<number[]>
+    wormholeTypes(): Promise<WormholeType[]>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
     dogmaAttrs(ids: number[], attrIds: number[]): Promise<Record<number, Record<number, number>>>
     blueprintForProduct(productId: number): Promise<InfoBundle['producedBy'] | null>

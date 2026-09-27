@@ -2464,3 +2464,54 @@ html.overlay-mode body {
   gap: 4px 6px;
   align-items: center;
 }
+
+/* Wormholes */
+.wh-card {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  margin-top: 10px;
+}
+.wh-kv {
+  max-width: 560px;
+  margin-top: 10px;
+}
+.wh-hint {
+  grid-column: 1 / -1;
+}
+.wh-form {
+  align-items: end;
+  flex-wrap: wrap;
+}
+.wh-ships {
+  margin: 12px 0;
+}
+.wh-ships-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.wh-ships-head .searchbox {
+  width: 320px;
+}
+.wh-outside td {
+  background: rgba(230, 160, 60, 0.08);
+}
+.wh-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: var(--panel-2);
+  margin: 8px 0 12px;
+}
+.wh-bar-sure {
+  background: var(--accent);
+}
+.wh-bar-maybe {
+  background: repeating-linear-gradient(45deg, rgba(79, 179, 232, 0.5) 0 6px, rgba(79, 179, 232, 0.2) 6px 12px);
+}
+.selected-row td {
+  background: rgba(79, 179, 232, 0.12);
+}

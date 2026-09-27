@@ -17,7 +17,8 @@ import type {
   SkillCatalogGroup,
   SkillReq,
   SystemBasic,
-  TypeBasic
+  TypeBasic,
+  WormholeType
 } from '../../shared/sde'
 import type { FittableType } from '../../shared/fit'
 import { SDE_FORMAT } from '../../shared/sde'
@@ -232,7 +233,7 @@ export function basics(ids: number[]): Record<number, TypeBasic> {
   for (const id of ids) {
     const t = d.types[id]
     if (!t) continue
-    out[id] = { id, n: t.n, g: t.g, c: d.groups[t.g]?.c ?? 0, meta: t.meta, pub: t.pub, v: t.pvol ?? t.vol, cap: t.cap }
+    out[id] = { id, n: t.n, g: t.g, c: d.groups[t.g]?.c ?? 0, meta: t.meta, pub: t.pub, v: t.pvol ?? t.vol, cap: t.cap, mass: t.mass }
   }
   return out
 }
@@ -281,7 +282,27 @@ export function searchSystems(query: string, limit = 20): SystemBasic[] {
 
 export function system(id: number): SystemBasic | null {
   const s = need().systems[id]
-  return s ? { id, n: s.n, sec: s.sec, region: need().regions[s.r] ?? ['', ''] } : null
+  return s ? { id, n: s.n, sec: s.sec, region: need().regions[s.r] ?? ['', ''], wc: s.wc, fx: s.fx } : null
+}
+
+const WORMHOLE_GROUP = 988
+const WH_ATTR = { target: 1381, lifetime: 1382, mass: 1383, regen: 1384, jumpMass: 1385 }
+
+/** All wormhole types ("Wormhole C247") with their destination class and mass / time limits. */
+export function wormholeTypes(): WormholeType[] {
+  const d = need()
+  const out: WormholeType[] = []
+  for (const t of Object.values(d.types)) {
+    if (t.g !== WORMHOLE_GROUP) continue
+    const a = d.dogma[t.id]?.a ?? {}
+    const code = t.n[0].replace(/^Wormhole\s+/i, '')
+    if (!/^[A-Z0-9]{4}$/.test(code)) continue
+    out.push({ id: t.id, code, target: a[WH_ATTR.target] ?? 0, lifetime: a[WH_ATTR.lifetime] ?? 0, mass: a[WH_ATTR.mass] ?? 0, jumpMass: a[WH_ATTR.jumpMass] ?? 0, regen: a[WH_ATTR.regen] ?? 0 })
+  }
+  // One entry per code (some codes exist as several types).
+  const byCode = new Map<string, WormholeType>()
+  for (const w of out) if (!byCode.has(w.code) || w.mass > byCode.get(w.code)!.mass) byCode.set(w.code, w)
+  return [...byCode.values()].sort((a, b) => a.code.localeCompare(b.code))
 }
 
 function requirementTree(typeId: number, depth = 0): ReqNode[] {

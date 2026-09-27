@@ -44,6 +44,7 @@ const api: CanopusApi = {
     search: (q, opts) => invoke('sde:search', q, opts),
     searchSystems: (q, limit) => invoke('sde:searchSystems', q, limit),
     system: (id) => invoke('sde:system', id),
+    wormholeTypes: () => invoke('sde:wormholeTypes'),
     info: (id) => invoke('sde:info', id),
     skillCatalog: () => invoke('sde:skillCatalog'),
     attributeIcons: () => invoke('sde:attributeIcons'),
