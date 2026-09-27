@@ -1967,10 +1967,11 @@ html.overlay-mode body {
   white-space: nowrap;
   color: var(--muted);
 }
-.delta-good {
+/* Specific enough to win over row styles like `.kv-list span` (muted text). */
+.stats-panel .delta.delta-good {
   color: #5fd38d;
 }
-.delta-bad {
+.stats-panel .delta.delta-bad {
   color: #ff7b72;
 }
 .resist-table td.res .delta {
