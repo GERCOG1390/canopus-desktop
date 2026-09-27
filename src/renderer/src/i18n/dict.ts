@@ -723,6 +723,8 @@ export const EXACT: Record<string, string> = {
   'Папка логов чата EVE не найдена': 'EVE chat log folder not found',
   'Лог Local не найден — зайдите в игру': 'Local log not found — log into the game',
   'Нет такого предмета': 'No such item',
+  'Предпросмотр:': 'Preview:',
+  'Нельзя установить:': 'Cannot fit:',
   'Сюжетные': 'Storyline',
   'Фракционные': 'Faction',
   'Офицерские': 'Officer',

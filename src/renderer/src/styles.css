@@ -1932,3 +1932,63 @@ html.overlay-mode body {
 .module-row .charge-current {
   width: 200px;
 }
+
+/* Live preview of a hovered module in the fitting stats */
+.preview-banner {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(79, 179, 232, 0.16);
+  border: 1px solid rgba(79, 179, 232, 0.5);
+  font-size: 12px;
+}
+.preview-banner > span:first-child {
+  color: var(--accent);
+  font-weight: 600;
+}
+.preview-banner.blocked {
+  background: rgba(229, 83, 75, 0.14);
+  border-color: rgba(229, 83, 75, 0.5);
+}
+.preview-banner.blocked > span:first-child {
+  color: #ff8a80;
+}
+.stats-panel.previewing {
+  box-shadow: inset 0 0 0 1px rgba(79, 179, 232, 0.35);
+  border-radius: 8px;
+}
+.delta {
+  margin-left: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.delta-good {
+  color: #5fd38d;
+}
+.delta-bad {
+  color: #ff7b72;
+}
+.resist-table td.res .delta {
+  position: relative;
+  display: block;
+  margin: 0;
+  font-size: 10px;
+  line-height: 1;
+}
+.big-stats .delta {
+  font-size: 12px;
+}
+.resist-table .delta {
+  display: block;
+  margin: 1px 0 0;
+  font-size: 10px;
+  line-height: 1.1;
+}
+.resist-table td.num .delta {
+  text-align: right;
+}

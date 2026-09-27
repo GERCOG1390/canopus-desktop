@@ -151,6 +151,9 @@ function Editor() {
   const [notice, setNotice] = useState<string | null>(null)
   const catalog = useAsync(loadCatalog, [])
   const f = fit!
+  /** Item under the cursor in the browser: the stats panel shows the fit as if it were added. */
+  const [hoverId, setHoverId] = useState<number | null>(null)
+  const [preview, setPreview] = useState<{ id: number; stats?: FitStats; blocked?: string } | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -166,6 +169,31 @@ function Editor() {
     }
   }, [f, skills])
 
+  useEffect(() => {
+    if (!hoverId) {
+      setPreview(null)
+      return
+    }
+    let cancelled = false
+    const t = setTimeout(() => {
+      const next = withAdded(f, hoverId)
+      if (!next) return
+      if (typeof next === 'string') {
+        setPreview({ id: hoverId, blocked: next })
+        return
+      }
+      void window.api.fit
+        .calculate(next, skills)
+        .then((s) => !cancelled && setPreview({ id: hoverId, stats: s }))
+        .catch(() => undefined)
+    }, 90)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hoverId, f, skills, stats])
+
   const reqIds = [f.shipTypeId, ...f.modules.flatMap((m) => [m.typeId, m.chargeTypeId ?? 0]), ...f.drones.map((d) => d.typeId), ...f.implants].filter(Boolean)
   const reqs = useAsync(() => window.api.sde.requiredSkills(reqIds), [reqIds.join(',')])
 
@@ -174,50 +202,47 @@ function Editor() {
     setTimeout(() => setNotice(null), 2500)
   }
 
-  function addType(id: number) {
+  /**
+   * The fit with one more item, or the reason it can't be added (text). Used both to fit an item
+   * and to preview it when the cursor is over it in the browser.
+   */
+  function withAdded(x: FitSpec, id: number): FitSpec | string | null {
     const info = catalog.data?.get(id)
-    if (!info) return
+    if (!info) return null
     if (info.slot === 'drone') {
-      updateFit((x) => {
-        const existing = x.drones.find((d) => d.typeId === id)
-        const launched = x.drones.reduce((s, d) => s + d.active, 0)
-        const canLaunch = launched < (stats?.ship.maxActiveDrones ?? 5) ? 1 : 0
-        return existing
-          ? { ...x, drones: x.drones.map((d) => (d.typeId === id ? { ...d, count: d.count + 1, active: d.active + canLaunch } : d)) }
-          : { ...x, drones: [...x.drones, { typeId: id, count: 1, active: canLaunch }] }
-      })
-      return
+      const existing = x.drones.find((d) => d.typeId === id)
+      const launched = x.drones.reduce((s, d) => s + d.active, 0)
+      const canLaunch = launched < (stats?.ship.maxActiveDrones ?? 5) ? 1 : 0
+      return existing
+        ? { ...x, drones: x.drones.map((d) => (d.typeId === id ? { ...d, count: d.count + 1, active: d.active + canLaunch } : d)) }
+        : { ...x, drones: [...x.drones, { typeId: id, count: 1, active: canLaunch }] }
     }
-    if (info.slot === 'implant') {
-      updateFit((x) => (x.implants.includes(id) ? x : { ...x, implants: [...x.implants, id] }))
-      return
-    }
+    if (info.slot === 'implant') return x.implants.includes(id) ? x : { ...x, implants: [...x.implants, id] }
     const slot = info.slot as Slot
     // One subsystem of each kind, as in the game: a new one replaces the fitted one of the same kind.
     if (slot === 'sub' && info.ss) {
-      const same = f.modules.findIndex((m) => m.slot === 'sub' && catalog.data?.get(m.typeId)?.ss === info.ss)
-      if (same >= 0) {
-        updateFit((x) => ({ ...x, modules: x.modules.map((m, i) => (i === same ? { typeId: id, slot, state: defaultState(info) } : m)) }))
-        return
-      }
+      const same = x.modules.findIndex((m) => m.slot === 'sub' && catalog.data?.get(m.typeId)?.ss === info.ss)
+      if (same >= 0) return { ...x, modules: x.modules.map((m, i) => (i === same ? { typeId: id, slot, state: defaultState(info) } : m)) }
     }
-    const used = f.modules.filter((m) => m.slot === slot).length
-    if (stats && used >= stats.ship.slots[slot]) {
-      flash(`Нет свободных слотов «${SLOT_LABEL[slot]}»`)
-      return
-    }
+    const used = x.modules.filter((m) => m.slot === slot).length
+    if (stats && used >= stats.ship.slots[slot]) return `Нет свободных слотов «${SLOT_LABEL[slot]}»`
     // Turrets and launchers also need a free hardpoint (a Tengu has 7 high slots but 6 launcher hardpoints).
     // Counted from the fit itself: stats are recalculated asynchronously and may lag behind quick clicks.
-    const fittedWith = (flag: 'turret' | 'launcher') => f.modules.filter((m) => catalog.data?.get(m.typeId)?.[flag]).length
-    if (stats && info.turret && fittedWith('turret') >= stats.ship.turrets.total) {
-      flash(`Нет свободных точек монтажа турелей: ${fittedWith('turret')} из ${stats.ship.turrets.total}`)
-      return
+    const fittedWith = (flag: 'turret' | 'launcher') => x.modules.filter((m) => catalog.data?.get(m.typeId)?.[flag]).length
+    if (stats && info.turret && fittedWith('turret') >= stats.ship.turrets.total)
+      return `Нет свободных точек монтажа турелей: ${fittedWith('turret')} из ${stats.ship.turrets.total}`
+    if (stats && info.launcher && fittedWith('launcher') >= stats.ship.launchers.total)
+      return `Нет свободных точек монтажа пусковых установок: ${fittedWith('launcher')} из ${stats.ship.launchers.total}`
+    return { ...x, modules: [...x.modules, { typeId: id, slot, state: defaultState(info) }] }
+  }
+
+  function addType(id: number) {
+    const next = withAdded(f, id)
+    if (typeof next === 'string') flash(next)
+    else if (next) {
+      setHoverId(null)
+      updateFit(() => next)
     }
-    if (stats && info.launcher && fittedWith('launcher') >= stats.ship.launchers.total) {
-      flash(`Нет свободных точек монтажа пусковых установок: ${fittedWith('launcher')} из ${stats.ship.launchers.total}`)
-      return
-    }
-    updateFit((x) => ({ ...x, modules: [...x.modules, { typeId: id, slot, state: defaultState(info) }] }))
   }
 
   const setModule = (index: number, patch: Partial<FitSpec['modules'][number]>) =>
@@ -370,10 +395,14 @@ function Editor() {
         </div>
 
         <div className="fit-col browser-col">
-          <ModuleBrowser catalog={catalog.data} loading={catalog.loading} error={catalog.error} slot={browserSlot} setSlot={setBrowserSlot} onAdd={addType} shipTypeId={f.shipTypeId} stats={stats} />
+          <ModuleBrowser catalog={catalog.data} loading={catalog.loading} error={catalog.error} slot={browserSlot} setSlot={setBrowserSlot} onAdd={addType} onHover={setHoverId} shipTypeId={f.shipTypeId} stats={stats} />
         </div>
 
-        <div className="fit-col stats-col">{error ? <ErrorBox error={error} /> : stats ? <StatsPanel stats={stats} fit={f} /> : <Loading label="Считаю…" />}</div>
+        <div className="fit-col stats-col">{error ? <ErrorBox error={error} /> : stats ? (
+            <StatsPanel stats={preview?.stats ?? stats} base={preview?.stats ? stats : undefined} fit={f} preview={preview} />
+          ) : (
+            <Loading label="Считаю…" />
+          )}</div>
       </div>
     </div>
   )
@@ -462,6 +491,7 @@ function ModuleBrowser({
   slot,
   setSlot,
   onAdd,
+  onHover,
   shipTypeId,
   stats
 }: {
@@ -471,6 +501,8 @@ function ModuleBrowser({
   slot: Slot | 'drone' | 'implant'
   setSlot: (s: Slot | 'drone' | 'implant') => void
   onAdd: (id: number) => void
+  /** Item under the cursor (null when it leaves), for the live stats preview */
+  onHover: (id: number | null) => void
   shipTypeId: number
   /** Current fit: slot counts and hardpoints (T3 hulls get them from subsystems) */
   stats?: FitStats | null
@@ -552,12 +584,12 @@ function ModuleBrowser({
       ) : (
         !q && list.length > 0 ? (
           <div className="browser-list browser-tree">
-            <MarketTree mode="add" filter={treeFilter} onPick={onAdd} />
+            <MarketTree mode="add" filter={treeFilter} onPick={onAdd} onHover={onHover} />
           </div>
         ) : (
         <ul className="browser-list">
           {shown.map((t) => (
-            <li key={t.id}>
+            <li key={t.id} onMouseEnter={() => onHover(t.id)} onMouseLeave={() => onHover(null)}>
               <button className="ghost small add-btn" onClick={() => onAdd(t.id)} title="Установить">
                 +
               </button>
@@ -619,7 +651,24 @@ const ICON = {
 const SENSOR_ATTR: Record<string, number> = { Радар: 208, Ладар: 209, Магнитометрия: 210, Гравиметрия: 211 }
 const DAMAGE_NAMES = ['ЭМ', 'Термический', 'Кинетический', 'Фугасный']
 
-function Bar({ attr, label, used, total, unit = '', digits = 1 }: { attr: number; label: string; used: number; total: number; unit?: string; digits?: number }) {
+function Bar({
+  attr,
+  label,
+  used,
+  total,
+  unit = '',
+  digits = 1,
+  prev
+}: {
+  attr: number
+  label: string
+  used: number
+  total: number
+  unit?: string
+  digits?: number
+  /** Usage without the previewed item */
+  prev?: number
+}) {
   const over = used > total + 1e-6
   const pct = total ? Math.min(100, (used / total) * 100) : used ? 100 : 0
   const f = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: digits })
@@ -631,7 +680,7 @@ function Bar({ attr, label, used, total, unit = '', digits = 1 }: { attr: number
           {label}
         </span>
         <span className={over ? 'bad' : ''}>
-          {f(used)} / {f(total)}
+          <Delta v={used} b={prev} digits={digits} better="down" /> {f(used)} / {f(total)}
           {unit}
         </span>
       </div>
@@ -657,7 +706,7 @@ function KV({ attr, label, children, className = '' }: { attr?: number; label: s
 
 const RES_CLASS = ['em', 'th', 'ki', 'ex']
 
-function Layer({ name, attr, l }: { name: string; attr: number; l: LayerStats }) {
+function Layer({ name, attr, l, prev }: { name: string; attr: number; l: LayerStats; prev?: LayerStats }) {
   return (
     <tr>
       <td>
@@ -665,7 +714,9 @@ function Layer({ name, attr, l }: { name: string; attr: number; l: LayerStats })
           <AttrIcon attr={attr} size={22} />
           <span>
             {name}
-            <div className="muted small">{fmtNum(l.hp)} HP</div>
+            <div className="muted small">
+              {fmtNum(l.hp)} HP <Delta v={l.hp} b={prev?.hp} digits={0} />
+            </div>
           </span>
         </span>
       </td>
@@ -673,9 +724,13 @@ function Layer({ name, attr, l }: { name: string; attr: number; l: LayerStats })
         <td key={i} className={`res res-${RES_CLASS[i]}`}>
           <div className="res-fill" style={{ width: `${Math.max(0, r) * 100}%` }} />
           <span>{(r * 100).toFixed(1)}%</span>
+          <Delta v={r * 100} b={prev ? prev.resist[i] * 100 : undefined} />
         </td>
       ))}
-      <td className="num">{fmtNum(l.ehp)}</td>
+      <td className="num">
+        {fmtNum(l.ehp)}
+        <Delta v={l.ehp} b={prev?.ehp} digits={0} />
+      </td>
     </tr>
   )
 }
@@ -684,11 +739,51 @@ const n1 = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: 1 
 const n2 = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: 2 })
 const km = (m: number) => (m >= 1000 ? `${n1(m / 1000)} км` : `${fmtNum(m)} м`)
 
-function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
+/** Change against the fit without the previewed item: green when better, red when worse. */
+function Delta({ v, b, digits = 1, better = 'up', unit = '' }: { v: number; b?: number; digits?: number; better?: 'up' | 'down' | 'none'; unit?: string }) {
+  if (b === undefined || !Number.isFinite(v) || !Number.isFinite(b)) return null
+  const d = v - b
+  if (Math.abs(d) < 0.5 * 10 ** -digits) return null
+  const good = better === 'none' ? null : better === 'up' ? d > 0 : d < 0
+  const text = Math.abs(d).toLocaleString(locale(), { maximumFractionDigits: digits })
+  return (
+    <span className={`delta ${good === null ? '' : good ? 'delta-good' : 'delta-bad'}`} translate="no">
+      {d > 0 ? '+' : '−'}
+      {text}
+      {unit}
+    </span>
+  )
+}
+
+function StatsPanel({
+  stats: s,
+  base: b,
+  fit,
+  preview
+}: {
+  stats: FitStats
+  /** Stats of the actual fit while `stats` shows a preview */
+  base?: FitStats
+  fit: FitSpec
+  preview?: { id: number; stats?: FitStats; blocked?: string } | null
+}) {
   const damage = s.offense.weapons.reduce((acc, w) => acc.map((x, i) => x + w.damage[i] / (w.cycle || 1)) as number[], [0, 0, 0, 0])
   const damageTotal = damage.reduce((a, b) => a + b, 0)
   return (
-    <div className="stats-panel">
+    <div className={`stats-panel ${b ? 'previewing' : ''}`}>
+      {preview && (
+        <div className={`preview-banner ${preview.blocked ? 'blocked' : ''}`}>
+          {preview.blocked ? (
+            <>
+              <span>Нельзя установить:</span> <TypeName id={preview.id} /> — {preview.blocked}
+            </>
+          ) : (
+            <>
+              <span>Предпросмотр:</span> + <TypeName id={preview.id} />
+            </>
+          )}
+        </div>
+      )}
       {s.problems.length > 0 && (
         <div className="warn-box">
           {s.problems.map((p, i) => (
@@ -699,9 +794,9 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
 
       <section>
         <h4>Ресурсы</h4>
-        <Bar attr={ICON.cpu} label="ЦПУ" used={s.ship.cpu.used} total={s.ship.cpu.total} unit=" tf" />
-        <Bar attr={ICON.power} label="Реактор" used={s.ship.power.used} total={s.ship.power.total} unit=" MW" />
-        <Bar attr={ICON.calibration} label="Калибровка" used={s.ship.calibration.used} total={s.ship.calibration.total} digits={0} />
+        <Bar attr={ICON.cpu} label="ЦПУ" used={s.ship.cpu.used} total={s.ship.cpu.total} unit=" tf" prev={b?.ship.cpu.used} />
+        <Bar attr={ICON.power} label="Реактор" used={s.ship.power.used} total={s.ship.power.total} unit=" MW" prev={b?.ship.power.used} />
+        <Bar attr={ICON.calibration} label="Калибровка" used={s.ship.calibration.used} total={s.ship.calibration.total} digits={0} prev={b?.ship.calibration.used} />
         <div className="res-row">
           <span className="with-icon">
             <AttrIcon attr={ICON.turrets} size={20} />
@@ -725,10 +820,12 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
             <AttrIcon attr={ICON.rof} size={24} />
             <b>{n1(s.offense.totalDps)}</b>
             <span>DPS</span>
+            <Delta v={s.offense.totalDps} b={b?.offense.totalDps} />
           </div>
           <div>
             <b>{fmtNum(s.offense.totalVolley)}</b>
             <span>залп</span>
+            <Delta v={s.offense.totalVolley} b={b?.offense.totalVolley} digits={0} />
           </div>
         </div>
         {damageTotal > 0 && (
@@ -781,10 +878,12 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
           <div>
             <b>{fmtNum(s.defense.ehp)}</b>
             <span>EHP</span>
+            <Delta v={s.defense.ehp} b={b?.defense.ehp} digits={0} />
           </div>
           <div>
             <b>{fmtNum(s.defense.hp)}</b>
             <span>HP</span>
+            <Delta v={s.defense.hp} b={b?.defense.hp} digits={0} />
           </div>
         </div>
         <table className="table compact resist-table">
@@ -800,26 +899,31 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
             </tr>
           </thead>
           <tbody>
-            <Layer name="Щит" attr={ICON.shield} l={s.defense.shield} />
-            <Layer name="Броня" attr={ICON.armor} l={s.defense.armor} />
-            <Layer name="Корпус" attr={ICON.hull} l={s.defense.hull} />
+            <Layer name="Щит" attr={ICON.shield} l={s.defense.shield} prev={b?.defense.shield} />
+            <Layer name="Броня" attr={ICON.armor} l={s.defense.armor} prev={b?.defense.armor} />
+            <Layer name="Корпус" attr={ICON.hull} l={s.defense.hull} prev={b?.defense.hull} />
           </tbody>
         </table>
         <div className="kv-list">
           <KV attr={ICON.shieldRecharge} label="Регенерация щита">
             {n1(s.defense.passiveShieldRegen)} HP/с · {fmtNum(s.defense.shieldRechargeSec)} с
+            <Delta v={s.defense.passiveShieldRegen} b={b?.defense.passiveShieldRegen} />
           </KV>
           {s.defense.shieldBoost > 0 && (
             <KV attr={ICON.shield} label="Накачка щита">
               {n1(s.defense.shieldBoost)} HP/с
+              <Delta v={s.defense.shieldBoost} b={b?.defense.shieldBoost} />
             </KV>
           )}
           {s.defense.armorRepair > 0 && (
             <KV attr={ICON.armor} label="Ремонт брони">
               {n1(s.defense.armorRepair)} HP/с
+              <Delta v={s.defense.armorRepair} b={b?.defense.armorRepair} />
             </KV>
           )}
-          {s.defense.activeTankEhp > 0 && <KV label="Активный танк">{n1(s.defense.activeTankEhp)} EHP/с</KV>}
+          {s.defense.activeTankEhp > 0 && <KV label="Активный танк">{n1(s.defense.activeTankEhp)} EHP/с
+              <Delta v={s.defense.activeTankEhp} b={b?.defense.activeTankEhp} />
+            </KV>}
         </div>
       </section>
 
@@ -828,15 +932,21 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
         <div className="kv-list">
           <KV attr={ICON.capacitor} label="Ёмкость">
             {fmtNum(s.capacitor.capacity)} ГДж
+            <Delta v={s.capacitor.capacity} b={b?.capacitor.capacity} digits={0} />
           </KV>
           <KV attr={ICON.recharge} label="Перезарядка">
             {n1(s.capacitor.rechargeSec)} с
+            <Delta v={s.capacitor.rechargeSec} b={b?.capacitor.rechargeSec} better="down" />
           </KV>
           <KV label="Расход / пик регена">
             {n2(s.capacitor.usePerSecond)} / {n2(s.capacitor.peakRecharge)} ГДж/с
+            <Delta v={s.capacitor.usePerSecond} b={b?.capacitor.usePerSecond} digits={2} better="down" />
           </KV>
           <KV label="Стабильность" className={s.capacitor.stable ? 'good' : 'bad'}>
             {s.capacitor.stable ? `стабилен ${((s.capacitor.stableLevel ?? 1) * 100).toFixed(1)}%` : `кончится за ${fmtDuration((s.capacitor.lastsSec ?? 0) * 1000)}`}
+            {s.capacitor.stable && b?.capacitor.stable && (
+              <Delta v={(s.capacitor.stableLevel ?? 1) * 100} b={(b.capacitor.stableLevel ?? 1) * 100} unit="%" />
+            )}
           </KV>
         </div>
       </section>
@@ -846,16 +956,20 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
         <div className="kv-list">
           <KV attr={ICON.velocity} label="Скорость">
             {n1(s.navigation.maxVelocity)} м/с
+            <Delta v={s.navigation.maxVelocity} b={b?.navigation.maxVelocity} />
           </KV>
           <KV attr={ICON.agility} label="Разгон до варпа">
             {n2(s.navigation.alignSec)} с · {n2(s.navigation.agility)}x
+            <Delta v={s.navigation.alignSec} b={b?.navigation.alignSec} digits={2} better="down" />
           </KV>
           <KV label="Скорость варпа">{n2(s.navigation.warpSpeed)} а.е./с</KV>
           <KV attr={ICON.signature} label="Сигнатура">
             {n1(s.navigation.signatureRadius)} м
+            <Delta v={s.navigation.signatureRadius} b={b?.navigation.signatureRadius} better="down" />
           </KV>
           <KV attr={ICON.mass} label="Масса">
             {fmtNum(s.navigation.mass / 1000)} т
+            <Delta v={s.navigation.mass / 1000} b={b ? b.navigation.mass / 1000 : undefined} digits={0} better="down" />
           </KV>
         </div>
       </section>
@@ -865,18 +979,23 @@ function StatsPanel({ stats: s, fit }: { stats: FitStats; fit: FitSpec }) {
         <div className="kv-list">
           <KV attr={ICON.targetRange} label="Дальность захвата">
             {km(s.targeting.maxRange)}
+            <Delta v={s.targeting.maxRange / 1000} b={b ? b.targeting.maxRange / 1000 : undefined} unit=" км" />
           </KV>
           <KV attr={ICON.scanRes} label="Разрешение сканера">
             {n1(s.targeting.scanResolution)} мм
+            <Delta v={s.targeting.scanResolution} b={b?.targeting.scanResolution} />
           </KV>
           <KV attr={ICON.maxTargets} label="Целей одновременно">
             {s.targeting.maxTargets}
+            <Delta v={s.targeting.maxTargets} b={b?.targeting.maxTargets} digits={0} />
           </KV>
           <KV attr={SENSOR_ATTR[s.targeting.sensorType]} label={`Сенсоры (${s.targeting.sensorType})`}>
             {n2(s.targeting.sensorStrength)}
+            <Delta v={s.targeting.sensorStrength} b={b?.targeting.sensorStrength} digits={2} />
           </KV>
           <KV attr={ICON.cargo} label="Грузовой отсек">
             {fmtNum(s.ship.cargo)} м³
+            <Delta v={s.ship.cargo} b={b?.ship.cargo} digits={0} />
           </KV>
         </div>
       </section>
