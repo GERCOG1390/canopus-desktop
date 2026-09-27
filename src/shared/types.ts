@@ -5,7 +5,7 @@ import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './f
 import type { NotifyEvent, NotifySettings } from './notify'
 import type { CombatLogEvent } from './ratting'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
-import type { WormholeType } from './sde'
+import type { JumpHop, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
@@ -70,6 +70,9 @@ export interface CanopusApi {
     /** Published items anywhere under a market group. */
     marketTypesIn(groupId: number): Promise<number[]>
     wormholeTypes(): Promise<WormholeType[]>
+    /** Fewest-jumps capital route within a jump range (null when unreachable). */
+    jumpRoute(from: number, to: number, rangeLy: number): Promise<JumpHop[] | null>
+    lightYears(from: number, to: number): Promise<number | null>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
     dogmaAttrs(ids: number[], attrIds: number[]): Promise<Record<number, Record<number, number>>>
     blueprintForProduct(productId: number): Promise<InfoBundle['producedBy'] | null>

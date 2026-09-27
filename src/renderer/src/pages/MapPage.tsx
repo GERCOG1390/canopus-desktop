@@ -4,12 +4,13 @@ import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat, Tabs } from '../c
 import { esi, systemInfo, systemRegion } from '../lib/esi'
 import { routeDanger, type SystemDanger } from '../lib/routeSafety'
 import Wormholes from './Wormholes'
+import JumpPlanner from './JumpPlanner'
 import { TypeLink } from '../components/TypeLink'
 import { searchSystemsSde } from '../lib/sde'
 import { fmtIsk, fmtNum, roundSec } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 
-type Tab = 'route' | 'thera' | 'wormholes'
+type Tab = 'route' | 'jump' | 'thera' | 'wormholes'
 type Flag = 'shortest' | 'secure' | 'insecure'
 interface Sys {
   id: number
@@ -23,6 +24,7 @@ export default function MapPage() {
       <Tabs
         tabs={[
           { id: 'route', label: 'Маршрут' },
+          { id: 'jump', label: 'Прыжки капиталов' },
           { id: 'thera', label: 'Thera / Turnur' },
           { id: 'wormholes', label: 'Вормхолы' }
         ]}
@@ -30,6 +32,7 @@ export default function MapPage() {
         onChange={setTab}
       />
       {tab === 'route' && <RoutePlanner />}
+      {tab === 'jump' && <JumpPlanner />}
       {tab === 'thera' && <WormholeConnections />}
       {tab === 'wormholes' && <Wormholes />}
     </div>

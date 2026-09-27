@@ -60,7 +60,7 @@ export interface DogmaEffect {
 }
 
 /** Bumped whenever the DB layout changes, forcing a rebuild from the SDE zip. */
-export const SDE_FORMAT = 6
+export const SDE_FORMAT = 7
 
 export interface SdeDb {
   format: number
@@ -83,7 +83,8 @@ export interface SdeDb {
   certificates: Record<number, { n: L10n; g: number; skills: [number, number, number, number, number, number][] }>
   masteries: Record<number, number[][]>
   /** wc: wormhole class (1–6 J-space, 7 high, 8 low, 9 null, 12 Thera, 13 shattered, 25 Pochven…); fx: system effect beacon type */
-  systems: Record<number, { n: string; sec: number; r: number; c: number; wc?: number; fx?: number }>
+  /** p: position in light years (for capital jump ranges) */
+  systems: Record<number, { n: string; sec: number; r: number; c: number; wc?: number; fx?: number; p?: [number, number, number] }>
   regions: Record<number, L10n>
   constellations: Record<number, string>
   /** Stargate connections: system → neighbouring systems. */
@@ -224,6 +225,13 @@ export interface SystemBasic {
   wc?: number
   /** Wormhole system effect beacon (Pulsar, Magnetar…) */
   fx?: number
+}
+
+export interface JumpHop {
+  from: number
+  to: number
+  /** Light years */
+  ly: number
 }
 
 /** A wormhole type (the signature's code, e.g. "C247") with its limits. */

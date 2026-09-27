@@ -18,7 +18,8 @@ import type {
   SkillReq,
   SystemBasic,
   TypeBasic,
-  WormholeType
+  WormholeType,
+  JumpHop
 } from '../../shared/sde'
 import type { FittableType } from '../../shared/fit'
 import { SDE_FORMAT } from '../../shared/sde'
@@ -1031,4 +1032,76 @@ export function marketTypesIn(groupId: number): number[] {
   }
   walk(groupId)
   return out
+}
+
+// ---------------- Capital jump routes ----------------
+
+/** Where a jump drive may land: known-space lowsec and nullsec (not highsec, wormholes or Pochven). */
+function jumpTarget(id: number, s: SdeDb['systems'][number]): boolean {
+  if (id < 30_000_000 || id >= 31_000_000 || !s.p) return false
+  if (s.wc === 25) return false
+  return Math.round(s.sec * 10) / 10 < 0.5
+}
+
+const lyBetween = (a: [number, number, number], b: [number, number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+
+/** Straight-line distance between two systems, light years. */
+export function lightYears(from: number, to: number): number | null {
+  const d = need()
+  const a = d.systems[from]?.p
+  const b = d.systems[to]?.p
+  return a && b ? lyBetween(a, b) : null
+}
+
+/**
+ * Fewest jumps from one system to another within a jump range (then the shortest total distance):
+ * Dijkstra over lowsec/nullsec systems, neighbours found through a grid of range-sized cells.
+ */
+export function jumpRoute(from: number, to: number, rangeLy: number): JumpHop[] | null {
+  const d = need()
+  const start = d.systems[from]
+  const goal = d.systems[to]
+  if (!start?.p || !goal?.p || !jumpTarget(to, goal) || rangeLy <= 0) return null
+  const cell = rangeLy
+  const key = (p: [number, number, number]) => `${Math.floor(p[0] / cell)},${Math.floor(p[1] / cell)},${Math.floor(p[2] / cell)}`
+  const grid = new Map<string, number[]>()
+  for (const [k, s] of Object.entries(d.systems)) {
+    const id = Number(k)
+    if (!jumpTarget(id, s)) continue
+    const g = key(s.p!)
+    grid.set(g, [...(grid.get(g) ?? []), id])
+  }
+  // cost = jumps * 1000 + light years: fewer jumps first, then less distance (less fatigue).
+  const cost = new Map<number, number>([[from, 0]])
+  const prev = new Map<number, number>()
+  const open: [number, number][] = [[0, from]]
+  const done = new Set<number>()
+  while (open.length) {
+    open.sort((x, y) => x[0] - y[0])
+    const [c, id] = open.shift()!
+    if (done.has(id)) continue
+    done.add(id)
+    if (id === to) break
+    const p = d.systems[id].p!
+    const [cx, cy, cz] = [Math.floor(p[0] / cell), Math.floor(p[1] / cell), Math.floor(p[2] / cell)]
+    for (let x = cx - 1; x <= cx + 1; x++)
+      for (let y = cy - 1; y <= cy + 1; y++)
+        for (let z = cz - 1; z <= cz + 1; z++)
+          for (const n of grid.get(`${x},${y},${z}`) ?? []) {
+            if (done.has(n) || n === id) continue
+            const ly = lyBetween(p, d.systems[n].p!)
+            if (ly > rangeLy) continue
+            const nc = c + 1000 + ly
+            if (nc < (cost.get(n) ?? Infinity)) {
+              cost.set(n, nc)
+              prev.set(n, id)
+              open.push([nc, n])
+            }
+          }
+    if (done.size > 20_000) break
+  }
+  if (!prev.has(to)) return null
+  const path: number[] = [to]
+  while (path[0] !== from) path.unshift(prev.get(path[0])!)
+  return path.slice(1).map((id, i) => ({ from: path[i], to: id, ly: lyBetween(d.systems[path[i]].p!, d.systems[id].p!) }))
 }

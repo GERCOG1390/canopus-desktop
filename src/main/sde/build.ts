@@ -66,6 +66,9 @@ const l10n = (v: Row | string | undefined): L10n => {
   return [v.en ?? '', v.ru || v.en || '']
 }
 
+/** Metres in a light year. */
+const LY = 9_460_730_472_580_800
+
 const bonus = (b: Row): Bonus => ({ b: b.bonus, u: b.unitID, t: l10n(b.bonusText) })
 
 export async function buildSde(
@@ -201,7 +204,15 @@ export async function buildSde(
       }),
     masteries: (r) => (db.masteries[r._key] = (r._value as Row[]).sort((a, b) => a._key - b._key).map((l) => l._value as number[])),
     mapSolarSystems: (r) =>
-      (db.systems[r._key] = { n: l10n(r.name)[0], sec: r.securityStatus ?? 0, r: r.regionID, c: r.constellationID, ...(r.wormholeClassID ? { wc: r.wormholeClassID } : {}) }),
+      (db.systems[r._key] = {
+        n: l10n(r.name)[0],
+        sec: r.securityStatus ?? 0,
+        r: r.regionID,
+        c: r.constellationID,
+        ...(r.wormholeClassID ? { wc: r.wormholeClassID } : {}),
+        // Light years, 3 decimals: enough for jump ranges and small in the database.
+        ...(r.position ? { p: [r.position.x, r.position.y, r.position.z].map((v: number) => Math.round((v / LY) * 1000) / 1000) as [number, number, number] } : {})
+      }),
     mapStargates: (r) => {
       const from = r.solarSystemID as number
       const to = r.destination?.solarSystemID as number | undefined

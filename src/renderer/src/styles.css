@@ -2625,3 +2625,11 @@ html.overlay-mode body {
   border-top: 1px solid var(--border);
   padding-top: 10px;
 }
+
+/* Capital jump planner */
+.jump-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px 14px;
+  align-items: end;
+}
