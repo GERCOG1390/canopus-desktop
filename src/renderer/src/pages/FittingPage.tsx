@@ -5,6 +5,7 @@ import { useApp, useLang } from '../AppContext'
 import { useCharacter } from '../CharacterContext'
 import { AttrIcon } from '../components/Icon'
 import { useInfo } from '../components/InfoContext'
+import { ChargePicker } from '../components/ChargePicker'
 import { MarketTree } from '../components/MarketTree'
 import { MissingSkillsBox } from '../components/skills'
 import { TypeLink, TypeName } from '../components/TypeLink'
@@ -203,6 +204,17 @@ function Editor() {
     const used = f.modules.filter((m) => m.slot === slot).length
     if (stats && used >= stats.ship.slots[slot]) {
       flash(`Нет свободных слотов «${SLOT_LABEL[slot]}»`)
+      return
+    }
+    // Turrets and launchers also need a free hardpoint (a Tengu has 7 high slots but 6 launcher hardpoints).
+    // Counted from the fit itself: stats are recalculated asynchronously and may lag behind quick clicks.
+    const fittedWith = (flag: 'turret' | 'launcher') => f.modules.filter((m) => catalog.data?.get(m.typeId)?.[flag]).length
+    if (stats && info.turret && fittedWith('turret') >= stats.ship.turrets.total) {
+      flash(`Нет свободных точек монтажа турелей: ${fittedWith('turret')} из ${stats.ship.turrets.total}`)
+      return
+    }
+    if (stats && info.launcher && fittedWith('launcher') >= stats.ship.launchers.total) {
+      flash(`Нет свободных точек монтажа пусковых установок: ${fittedWith('launcher')} из ${stats.ship.launchers.total}`)
       return
     }
     updateFit((x) => ({ ...x, modules: [...x.modules, { typeId: id, slot, state: defaultState(info) }] }))
@@ -426,14 +438,7 @@ function ModuleRow({
       <TypeLink id={m.typeId} size={24} />
       <span className="grow" />
       {info?.charges && (
-        <select className="charge-select" value={m.chargeTypeId ?? ''} onChange={(e) => onCharge(e.target.value ? Number(e.target.value) : undefined)}>
-          <option value="">— без заряда —</option>
-          {(charges.data ?? (m.chargeTypeId ? [m.chargeTypeId] : [])).map((c) => (
-            <option key={c} value={c}>
-              {tn(getBasic(c)?.n, lang) || c}
-            </option>
-          ))}
-        </select>
+        <ChargePicker charges={charges.data ?? (m.chargeTypeId ? [m.chargeTypeId] : [])} value={m.chargeTypeId} onChange={onCharge} />
       )}
       {m.chargeTypeId && (
         <button className="ghost small" title="Информация о заряде" onClick={() => openInfo(m.chargeTypeId!)}>

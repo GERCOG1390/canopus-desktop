@@ -1848,3 +1848,87 @@ html.overlay-mode body {
   padding-top: 2px;
   padding-bottom: 2px;
 }
+
+/* Charge picker */
+.charge-picker {
+  position: relative;
+}
+.charge-current {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 250px;
+  padding: 3px 8px;
+  font-size: 12px;
+  text-align: left;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.charge-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.charge-caret {
+  color: var(--muted);
+  font-size: 10px;
+}
+.dmg-icons {
+  display: inline-flex;
+  gap: 1px;
+  flex-shrink: 0;
+}
+.charge-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 2px);
+  z-index: 60;
+  width: 340px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  padding: 4px;
+}
+.charge-group {
+  padding: 8px 8px 3px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.charge-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.charge-item:hover {
+  background: var(--panel-2);
+}
+.charge-item.selected {
+  background: rgba(79, 179, 232, 0.18);
+}
+.module-row > .type-link {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+.module-row > .type-link .type-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.module-row > .grow {
+  flex: 0 0 0;
+}
+.module-row .charge-current {
+  width: 200px;
+}
