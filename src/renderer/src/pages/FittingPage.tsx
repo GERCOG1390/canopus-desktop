@@ -5,6 +5,7 @@ import { useApp, useLang } from '../AppContext'
 import { useCharacter } from '../CharacterContext'
 import { AttrIcon } from '../components/Icon'
 import { useInfo } from '../components/InfoContext'
+import { MarketTree } from '../components/MarketTree'
 import { MissingSkillsBox } from '../components/skills'
 import { TypeLink, TypeName } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, SearchBox } from '../components/ui'
@@ -36,6 +37,8 @@ function StartScreen() {
   useTypeBasics(saved.data?.map((f) => f.shipTypeId) ?? [])
 
   const newFit = (ship: { id: number }) => setFit({ shipTypeId: ship.id, name: 'Новый фит', modules: [], drones: [], implants: [] })
+  /** Market group "Ships" — the root of the in-game ship browser. */
+  const SHIPS_MARKET_GROUP = 4
 
   async function importEft() {
     setError(null)
@@ -50,9 +53,9 @@ function StartScreen() {
 
   return (
     <div className="page">
-      <div className="two-col">
-        <Card title="Новый фит">
-          <p className="muted small">Выберите корабль — затем добавляйте модули из списка справа.</p>
+      <div className="two-col fit-start">
+        <Card title="Новый фит" className="ship-browser">
+          <p className="muted small">Выберите корабль по классу и расе, как в игре, или найдите по названию. Затем добавляйте модули из списка справа.</p>
           <SearchBox
             placeholder="Корабль (рус/англ)…"
             search={(q) => searchTypesSde(q, lang, { categories: [CATEGORY.SHIP] })}
@@ -64,7 +67,9 @@ function StartScreen() {
               </>
             )}
           />
+          <MarketTree root={SHIPS_MARKET_GROUP} order="size" onPick={(id) => newFit({ id })} className="ship-tree" />
         </Card>
+        <div className="col-stack">
         <Card title="Импорт EFT">
           <textarea rows={6} value={eft} onChange={(e) => setEft(e.target.value)} placeholder={'[Rifter, My Rifter]\nGyrostabilizer II\n...\n125mm Gatling AutoCannon II, EMP S'} />
           <div className="row">
@@ -77,11 +82,12 @@ function StartScreen() {
           </div>
           <ErrorBox error={error} />
         </Card>
+        <Card title="Сохранённые фиты">
+          {saved.loading ? <Loading /> : <SavedList fits={saved.data ?? []} onDeleted={saved.reload} />}
+          <p className="muted small">Фиты персонажа из игры — во вкладке «Персонаж → Корабль и фиты», кнопка «Открыть в фитинге».</p>
+        </Card>
+        </div>
       </div>
-      <Card title="Сохранённые фиты">
-        {saved.loading ? <Loading /> : <SavedList fits={saved.data ?? []} onDeleted={saved.reload} />}
-        <p className="muted small">Фиты персонажа из игры — во вкладке «Персонаж → Корабль и фиты», кнопка «Открыть в фитинге».</p>
-      </Card>
     </div>
   )
 }

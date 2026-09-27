@@ -2,7 +2,7 @@
 
 import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
-import type { InfoBundle, L10n, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
+import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
   method?: 'GET' | 'POST'
@@ -56,6 +56,10 @@ export interface CanopusApi {
     /** attributeID → iconID */
     attributeIcons(): Promise<Record<number, number>>
     groupNames(ids: number[]): Promise<Record<number, L10n>>
+    /** One level of the market tree (null = top level). */
+    marketChildren(parent: number | null, order: 'name' | 'size', lang: 0 | 1): Promise<MarketLevel>
+    /** Market groups from the top level down to the item's group. */
+    marketPath(typeId: number): Promise<number[]>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
     dogmaAttrs(ids: number[], attrIds: number[]): Promise<Record<number, Record<number, number>>>
     blueprintForProduct(productId: number): Promise<InfoBundle['producedBy'] | null>

@@ -60,7 +60,7 @@ export interface DogmaEffect {
 }
 
 /** Bumped whenever the DB layout changes, forcing a rebuild from the SDE zip. */
-export const SDE_FORMAT = 4
+export const SDE_FORMAT = 5
 
 export interface SdeDb {
   format: number
@@ -69,7 +69,7 @@ export interface SdeDb {
   types: Record<number, SdeType>
   groups: Record<number, { n: L10n; c: number; pub: boolean }>
   categories: Record<number, { n: L10n; pub: boolean }>
-  marketGroups: Record<number, { n: L10n; p?: number }>
+  marketGroups: Record<number, { n: L10n; p?: number; icon?: number }>
   metaGroups: Record<number, L10n>
   attributes: Record<number, { name: string; dn?: L10n; tt?: L10n; u?: number; cat?: number; pub: boolean; high: boolean; def: number; icon?: number; stack: boolean }>
   attrCategories: Record<number, string>
@@ -104,6 +104,20 @@ export interface TypeBasic {
   pub: boolean
   /** Packaged volume if the type has one, else its volume (m³). */
   v?: number
+}
+
+/** A market group as shown in the market / ship browser. */
+export interface MarketNode {
+  id: number
+  n: L10n
+  icon?: number
+  /** Published items in this group and all its subgroups */
+  count: number
+}
+
+export interface MarketLevel {
+  groups: MarketNode[]
+  types: TypeBasic[]
 }
 
 export interface ReqNode {

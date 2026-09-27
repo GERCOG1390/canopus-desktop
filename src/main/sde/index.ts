@@ -9,6 +9,8 @@ import type {
   InfoAttribute,
   InfoBundle,
   L10n,
+  MarketLevel,
+  MarketNode,
   ReqNode,
   SdeDb,
   SdeStatus,
@@ -87,6 +89,7 @@ async function load(build: number): Promise<void> {
   fittables = null
   nameIndex = null
   intelIndex = null
+  marketIndex = null
   distanceCache.clear()
 
   searchIndex = Object.values(next.types)
@@ -802,4 +805,90 @@ export function jumpsFrom(fromId: number, targets: number[], max = 40): Record<n
 export function systemIdByName(name: string): number | null {
   if (!db) return null
   return getIntelIndex().systems.get(name.trim().toLowerCase()) ?? null
+}
+
+// ---------------- Market group tree (market browser, ship browser) ----------------
+
+interface MarketIndex {
+  /** parent market group (0 = root) → child groups */
+  children: Map<number, number[]>
+  /** market group → published types in it */
+  types: Map<number, number[]>
+  count: Map<number, number>
+}
+
+let marketIndex: MarketIndex | null = null
+
+function getMarketIndex(): MarketIndex {
+  if (marketIndex) return marketIndex
+  const d = need()
+  const children = new Map<number, number[]>()
+  for (const [key, g] of Object.entries(d.marketGroups)) {
+    const parent = g.p ?? 0
+    const list = children.get(parent) ?? []
+    list.push(Number(key))
+    children.set(parent, list)
+  }
+  const types = new Map<number, number[]>()
+  for (const t of Object.values(d.types)) {
+    if (!t.pub || !t.mg) continue
+    const list = types.get(t.mg) ?? []
+    list.push(t.id)
+    types.set(t.mg, list)
+  }
+  const count = new Map<number, number>()
+  const countOf = (id: number): number => {
+    let n = count.get(id)
+    if (n === undefined) {
+      n = (types.get(id)?.length ?? 0) + (children.get(id) ?? []).reduce((s, c) => s + countOf(c), 0)
+      count.set(id, n)
+    }
+    return n
+  }
+  for (const id of Object.keys(d.marketGroups)) countOf(Number(id))
+  marketIndex = { children, types, count }
+  return marketIndex
+}
+
+/** Ship classes by hull size, like the game's ship browser (market group IDs). */
+const SHIP_CLASS_ORDER = [391, 1815, 1361, 1372, 1367, 1374, 1376, 1381, 1382, 1384, 1612]
+
+/**
+ * One level of the market tree: subgroups (empty ones left out) and the items directly in the group.
+ * 'name' sorts like the in-game market; 'size' puts ship classes in hull-size order and
+ * "Standard …" groups before advanced / faction ones, like the fitting ship browser.
+ */
+const LATIN_LOOKALIKES: Record<string, string> = { A: 'А', B: 'В', C: 'С', E: 'Е', H: 'Н', K: 'К', M: 'М', O: 'О', P: 'Р', T: 'Т', X: 'Х', a: 'а', c: 'с', e: 'е', o: 'о', p: 'р', x: 'х', y: 'у' }
+
+/** Sort key: some Russian SDE names contain Latin look-alike letters ("Cооружения"), which would sort them first. */
+function sortKey(text: string): string {
+  return /[а-яё]/i.test(text) ? text.replace(/[ABCEHKMOPTXacepoxy]/g, (ch) => LATIN_LOOKALIKES[ch]) : text
+}
+
+export function marketChildren(parent: number | null, order: 'name' | 'size' = 'name', lang: 0 | 1 = 0): MarketLevel {
+  const d = need()
+  const idx = getMarketIndex()
+  const name = (n: [string, string]) => sortKey(n[lang] || n[0])
+  const rank = (id: number) => {
+    if (order !== 'size') return 0
+    const i = SHIP_CLASS_ORDER.indexOf(id)
+    if (i >= 0) return i - 100
+    return /^Standard/i.test(d.marketGroups[id].n[0]) ? -1 : 0
+  }
+  const groups: MarketNode[] = (idx.children.get(parent ?? 0) ?? [])
+    .filter((id) => (idx.count.get(id) ?? 0) > 0)
+    .sort((a, b) => rank(a) - rank(b) || name(d.marketGroups[a].n).localeCompare(name(d.marketGroups[b].n)))
+    .map((id) => ({ id, n: d.marketGroups[id].n, icon: d.marketGroups[id].icon, count: idx.count.get(id) ?? 0 }))
+  const types = Object.values(basics(parent === null ? [] : (idx.types.get(parent) ?? []))).sort(
+    (a, b) => (a.meta ?? 0) - (b.meta ?? 0) || name(a.n).localeCompare(name(b.n))
+  )
+  return { groups, types }
+}
+
+/** Market groups from the root down to the item's own group (to open the browser at an item). */
+export function marketPath(typeId: number): number[] {
+  const d = need()
+  const path: number[] = []
+  for (let g = d.types[typeId]?.mg; g !== undefined && path.length < 12; g = d.marketGroups[g]?.p) path.unshift(g)
+  return path
 }

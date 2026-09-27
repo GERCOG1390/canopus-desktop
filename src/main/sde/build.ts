@@ -132,7 +132,7 @@ export async function buildSde(
     },
     groups: (r) => (db.groups[r._key] = { n: l10n(r.name), c: r.categoryID, pub: !!r.published }),
     categories: (r) => (db.categories[r._key] = { n: l10n(r.name), pub: !!r.published }),
-    marketGroups: (r) => (db.marketGroups[r._key] = { n: l10n(r.name), p: r.parentGroupID }),
+    marketGroups: (r) => (db.marketGroups[r._key] = { n: l10n(r.name), p: r.parentGroupID, icon: r.iconID }),
     metaGroups: (r) => (db.metaGroups[r._key] = l10n(r.name)),
     dogmaAttributes: (r) =>
       (db.attributes[r._key] = {

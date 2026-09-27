@@ -4,6 +4,7 @@ import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, RequireLogin, SearchBox, Sparkline, Stat, Tabs } from '../components/ui'
 import { esi, imageUrl, resolveIds, resolveLocations } from '../lib/esi'
 import { LocationName } from '../components/LocationName'
+import { MarketTree } from '../components/MarketTree'
 import { fmtDate, fmtIsk, fmtNum } from '../lib/format'
 import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/market'
 import { getBasic, searchTypesSde } from '../lib/sde'
@@ -46,8 +47,8 @@ function Prices() {
   }, [pageArg])
 
   return (
-    <>
-      <div className="toolbar">
+    <div className="market-layout">
+      <aside className="market-browser">
         <SearchBox
           placeholder="Название предмета (рус/англ)…"
           search={(q) => searchTypesSde(q, lang, { marketOnly: true })}
@@ -59,9 +60,12 @@ function Prices() {
             </>
           )}
         />
+        <MarketTree selected={type?.id} onPick={(id) => setType({ id, name: '' })} className="market-tree-panel" />
+      </aside>
+      <div className="market-main">
+        {type ? <TypeMarket typeId={type.id} /> : <Empty>Выберите предмет в дереве рынка слева или найдите по названию, чтобы сравнить цены в торговых хабах.</Empty>}
       </div>
-      {type ? <TypeMarket typeId={type.id} /> : <Empty>Найдите предмет, чтобы сравнить цены в торговых хабах.</Empty>}
-    </>
+    </div>
   )
 }
 
