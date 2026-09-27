@@ -2457,3 +2457,10 @@ html.overlay-mode body {
 .combat-fit-list {
   max-height: 320px;
 }
+
+.danger-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: center;
+}

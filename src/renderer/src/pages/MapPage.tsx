@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useApp } from '../AppContext'
 import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat, Tabs } from '../components/ui'
 import { esi, systemInfo, systemRegion } from '../lib/esi'
+import { routeDanger, type SystemDanger } from '../lib/routeSafety'
+import { TypeLink } from '../components/TypeLink'
 import { searchSystemsSde } from '../lib/sde'
-import { fmtNum, roundSec } from '../lib/format'
+import { fmtIsk, fmtNum, roundSec } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 
 type Tab = 'route' | 'thera'
@@ -65,6 +67,9 @@ function RoutePlanner() {
   const [dest, setDest] = useState<Sys | null>(null)
   const [flag, setFlag] = useState<Flag>('secure')
   const [waypointMsg, setWaypointMsg] = useState<string | null>(null)
+  const [danger, setDanger] = useState<Map<number, SystemDanger>>(new Map())
+  const [checking, setChecking] = useState<{ done: number; total: number } | null>(null)
+  const [open, setOpen] = useState<number | null>(null)
 
   useEffect(() => {
     if (current && !origin) setOrigin(current)
@@ -100,6 +105,38 @@ function RoutePlanner() {
   }
 
   const rows = route.data ?? []
+
+  // Recent kills from zKillboard for systems where ESI saw ship kills in the last hour.
+  const routeKey = rows.map((r) => r.system_id).join(',')
+  useEffect(() => {
+    setDanger(new Map())
+    setOpen(null)
+    const hot = rows.filter((r) => (r.kills?.ship ?? 0) + (r.kills?.pod ?? 0) > 0).map((r) => r.system_id)
+    if (!hot.length) {
+      setChecking(null)
+      return
+    }
+    let cancelled = false
+    let done = 0
+    setChecking({ done: 0, total: hot.length })
+    void routeDanger(
+      hot,
+      (d) => {
+        done++
+        setDanger((m) => new Map(m).set(d.systemId, d))
+        setChecking({ done, total: hot.length })
+      },
+      () => cancelled
+    ).then(() => !cancelled && setChecking(null))
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey])
+
+  /** A camp on a gate this route actually uses (to the previous or next system). */
+  const onPath = (i: number, to: number) => rows[i - 1]?.system_id === to || rows[i + 1]?.system_id === to
+  const pathCamps = rows.flatMap((r, i) => (danger.get(r.system_id)?.camps ?? []).filter((c) => onPath(i, c.to)).map((c) => ({ sys: r, camp: c })))
   const counts = {
     high: rows.filter((s) => roundSec(s.security_status) >= 0.5).length,
     low: rows.filter((s) => roundSec(s.security_status) > 0 && roundSec(s.security_status) < 0.5).length,
@@ -151,7 +188,25 @@ function RoutePlanner() {
             <Stat label="Прыжков" value={rows.length - 1} />
             <Stat label="Highsec / Lowsec / Null" value={`${counts.high} / ${counts.low} / ${counts.null}`} />
             <Stat label="Убийств за час на маршруте" value={counts.kills} sub="корабли + капсулы" />
+            <Stat
+              label="Кемпов на вашем пути"
+              value={<span className={pathCamps.length ? 'bad' : 'good'}>{pathCamps.length}</span>}
+              sub={checking ? `проверяю zKillboard: ${checking.done} из ${checking.total}` : 'по свежим убийствам на воротах'}
+            />
           </div>
+          {pathCamps.length > 0 && (
+            <div className="warn-box">
+              {pathCamps.map(({ sys, camp }) => (
+                <div key={`${sys.system_id}-${camp.gate}`}>
+                  {'⚠ '}
+                  <b>{sys.name}</b>
+                  {`: кемп на воротах в `}
+                  <SystemName id={camp.to} />
+                  {` — убийств: ${camp.kills}, последнее ${Math.round(camp.lastAgo / 60_000)} мин назад`}
+                </div>
+              ))}
+            </div>
+          )}
           <Card>
             <table className="table">
               <thead>
@@ -162,25 +217,30 @@ function RoutePlanner() {
                   <th className="num">Корабли / капсулы (1ч)</th>
                   <th className="num">NPC (1ч)</th>
                   <th className="num">Прыжков (1ч)</th>
+                  <th>Обстановка (zKillboard, 1ч)</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {rows.map((s, i) => {
-                  const danger = (s.kills?.ship ?? 0) + (s.kills?.pod ?? 0)
+                  const killsHour = (s.kills?.ship ?? 0) + (s.kills?.pod ?? 0)
+                  const d = danger.get(s.system_id)
+                  const campHere = d?.camps.some((c) => onPath(i, c.to))
                   return (
-                    <tr key={s.system_id} className={danger >= 5 ? 'danger' : ''}>
+                    <Fragment key={s.system_id}>
+                    <tr className={`${campHere || killsHour >= 5 ? 'danger' : ''} ${d?.kills.length ? 'clickable' : ''}`} onClick={() => d?.kills.length && setOpen(open === s.system_id ? null : s.system_id)}>
                       <td className="muted">{i}</td>
                       <td>
                         <Sec value={s.security_status} /> {s.name}
                       </td>
                       <td className="muted">{s.region}</td>
-                      <td className={`num ${danger ? 'bad' : ''}`}>
+                      <td className={`num ${killsHour ? 'bad' : ''}`}>
                         {s.kills?.ship ?? 0} / {s.kills?.pod ?? 0}
                       </td>
                       <td className="num">{fmtNum(s.kills?.npc ?? 0)}</td>
                       <td className="num">{fmtNum(s.jumps)}</td>
-                      <td>
+                      <td>{d ? <DangerBadges d={d} onPath={(to) => onPath(i, to)} /> : killsHour && checking ? <span className="muted small">…</span> : null}</td>
+                      <td onClick={(e) => e.stopPropagation()}>
                         <a href={`https://zkillboard.com/system/${s.system_id}/`} target="_blank" rel="noreferrer">
                           zKill
                         </a>{' '}
@@ -189,6 +249,14 @@ function RoutePlanner() {
                         </a>
                       </td>
                     </tr>
+                    {open === s.system_id && d && (
+                      <tr className="sub-row">
+                        <td colSpan={8}>
+                          <KillList d={d} />
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   )
                 })}
               </tbody>
@@ -197,6 +265,58 @@ function RoutePlanner() {
         </>
       )}
     </>
+  )
+}
+
+function SystemName({ id }: { id: number }) {
+  const info = useAsync(() => systemInfo(id), [id])
+  return <b>{info.data?.name ?? '…'}</b>
+}
+
+const minAgo = (ms: number) => `${Math.max(0, Math.round(ms / 60_000))} мин назад`
+
+function DangerBadges({ d, onPath }: { d: SystemDanger; onPath: (to: number) => boolean }) {
+  if (!d.kills.length) return <span className="muted small">спокойно</span>
+  return (
+    <span className="danger-badges">
+      {d.camps.map((c) => (
+        <span key={c.gate} className={`threat ${onPath(c.to) ? 'threat-hostile' : 'threat-high'}`}>
+          {'кемп у ворот в '}
+          <SystemName id={c.to} />
+        </span>
+      ))}
+      {d.bubbles && <span className="threat threat-high">бабблы</span>}
+      {d.smartbombs && <span className="threat threat-high">смартбомбы</span>}
+      <span className="muted small">{`убийств: ${d.kills.length} · последнее ${minAgo(Date.now() - d.kills[0].time)}`}</span>
+    </span>
+  )
+}
+
+function KillList({ d }: { d: SystemDanger }) {
+  return (
+    <table className="table compact">
+      <tbody>
+        {d.kills.map((k) => (
+          <tr key={k.id}>
+            <td className="muted small nowrap">{minAgo(Date.now() - k.time)}</td>
+            <td>
+              <TypeLink id={k.victimShip} size={20} />
+            </td>
+            <td className="small">{k.gate ? <>{'у ворот в '}<SystemName id={k.gate.to} /></> : <span className="muted">не у ворот</span>}</td>
+            <td className="num small">{`нападавших: ${k.attackers}`}</td>
+            <td className="num small">{fmtIsk(k.value, true)}</td>
+            <td className="small">
+              {k.bubbles && <span className="threat threat-high">баббл</span>} {k.smartbombs && <span className="threat threat-high">смартбомбы</span>}
+            </td>
+            <td>
+              <a href={`https://zkillboard.com/kill/${k.id}/`} target="_blank" rel="noreferrer">
+                zKill
+              </a>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
 }
 

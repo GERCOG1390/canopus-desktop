@@ -723,6 +723,16 @@ export const EXACT: Record<string, string> = {
   'Папка логов чата EVE не найдена': 'EVE chat log folder not found',
   'Лог Local не найден — зайдите в игру': 'Local log not found — log into the game',
   'Нет такого предмета': 'No such item',
+  'Кемпов на вашем пути': 'Camps on your path',
+  'по свежим убийствам на воротах': 'from recent kills on gates',
+  'Обстановка (zKillboard, 1ч)': 'Situation (zKillboard, 1h)',
+  'спокойно': 'quiet',
+  'кемп у ворот в': 'camp at the gate to',
+  'бабблы': 'bubbles',
+  'баббл': 'bubble',
+  'смартбомбы': 'smartbombs',
+  'у ворот в': 'at the gate to',
+  'не у ворот': 'not at a gate',
   'Трей и уведомления': 'Tray and notifications',
   'Сворачивать в трей при закрытии окна (уведомления продолжают работать)': 'Minimize to the tray when the window is closed (notifications keep working)',
   'Canopus раз в 5 минут проверяет всех вошедших персонажей и показывает уведомление Windows — один раз на каждое событие.': 'Every 5 minutes Canopus checks all logged-in characters and shows a Windows notification — once per event.',
@@ -857,6 +867,11 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^проверяю zKillboard: (\d+) из (\d+)$/, 'checking zKillboard: $1 of $2'],
+  [/^: кемп на воротах в $/, ': camp at the gate to '],
+  [/^ — убийств: (\d+), последнее (\d+) мин назад$/, ' — kills: $1, last $2 min ago'],
+  [/^убийств: (\d+) · последнее (.+)$/, 'kills: $1 · last $2'],
+  [/^нападавших: (\d+)$/, 'attackers: $1'],
   [/^За (\d+) ч$/, '$1 h before'],
   [/^Не удалось загрузить фиты из игры: (.+)$/, 'Could not load the in-game fits: $1'],
   [/^(\d+) фит\.$/, '$1 fits'],
