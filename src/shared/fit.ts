@@ -156,6 +156,8 @@ export interface FittableType {
   charges?: boolean
   /** Emergency module that can't be cycled (e.g. Assault Damage Control): kept online by default */
   burst?: boolean
+  /** Subsystem kind (subSystemSlot: core, defensive, offensive, propulsion) */
+  ss?: number
 }
 
 export interface SavedFit extends FitSpec {

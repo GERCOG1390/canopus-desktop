@@ -436,6 +436,7 @@ export function fittingCatalog(): FittableType[] {
       act: effects.some((e) => (e.cat === 1 || e.cat === 2) && !!e.dur),
       oh: effects.some((e) => e.cat === 5),
       burst: !!(noRepeatAttr && dogma?.a[noRepeatAttr]),
+      ss: dogma?.a[1366] || undefined,
       charges: CHARGE_GROUP_ATTRS.some((x) => dogma?.a[x])
     })
   }

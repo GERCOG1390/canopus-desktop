@@ -77,6 +77,33 @@ const CAN_FIT_TYPE = [1302, 1303, 1304, 1305, 1944, 2103, 2463, 2486, 2487, 2488
 
 const EFFECT = { turretFitted: 42, launcherFitted: 40, targetAttack: 10, projectileFired: 34, useMissiles: 101 }
 
+const ATTR_FITS_TO_SHIP_TYPE = 1380
+const ATTR_SUBSYSTEM_SLOT = 1366
+const subsystemKindsCache = new WeakMap<SdeDb, Map<number, number>>()
+
+/**
+ * Subsystem slots of a T3 hull: one per kind of subsystem made for it (core, defensive, offensive,
+ * propulsion). The hulls' own maxSubSystems attribute still says 5 from before the Electronics
+ * subsystems were removed; the game shows 4.
+ */
+export function subsystemSlots(db: SdeDb, shipTypeId: number): number {
+  let byShip = subsystemKindsCache.get(db)
+  if (!byShip) {
+    const kinds = new Map<number, Set<number>>()
+    for (const [id, dg] of Object.entries(db.dogma)) {
+      const ship = dg.a[ATTR_FITS_TO_SHIP_TYPE]
+      const slot = dg.a[ATTR_SUBSYSTEM_SLOT]
+      if (!ship || !slot || !db.types[Number(id)]?.pub) continue
+      const set = kinds.get(ship) ?? new Set<number>()
+      set.add(slot)
+      kinds.set(ship, set)
+    }
+    byShip = new Map([...kinds].map(([ship, set]) => [ship, set.size]))
+    subsystemKindsCache.set(db, byShip)
+  }
+  return byShip.get(shipTypeId) ?? 0
+}
+
 export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraShipAttrs: number[] = []): FitStats {
   const dogma = new Dogma(db, spec.shipTypeId, skills)
   spec.modules.forEach((m, i) => dogma.addModule(m.typeId, m.slot, m.state, m.chargeTypeId, i))
@@ -96,7 +123,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
     med: a(ship, A.medSlots),
     lo: a(ship, A.lowSlots),
     rig: a(ship, A.rigSlots),
-    sub: a(ship, A.maxSubSystems)
+    sub: a(ship, A.maxSubSystems) > 0 ? Math.min(a(ship, A.maxSubSystems), subsystemSlots(db, spec.shipTypeId) || a(ship, A.maxSubSystems)) : 0
   }
   const hasEffect = (m: Item, e: number) => m.effects.includes(e)
   const cpuUsed = dogma.modules.filter(online).reduce((s, m) => s + a(m, A.cpu), 0)

@@ -192,6 +192,14 @@ function Editor() {
       return
     }
     const slot = info.slot as Slot
+    // One subsystem of each kind, as in the game: a new one replaces the fitted one of the same kind.
+    if (slot === 'sub' && info.ss) {
+      const same = f.modules.findIndex((m) => m.slot === 'sub' && catalog.data?.get(m.typeId)?.ss === info.ss)
+      if (same >= 0) {
+        updateFit((x) => ({ ...x, modules: x.modules.map((m, i) => (i === same ? { typeId: id, slot, state: defaultState(info) } : m)) }))
+        return
+      }
+    }
     const used = f.modules.filter((m) => m.slot === slot).length
     if (stats && used >= stats.ship.slots[slot]) {
       flash(`Нет свободных слотов «${SLOT_LABEL[slot]}»`)
@@ -256,7 +264,11 @@ function Editor() {
 
           {SLOT_ORDER.map((slot) => {
             const total = stats?.ship.slots[slot] ?? 0
-            const mods = f.modules.map((m, i) => ({ m, i })).filter(({ m }) => m.slot === slot)
+            const mods = f.modules
+              .map((m, i) => ({ m, i }))
+              .filter(({ m }) => m.slot === slot)
+              // Subsystems in the game's order: core, defensive, offensive, propulsion.
+              .sort((a, b) => (slot === 'sub' ? (catalog.data?.get(a.m.typeId)?.ss ?? 0) - (catalog.data?.get(b.m.typeId)?.ss ?? 0) : 0))
             if (!total && !mods.length) return null
             return (
               <div key={slot} className={`slot-group ${browserSlot === slot ? 'focused' : ''}`}>
