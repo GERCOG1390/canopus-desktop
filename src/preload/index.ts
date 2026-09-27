@@ -76,6 +76,10 @@ const api: CanopusApi = {
     systemId: (name) => invoke('intel:systemId', name)
   },
   onSettingsChanged: (listener) => on('intel:settingsChanged', listener),
+  store: {
+    get: (key) => invoke('store:get', key),
+    set: (key, value) => invoke('store:set', key, value)
+  },
   ratting: {
     events: () => invoke('ratting:events'),
     onEvents: (listener) => on('ratting:events', listener),

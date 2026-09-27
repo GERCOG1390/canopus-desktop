@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useIntel } from '../IntelContext'
 import { Card, Empty, Stat, Tabs } from '../components/ui'
 import { locale } from '../i18n'
 import type { CombatLogEvent } from '../../../shared/ratting'
-import { fmtDuration, fmtIsk, fmtNum } from '../lib/format'
-import { useTick } from '../lib/useAsync'
+import { fmtDate, fmtDuration, fmtIsk, fmtNum } from '../lib/format'
+import { useLang } from '../AppContext'
+import { TypeLink } from '../components/TypeLink'
+import { SearchBox } from '../components/ui'
+import { jitaPrices, parseItemList } from '../lib/market'
+import { CATEGORY, searchTypesSde, tn, useTypeBasic } from '../lib/sde'
+import { useAsync, useTick } from '../lib/useAsync'
 
-type Tab = 'sigs' | 'ratting'
+type Tab = 'sigs' | 'ratting' | 'abyss'
 
 export default function ActivitiesPage() {
   const [tab, setTab] = useState<Tab>('sigs')
@@ -15,13 +20,15 @@ export default function ActivitiesPage() {
       <Tabs
         tabs={[
           { id: 'sigs', label: 'Сигнатуры' },
-          { id: 'ratting', label: 'Крабинг' }
+          { id: 'ratting', label: 'Крабинг' },
+          { id: 'abyss', label: 'Абиссы' }
         ]}
         value={tab}
         onChange={setTab}
       />
       {tab === 'sigs' && <Signatures />}
       {tab === 'ratting' && <RattingTracker />}
+      {tab === 'abyss' && <AbyssTracker />}
     </div>
   )
 }
@@ -381,4 +388,294 @@ function RattingTracker() {
       </div>
     </>
   )
+}
+
+// ---------------- Abyss tracker ----------------
+
+const TIERS = ['Tranquil', 'Calm', 'Agitated', 'Fierce', 'Raging', 'Chaotic', 'Cataclysmic']
+const WEATHERS = ['Electrical', 'Dark', 'Exotic', 'Firestorm', 'Gamma']
+const WEATHER_LABEL: Record<string, string> = { Electrical: 'Электрическая', Dark: 'Тёмная', Exotic: 'Экзотическая', Firestorm: 'Огненная', Gamma: 'Гамма' }
+const ABYSS_TIME_MS = 20 * 60_000
+const RUNS_KEY = 'abyss-runs'
+
+interface AbyssRun {
+  id: string
+  start: number
+  end: number
+  tier: number
+  weather: string
+  shipTypeId: number | null
+  loot: number
+  lootBuy: number
+  filament: number
+  died: boolean
+}
+
+/** Jita sell / buy value of a pasted loot list (cargo window, Ctrl+A, Ctrl+C). */
+async function appraiseLoot(text: string): Promise<{ sell: number; buy: number; unknown: string[] }> {
+  const items = parseItemList(text)
+  const ids = await window.api.intel.resolveTypeNames(items.map((i) => i.name))
+  const prices = await jitaPrices(Object.values(ids))
+  let sell = 0
+  let buy = 0
+  const unknown: string[] = []
+  for (const it of items) {
+    const id = ids[it.name]
+    if (!id) {
+      unknown.push(it.name)
+      continue
+    }
+    sell += (prices.get(id)?.sell.best ?? 0) * it.qty
+    buy += (prices.get(id)?.buy.best ?? 0) * it.qty
+  }
+  return { sell, buy, unknown }
+}
+
+function AbyssTracker() {
+  const lang = useLang()
+  const { system } = useIntel()
+  const now = useTick(1000)
+  const [runs, setRuns] = useState<AbyssRun[]>([])
+  const [tier, setTier] = useState(1)
+  const [weather, setWeather] = useState('Firestorm')
+  const [ship, setShip] = useState<number | null>(null)
+  const [started, setStarted] = useState<number | null>(null)
+  const [finished, setFinished] = useState<number | null>(null)
+  const [lootText, setLootText] = useState('')
+  const [loot, setLoot] = useState<{ sell: number; buy: number; unknown: string[] } | null>(null)
+  const [died, setDied] = useState(false)
+  const [auto, setAuto] = useState(true)
+  const shipName = useTypeBasic(ship ?? 0)
+
+  useEffect(() => {
+    void window.api.store.get<AbyssRun[]>(RUNS_KEY).then((r) => setRuns(r ?? []))
+  }, [])
+  const saveRuns = (next: AbyssRun[]) => {
+    setRuns(next)
+    void window.api.store.set(RUNS_KEY, next)
+  }
+
+  // Entering an abyssal pocket ("AD123") starts the timer, leaving it stops the run.
+  const inAbyss = /^AD\d{3}$/.test(system?.name ?? '')
+  useEffect(() => {
+    if (!auto) return
+    if (inAbyss && !started) {
+      setStarted(Date.now())
+      setFinished(null)
+    } else if (!inAbyss && started && !finished) setFinished(Date.now())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inAbyss, auto])
+
+  const filament = useAsync(async () => {
+    const name = `${TIERS[tier]} ${weather} Filament`
+    const ids = await window.api.intel.resolveTypeNames([name])
+    const id = ids[name]
+    if (!id) return { id: null, price: 0 }
+    const p = await jitaPrices([id])
+    return { id, price: p.get(id)?.sell.best ?? 0 }
+  }, [tier, weather])
+
+  const elapsed = started ? (finished ?? now) - started : 0
+  const left = ABYSS_TIME_MS - elapsed
+
+  function save() {
+    if (!started) return
+    const run: AbyssRun = {
+      id: String(started),
+      start: started,
+      end: finished ?? Date.now(),
+      tier,
+      weather,
+      shipTypeId: ship,
+      loot: died ? 0 : (loot?.sell ?? 0),
+      lootBuy: died ? 0 : (loot?.buy ?? 0),
+      filament: filament.data?.price ?? 0,
+      died
+    }
+    saveRuns([run, ...runs])
+    setStarted(null)
+    setFinished(null)
+    setLoot(null)
+    setLootText('')
+    setDied(false)
+  }
+
+  const stats = useMemo(() => {
+    const group = (key: (r: AbyssRun) => string) => {
+      const m = new Map<string, AbyssRun[]>()
+      for (const r of runs) m.set(key(r), [...(m.get(key(r)) ?? []), r])
+      return [...m.entries()].map(([k, list]) => {
+        const time = list.reduce((a, r) => a + (r.end - r.start), 0)
+        const net = list.reduce((a, r) => a + r.loot - r.filament, 0)
+        return { k, runs: list.length, deaths: list.filter((r) => r.died).length, avgLoot: list.reduce((a, r) => a + r.loot, 0) / list.length, avgMin: time / list.length / 60_000, iskHour: time ? net / (time / 3_600_000) : 0 }
+      })
+    }
+    return { byTier: group((r) => `T${r.tier} ${TIERS[r.tier]}`).sort((a, b) => a.k.localeCompare(b.k)), byShip: group((r) => String(r.shipTypeId ?? 0)) }
+  }, [runs])
+
+  return (
+    <>
+      <Card title="Текущий забег">
+        <div className="abyss-run">
+          <div className={`abyss-timer ${started && left < 0 ? 'bad' : started && left < 3 * 60_000 ? 'warn-text' : ''}`}>
+            {started ? `${left < 0 ? '−' : ''}${fmtClock(Math.abs(left))}` : '20:00'}
+            <div className="muted small">{started ? (finished ? 'забег окончен' : left < 0 ? 'время вышло!' : 'осталось') : inAbyss ? 'вы в бездне' : 'ожидание'}</div>
+          </div>
+          <div className="abyss-form">
+            <label>
+              Уровень
+              <select value={tier} onChange={(e) => setTier(Number(e.target.value))}>
+                {TIERS.map((t, i) => (
+                  <option key={t} value={i}>
+                    {`T${i} ${t}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Погода
+              <select value={weather} onChange={(e) => setWeather(e.target.value)}>
+                {WEATHERS.map((w) => (
+                  <option key={w} value={w}>
+                    {WEATHER_LABEL[w]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Корабль
+              <SearchBox
+                placeholder={ship ? tn(shipName?.n, lang) : 'Корабль…'}
+                search={(q) => searchTypesSde(q, lang, { categories: [CATEGORY.SHIP] })}
+                onSelect={(t) => setShip(t.id)}
+                clearOnSelect
+              />
+            </label>
+            <div className="muted small">
+              {filament.data?.id ? `Филамент ${TIERS[tier]} ${weather}: ${fmtIsk(filament.data.price, true)} (Jita)` : ''}
+            </div>
+            <label className="check small">
+              <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
+              Запускать таймер автоматически (по логу Local: системы AD###)
+            </label>
+          </div>
+          <div className="abyss-actions">
+            {!started ? (
+              <button onClick={() => (setStarted(Date.now()), setFinished(null))}>Старт</button>
+            ) : !finished ? (
+              <button onClick={() => setFinished(Date.now())}>Завершить</button>
+            ) : null}
+            {started && (
+              <button className="ghost" onClick={() => (setStarted(null), setFinished(null))}>
+                Отменить
+              </button>
+            )}
+          </div>
+        </div>
+        {finished && (
+          <div className="abyss-finish">
+            <p className="muted small">Вставьте лут: окно грузового отсека → Ctrl+A, Ctrl+C.</p>
+            <textarea rows={4} value={lootText} onChange={(e) => setLootText(e.target.value)} />
+            <div className="row">
+              <button className="ghost" disabled={!lootText.trim()} onClick={async () => setLoot(await appraiseLoot(lootText))}>
+                Оценить лут
+              </button>
+              <label className="check">
+                <input type="checkbox" checked={died} onChange={(e) => setDied(e.target.checked)} />
+                Корабль погиб
+              </label>
+              {loot && <span>{`Лут: ${fmtIsk(loot.sell, true)} (продажа) · ${fmtIsk(loot.buy, true)} (скупка)`}</span>}
+              <button onClick={save}>Сохранить забег</button>
+            </div>
+            {loot?.unknown.length ? <div className="warn">{`Не распознано: ${loot.unknown.join(', ')}`}</div> : null}
+          </div>
+        )}
+      </Card>
+
+      {runs.length > 0 && (
+        <>
+          <div className="two-col">
+            <Card title="По уровням">
+              <AbyssStats rows={stats.byTier} label={(k) => k} />
+            </Card>
+            <Card title="По кораблям">
+              <AbyssStats rows={stats.byShip} label={(k) => (Number(k) ? <TypeLink id={Number(k)} size={20} /> : '—')} />
+            </Card>
+          </div>
+          <Card title={`Забеги (${runs.length})`}>
+            <table className="table compact">
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Уровень</th>
+                  <th>Погода</th>
+                  <th>Корабль</th>
+                  <th className="num">Время</th>
+                  <th className="num">Лут</th>
+                  <th className="num">Филамент</th>
+                  <th className="num">Итог</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {runs.map((r) => (
+                  <tr key={r.id} className={r.died ? 'danger' : ''}>
+                    <td className="muted small">{fmtDate(new Date(r.start).toISOString())}</td>
+                    <td>{`T${r.tier}`}</td>
+                    <td>{WEATHER_LABEL[r.weather] ?? r.weather}</td>
+                    <td>{r.shipTypeId ? <TypeLink id={r.shipTypeId} size={16} /> : '—'}</td>
+                    <td className="num">{fmtClock(r.end - r.start)}</td>
+                    <td className="num">{r.died ? <span className="bad">погиб</span> : fmtIsk(r.loot, true)}</td>
+                    <td className="num muted">{fmtIsk(r.filament, true)}</td>
+                    <td className={`num ${r.loot - r.filament >= 0 ? 'good' : 'bad'}`}>{fmtIsk(r.loot - r.filament, true)}</td>
+                    <td>
+                      <button className="ghost small danger" onClick={() => saveRuns(runs.filter((x) => x.id !== r.id))}>
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </>
+      )}
+    </>
+  )
+}
+
+function AbyssStats({ rows, label }: { rows: { k: string; runs: number; deaths: number; avgLoot: number; avgMin: number; iskHour: number }[]; label: (k: string) => ReactNode }) {
+  return (
+    <table className="table compact">
+      <thead>
+        <tr>
+          <th />
+          <th className="num">Забегов</th>
+          <th className="num">Смертей</th>
+          <th className="num">Средний лут</th>
+          <th className="num">Среднее время</th>
+          <th className="num">ISK / час</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.k}>
+            <td>{label(r.k)}</td>
+            <td className="num">{r.runs}</td>
+            <td className={`num ${r.deaths ? 'bad' : ''}`}>{r.deaths}</td>
+            <td className="num">{fmtIsk(r.avgLoot, true)}</td>
+            <td className="num">{`${r.avgMin.toFixed(1)} мин`}</td>
+            <td className="num">
+              <b>{fmtIsk(r.iskHour, true)}</b>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+function fmtClock(ms: number): string {
+  const s = Math.floor(ms / 1000)
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }

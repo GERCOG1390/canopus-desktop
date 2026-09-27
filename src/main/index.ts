@@ -14,6 +14,7 @@ import * as intel from './intel'
 import { loadSettings, saveSettings } from './storage'
 import * as notifier from './notifier'
 import * as combatlog from './combatlog'
+import { storeGet, storeSet } from './userstore'
 import trayIconPath from '../../build/icon.png?asset'
 
 // A separate profile (settings, tokens, SDE cache) — handy for testing and screenshots.
@@ -196,6 +197,8 @@ function registerIpc(): void {
   ipcMain.handle('shell:openExternal', (_e, url: string) => openExternal(url))
   ipcMain.handle('notify:history', () => notifier.notifyHistory())
   ipcMain.handle('ratting:events', () => combatlog.combatLogEvents())
+  ipcMain.handle('store:get', (_e, key: string) => storeGet(key))
+  ipcMain.handle('store:set', (_e, key: string, value: unknown) => storeSet(key, value))
   ipcMain.handle('notify:checkNow', () => notifier.checkNow())
 
   ipcMain.handle('sde:status', () => sde.getStatus())

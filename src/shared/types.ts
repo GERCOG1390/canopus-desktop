@@ -76,6 +76,11 @@ export interface CanopusApi {
   }
   /** Settings changed outside the renderer (e.g. overlay hotkeys). */
   onSettingsChanged(listener: () => void): () => void
+  /** JSON documents kept in the profile folder across restarts. */
+  store: {
+    get<T = unknown>(key: string): Promise<T | null>
+    set(key: string, value: unknown): Promise<void>
+  }
   ratting: {
     /** Events parsed from the current game log. */
     events(): Promise<CombatLogEvent[]>
