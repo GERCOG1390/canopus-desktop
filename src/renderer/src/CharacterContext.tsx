@@ -99,23 +99,33 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         ? { [ATTR.CHARISMA]: attrs.charisma, [ATTR.INTELLIGENCE]: attrs.intelligence, [ATTR.MEMORY]: attrs.memory, [ATTR.PERCEPTION]: attrs.perception, [ATTR.WILLPOWER]: attrs.willpower }
         : null
       let effective = base
+      let trueBase = base
       if (base && implants?.length) {
         const bonuses = await window.api.sde.dogmaAttrs(implants, Object.values(IMPLANT_BONUS)).catch(() => ({}) as Record<number, Record<number, number>>)
-        const withImplants = { ...base }
+        const bonus: CharAttributes = {}
         for (const imp of implants) {
-          for (const [attr, bonusAttr] of Object.entries(IMPLANT_BONUS)) withImplants[Number(attr)] += bonuses[imp]?.[bonusAttr] ?? 0
+          for (const [attr, bonusAttr] of Object.entries(IMPLANT_BONUS)) bonus[Number(attr)] = (bonus[Number(attr)] ?? 0) + (bonuses[imp]?.[bonusAttr] ?? 0)
         }
-        effective = withImplants
-        // Whether ESI's numbers already include implants isn't documented; the skill in training
-        // tells us: pick whichever attribute set reproduces its real SP/min.
+        const withImplants = Object.fromEntries(Object.entries(base).map(([a, v]) => [a, v + (bonus[Number(a)] ?? 0)])) as CharAttributes
+        const withoutImplants = Object.fromEntries(Object.entries(base).map(([a, v]) => [a, v - (bonus[Number(a)] ?? 0)])) as CharAttributes
+        // Whether ESI's numbers already include implants isn't documented. The skill in training tells:
+        // pick whichever attribute set reproduces its real SP/min. Without one, a character's own
+        // attributes always add up to 99 (5 × 17 + 14), so a larger sum means implants are included.
+        let esiIncludesImplants: boolean
         const observed = observedRate(queue)
         if (observed) {
           const [primary, secondary] = await window.api.sde
             .dogmaAttrs([observed.skill], [180, 181])
             .then((d) => [d[observed.skill][180], d[observed.skill][181]])
           const rate = (a: CharAttributes) => (a[primary] ?? 0) + (a[secondary] ?? 0) / 2
-          if (Math.abs(rate(base) - observed.rate) < Math.abs(rate(withImplants) - observed.rate)) effective = base
+          esiIncludesImplants = Math.abs(rate(base) - observed.rate) < Math.abs(rate(withImplants) - observed.rate)
+        } else {
+          const sum = Object.values(base).reduce((a, b) => a + b, 0)
+          const bonusSum = Object.values(bonus).reduce((a, b) => a + b, 0)
+          esiIncludesImplants = bonusSum > 0 && sum >= 99 + bonusSum
         }
+        effective = esiIncludesImplants ? base : withImplants
+        trueBase = esiIncludesImplants ? withoutImplants : base
       }
       if (cancelled) return
       setState({
@@ -124,7 +134,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         totalSp: skills?.total_sp ?? 0,
         unallocatedSp: skills?.unallocated_sp ?? 0,
         queue: queue ? [...queue].sort((a, b) => a.queue_position - b.queue_position) : null,
-        baseAttributes: base,
+        baseAttributes: trueBase,
         attributes: effective,
         remap: attrs ? { bonus_remaps: attrs.bonus_remaps, last_remap_date: attrs.last_remap_date, accrued_remap_cooldown_date: attrs.accrued_remap_cooldown_date } : null,
         implants,

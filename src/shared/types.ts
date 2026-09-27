@@ -74,6 +74,8 @@ export interface CanopusApi {
     jumpRoute(from: number, to: number, rangeLy: number): Promise<JumpHop[] | null>
     lightYears(from: number, to: number): Promise<number | null>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
+    /** Skill levels needed for the goals, prerequisites first, one step per level. */
+    skillPlan(goals: { typeId: number; level?: number }[]): Promise<{ skill: number; level: number; rank: number; primary: number; secondary: number }[]>
     dogmaAttrs(ids: number[], attrIds: number[]): Promise<Record<number, Record<number, number>>>
     blueprintForProduct(productId: number): Promise<InfoBundle['producedBy'] | null>
   }

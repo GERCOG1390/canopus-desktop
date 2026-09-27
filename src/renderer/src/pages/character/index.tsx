@@ -9,13 +9,15 @@ import Fittings from './Fittings'
 import Overview from './Overview'
 import Reputation from './Reputation'
 import Skills from './Skills'
+import SkillPlanner from './SkillPlanner'
 import Wallet from './Wallet'
 
-type Tab = 'overview' | 'skills' | 'clones' | 'fits' | 'assets' | 'blueprints' | 'wallet' | 'contracts' | 'reputation'
+type Tab = 'overview' | 'skills' | 'plan' | 'clones' | 'fits' | 'assets' | 'blueprints' | 'wallet' | 'contracts' | 'reputation'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Обзор' },
   { id: 'skills', label: 'Навыки' },
+  { id: 'plan', label: 'План навыков' },
   { id: 'clones', label: 'Импланты и клоны' },
   { id: 'fits', label: 'Корабль и фиты' },
   { id: 'assets', label: 'Ассеты' },
@@ -36,6 +38,7 @@ export default function CharacterPage() {
       <Tabs tabs={TABS} value={tab} onChange={setTab} />
       {tab === 'overview' && <Overview id={id} />}
       {tab === 'skills' && <Skills />}
+      {tab === 'plan' && <SkillPlanner />}
       {tab === 'clones' && <Clones id={id} />}
       {tab === 'fits' && <Fittings id={id} />}
       {tab === 'assets' && <Assets id={id} />}

@@ -56,6 +56,7 @@ const api: CanopusApi = {
     marketPath: (typeId) => invoke('sde:marketPath', typeId),
     marketTypesIn: (groupId) => invoke('sde:marketTypesIn', groupId),
     requiredSkills: (ids) => invoke('sde:requiredSkills', ids),
+    skillPlan: (goals) => invoke('sde:skillPlan', goals),
     dogmaAttrs: (ids, attrIds) => invoke('sde:dogmaAttrs', ids, attrIds),
     blueprintForProduct: (id) => invoke('sde:blueprintForProduct', id)
   },

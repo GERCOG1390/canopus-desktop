@@ -1105,3 +1105,37 @@ export function jumpRoute(from: number, to: number, rangeLy: number): JumpHop[] 
   while (path[0] !== from) path.unshift(prev.get(path[0])!)
   return path.slice(1).map((id, i) => ({ from: path[i], to: id, ly: lyBetween(d.systems[path[i]].p!, d.systems[id].p!) }))
 }
+
+// ---------------- Skill plans ----------------
+
+export interface PlanStep {
+  skill: number
+  level: number
+  rank: number
+  primary: number
+  secondary: number
+}
+
+/**
+ * Every skill level needed for the goals, prerequisites first, one step per level (like the in-game queue).
+ * A goal is an item (its required skills) or a skill with a target level.
+ */
+export function skillPlan(goals: { typeId: number; level?: number }[]): PlanStep[] {
+  const d = need()
+  const out: PlanStep[] = []
+  const planned = new Map<number, number>()
+  const visit = (n: ReqNode): void => {
+    n.children.forEach(visit)
+    for (let l = (planned.get(n.skill) ?? 0) + 1; l <= n.level; l++) out.push({ skill: n.skill, level: l, rank: n.rank, primary: n.primary, secondary: n.secondary })
+    planned.set(n.skill, Math.max(planned.get(n.skill) ?? 0, n.level))
+  }
+  for (const g of goals) {
+    const t = d.types[g.typeId]
+    if (!t) continue
+    if (d.groups[t.g]?.c === SKILL_CATEGORY) {
+      const a = d.dogma[g.typeId]?.a ?? {}
+      visit({ skill: g.typeId, level: g.level ?? 5, rank: a[ATTR_SKILL_RANK] ?? 1, primary: a[ATTR_PRIMARY] ?? 0, secondary: a[ATTR_SECONDARY] ?? 0, children: requirementTree(g.typeId) })
+    } else requirementTree(g.typeId).forEach(visit)
+  }
+  return out
+}

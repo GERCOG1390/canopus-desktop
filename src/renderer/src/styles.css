@@ -2633,3 +2633,33 @@ html.overlay-mode body {
   gap: 10px 14px;
   align-items: end;
 }
+
+/* Skill planner */
+.plan-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.plan-sources .searchbox {
+  width: 320px;
+}
+.plan-goals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.plan-goal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 8px;
+  border-radius: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+}
+.plan-goal select {
+  padding: 1px 4px;
+}
