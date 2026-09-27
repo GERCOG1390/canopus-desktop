@@ -2515,3 +2515,63 @@ html.overlay-mode body {
 .selected-row td {
   background: rgba(79, 179, 232, 0.12);
 }
+
+/* Signatures */
+.sig-kind {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(125, 143, 163, 0.15);
+}
+.sig-data {
+  background: rgba(79, 179, 232, 0.2);
+  color: #8fd0f5;
+}
+.sig-relic {
+  background: rgba(230, 190, 60, 0.18);
+  color: #f0d070;
+}
+.sig-gas {
+  background: rgba(76, 196, 122, 0.18);
+  color: #7fe0a3;
+}
+.sig-wormhole {
+  background: rgba(170, 120, 240, 0.2);
+  color: #c9a8ff;
+}
+.sig-combat {
+  background: rgba(229, 83, 75, 0.2);
+  color: #ff8a80;
+}
+.sig-ore {
+  background: rgba(200, 150, 100, 0.2);
+  color: #e0b890;
+}
+.sig-strength {
+  display: inline-block;
+  width: 60px;
+  height: 5px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-radius: 3px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.sig-strength div {
+  height: 100%;
+  background: var(--accent);
+}
+.sig-hint-high {
+  color: #7fe0a3;
+}
+.sig-hint-warn {
+  color: #ffb070;
+}
+.sig-hint-low {
+  color: var(--muted);
+}
+.sig-table tr.arrived td {
+  background: rgba(255, 210, 122, 0.07);
+}

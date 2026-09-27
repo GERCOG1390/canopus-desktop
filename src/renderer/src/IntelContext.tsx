@@ -30,6 +30,8 @@ interface IntelState {
   dscan: { rows: ScanRow[]; at: number } | null
   fleet: { rows: FleetRow[]; at: number } | null
   lastClipboard: { kind: ClipboardKind; at: number } | null
+  /** Last probe scanner copy (signatures), with the system it was made in */
+  probe: { text: string; at: number; system: string | null } | null
   scanText: (text: string) => void
   setDscanText: (text: string) => void
   setFleetText: (text: string) => Promise<void>
@@ -75,6 +77,7 @@ export function IntelProvider({ children }: { children: ReactNode }) {
   const [dscan, setDscan] = useState<IntelState['dscan']>(null)
   const [fleet, setFleet] = useState<IntelState['fleet']>(null)
   const [lastClipboard, setLastClipboard] = useState<IntelState['lastClipboard']>(null)
+  const [probe, setProbe] = useState<IntelState['probe']>(null)
   const [reports, setReports] = useState<IntelReport[]>([])
   const [channels, setChannels] = useState<ChannelInfo[]>([])
   const [jumps, setJumps] = useState<Record<number, number>>({})
@@ -229,6 +232,10 @@ export function IntelProvider({ children }: { children: ReactNode }) {
   // Clipboard & log events from the main process.
   useEffect(() => {
     const offClip = window.api.intel.onClipboard((e) => {
+      if (e.kind === 'probe') {
+        setProbe({ text: e.text, at: Date.now(), system: systemRef.current?.name ?? null })
+        return
+      }
       setLastClipboard({ kind: e.kind, at: Date.now() })
       if (e.kind === 'local') scanText(e.text)
       else if (e.kind === 'dscan') setDscanText(e.text)
@@ -277,7 +284,7 @@ export function IntelProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t)
   }, [scan, system, reports, jumps, systems])
 
-  return <Ctx.Provider value={{ system, logStatus, scan, dscan, fleet, lastClipboard, scanText, setDscanText, setFleetText, reports, channels, jumps, systems }}>{children}</Ctx.Provider>
+  return <Ctx.Provider value={{ system, logStatus, scan, dscan, fleet, lastClipboard, probe, scanText, setDscanText, setFleetText, reports, channels, jumps, systems }}>{children}</Ctx.Provider>
 }
 
 /** Fresh reports within 10 jumps for the overlay: nearest system of each, newest first. */

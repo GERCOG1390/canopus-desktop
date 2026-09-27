@@ -30,7 +30,7 @@ export default function IntelPage() {
         onChange={setTab}
       />
       {lastClipboard && Date.now() - lastClipboard.at < 4000 && lastClipboard.kind !== tab && tab !== 'settings' && tab !== 'channels' && (
-        <div className="clip-toast" onClick={() => setTab(lastClipboard.kind)}>
+        <div className="clip-toast" onClick={() => lastClipboard.kind !== 'probe' && setTab(lastClipboard.kind)}>
           Из буфера получен {lastClipboard.kind === 'local' ? 'список локала' : lastClipboard.kind === 'dscan' ? 'D-scan' : 'состав флота'} — открыть
         </div>
       )}

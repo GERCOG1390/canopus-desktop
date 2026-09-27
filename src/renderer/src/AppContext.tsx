@@ -4,7 +4,7 @@ import type { CharacterAuth, Settings } from '../../shared/types'
 import { setUiLang } from './i18n'
 import { retryMissing, type Lang } from './lib/sde'
 
-export type PageId = 'character' | 'intel' | 'fitting' | 'market' | 'map' | 'industry' | 'pvp' | 'settings'
+export type PageId = 'character' | 'intel' | 'fitting' | 'market' | 'map' | 'industry' | 'activities' | 'pvp' | 'settings'
 
 interface AppState {
   settings: Settings | null

@@ -16,6 +16,7 @@ import IndustryPage from './pages/IndustryPage'
 import MapPage from './pages/MapPage'
 import MarketPage from './pages/MarketPage'
 import PvpPage from './pages/PvpPage'
+import ActivitiesPage from './pages/ActivitiesPage'
 import SettingsPage from './pages/SettingsPage'
 
 const PAGES: { id: PageId; label: string; icon: string; render: () => ReactNode }[] = [
@@ -25,6 +26,7 @@ const PAGES: { id: PageId; label: string; icon: string; render: () => ReactNode 
   { id: 'market', label: 'Рынок', icon: '◈', render: () => <MarketPage /> },
   { id: 'map', label: 'Карта', icon: '✦', render: () => <MapPage /> },
   { id: 'industry', label: 'Индустрия', icon: '⚙', render: () => <IndustryPage /> },
+  { id: 'activities', label: 'Активности', icon: '◇', render: () => <ActivitiesPage /> },
   { id: 'pvp', label: 'PvP', icon: '✕', render: () => <PvpPage /> },
   { id: 'settings', label: 'Настройки', icon: '☰', render: () => <SettingsPage /> }
 ]

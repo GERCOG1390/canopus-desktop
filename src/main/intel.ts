@@ -323,6 +323,8 @@ export function classifyClipboard(text: string): ClipboardKind | null {
   if (!lines.length || lines.length > 3000) return null
   const tabbed = lines.filter((l) => l.includes('\t'))
   if (tabbed.length >= lines.length * 0.8) {
+    // Probe scanner rows start with a signature ID: "ABC-123<TAB>Cosmic Signature<TAB>Data Site<TAB>…"
+    if (tabbed.filter((l) => /^[A-Z]{3}-\d{3}\t/.test(l)).length >= tabbed.length * 0.8) return 'probe'
     // D-scan rows start with a type ID: "11190<TAB>Name<TAB>Sabre<TAB>1 234 km"
     if (tabbed.filter((l) => /^\d+\t/.test(l)).length >= tabbed.length * 0.8) return 'dscan'
     if (tabbed.every((l) => l.split('\t').length >= 3)) return 'fleet'

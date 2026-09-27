@@ -33,7 +33,7 @@ export const DEFAULT_INTEL: IntelSettings = {
   overlay: { enabled: false, opacity: 0.85, clickThrough: false }
 }
 
-export type ClipboardKind = 'local' | 'dscan' | 'fleet'
+export type ClipboardKind = 'local' | 'dscan' | 'fleet' | 'probe'
 
 export interface ClipboardEvent {
   kind: ClipboardKind
