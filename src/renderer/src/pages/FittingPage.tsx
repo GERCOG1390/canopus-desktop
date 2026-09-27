@@ -6,6 +6,7 @@ import { useCharacter } from '../CharacterContext'
 import { AttrIcon } from '../components/Icon'
 import { useInfo } from '../components/InfoContext'
 import { ChargePicker } from '../components/ChargePicker'
+import { FitCost } from '../components/FitCost'
 import { MarketTree } from '../components/MarketTree'
 import { MissingSkillsBox } from '../components/skills'
 import { TypeLink, TypeName } from '../components/TypeLink'
@@ -999,6 +1000,7 @@ function StatsPanel({
           </KV>
         </div>
       </section>
+      <FitCost fit={fit} />
       <p className="muted small">Расчёт по данным догмы SDE: навыки, бонусы корпуса, модули, заряды, импланты, штрафы за стакинг. Модулей: {fit.modules.length}.</p>
     </div>
   )

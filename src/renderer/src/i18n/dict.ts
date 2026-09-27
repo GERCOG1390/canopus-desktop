@@ -723,6 +723,10 @@ export const EXACT: Record<string, string> = {
   'Папка логов чата EVE не найдена': 'EVE chat log folder not found',
   'Лог Local не найден — зайдите в игру': 'Local log not found — log into the game',
   'Нет такого предмета': 'No such item',
+  'Модули': 'Modules',
+  'Заряды': 'Charges',
+  'Загружаю цены…': 'Loading prices…',
+  'Стоимость (Jita, продажа)': 'Price (Jita sell)',
   'Предпросмотр:': 'Preview:',
   'Нельзя установить:': 'Cannot fit:',
   'Сюжетные': 'Storyline',
@@ -763,6 +767,8 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^Без ордеров на продажу в Jita: (\d+) — не учтены\.$/, 'No Jita sell orders: $1 — not counted.'],
+  [/^Цены недоступны: (.+)$/, 'Prices unavailable: $1'],
   [/^1 прыж\.$/, '1 jump'],
   [/^(\d+) прыж\.$/, '$1 jumps'],
   [/^До 1 прыж\.$/, 'Up to 1 jump'],

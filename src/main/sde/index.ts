@@ -232,7 +232,7 @@ export function basics(ids: number[]): Record<number, TypeBasic> {
   for (const id of ids) {
     const t = d.types[id]
     if (!t) continue
-    out[id] = { id, n: t.n, g: t.g, c: d.groups[t.g]?.c ?? 0, meta: t.meta, pub: t.pub, v: t.pvol ?? t.vol }
+    out[id] = { id, n: t.n, g: t.g, c: d.groups[t.g]?.c ?? 0, meta: t.meta, pub: t.pub, v: t.pvol ?? t.vol, cap: t.cap }
   }
   return out
 }

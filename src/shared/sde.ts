@@ -104,6 +104,8 @@ export interface TypeBasic {
   pub: boolean
   /** Packaged volume if the type has one, else its volume (m³). */
   v?: number
+  /** Cargo / charge capacity (m³) */
+  cap?: number
 }
 
 /** A market group as shown in the market / ship browser. */
