@@ -1,5 +1,6 @@
 // Types shared between the main process, preload and renderer.
 
+import type { CombatPilot, CombatResult, CombatScenario } from './combat'
 import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
@@ -93,6 +94,17 @@ export interface CanopusApi {
     /** Stargate jumps from a system to others (unreachable / far ones omitted). */
     jumpsFrom(fromId: number, ids: number[]): Promise<Record<number, number>>
     systemId(name: string): Promise<number | null>
+  }
+  combat: {
+    /** Open (or focus) the simulator window with this fit as "your" side. */
+    open(attacker: CombatPilot): Promise<void>
+    /** Keep the simulator's "your" side in sync with the fitting tool. */
+    setAttacker(attacker: CombatPilot): Promise<void>
+    isOpen(): Promise<boolean>
+    getAttacker(): Promise<CombatPilot | null>
+    onAttacker(listener: (a: CombatPilot) => void): () => void
+    simulate(a: CombatPilot, b: CombatPilot, scenario: CombatScenario): Promise<CombatResult>
+    defaults(a: CombatPilot, b: CombatPilot): Promise<{ speedA: number; speedB: number; sigA: number; sigB: number }>
   }
   fit: {
     calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>

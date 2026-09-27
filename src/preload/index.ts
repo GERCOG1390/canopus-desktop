@@ -74,6 +74,15 @@ const api: CanopusApi = {
     systemId: (name) => invoke('intel:systemId', name)
   },
   onSettingsChanged: (listener) => on('intel:settingsChanged', listener),
+  combat: {
+    open: (attacker) => invoke('combat:open', attacker),
+    setAttacker: (attacker) => invoke('combat:setAttacker', attacker),
+    isOpen: () => invoke('combat:isOpen'),
+    getAttacker: () => invoke('combat:getAttacker'),
+    onAttacker: (listener) => on('combat:attacker', listener),
+    simulate: (a, b, scenario) => invoke('combat:simulate', a, b, scenario),
+    defaults: (a, b) => invoke('combat:defaults', a, b)
+  },
   fit: {
     calculate: (spec, skills) => invoke('fit:calculate', spec, skills),
     catalog: () => invoke('fit:catalog'),

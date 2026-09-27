@@ -57,6 +57,10 @@ export interface WeaponStats {
   tracking?: number
   explosionRadius?: number
   explosionVelocity?: number
+  /** Missile damage reduction factor (drf) */
+  drf?: number
+  /** Drone speed, m/s */
+  speed?: number
 }
 
 export interface ModuleResult {

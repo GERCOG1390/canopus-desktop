@@ -5,6 +5,8 @@ import * as auth from './auth'
 import { request } from './http'
 import * as sde from './sde'
 import * as dogma from './dogma'
+import * as combat from './dogma/combat'
+import type { CombatPilot, CombatScenario } from '../shared/combat'
 import { handleIconScheme, registerIconScheme } from './icons'
 import type { FitSpec, SkillSource } from '../shared/fit'
 import type { IntelSettings, OverlaySummary } from '../shared/intel'
@@ -60,6 +62,36 @@ const PRELOAD = join(__dirname, '../preload/index.js')
 function loadRenderer(win: BrowserWindow, hash = ''): void {
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL + (hash ? `#${hash}` : ''))
   else void win.loadFile(join(__dirname, '../renderer/index.html'), hash ? { hash } : undefined)
+}
+
+// ---------- Combat simulator window ----------
+
+let combatWindow: BrowserWindow | null = null
+/** "Your" side: the fit open in the fitting tool, kept in sync while the simulator is open. */
+let combatAttacker: CombatPilot | null = null
+
+function openCombatWindow(): void {
+  if (combatWindow && !combatWindow.isDestroyed()) {
+    if (combatWindow.isMinimized()) combatWindow.restore()
+    combatWindow.focus()
+    return
+  }
+  combatWindow = new BrowserWindow({
+    width: 1280,
+    height: 880,
+    minWidth: 960,
+    minHeight: 640,
+    title: 'Canopus — симуляция боя',
+    backgroundColor: '#0b0f14',
+    autoHideMenuBar: true,
+    webPreferences: { preload: PRELOAD, contextIsolation: true, sandbox: true }
+  })
+  combatWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternal(url)
+    return { action: 'deny' }
+  })
+  combatWindow.on('closed', () => (combatWindow = null))
+  loadRenderer(combatWindow, 'combat')
 }
 
 const sendToMain = (channel: string, payload: unknown): void => {
@@ -129,6 +161,19 @@ function registerIpc(): void {
   ipcMain.handle('sde:blueprintForProduct', (_e, id: number) => sde.blueprintForProduct(id))
 
   ipcMain.handle('fit:calculate', (_e, spec: FitSpec, skills: SkillSource) => dogma.calculateFit(spec, skills))
+
+  ipcMain.handle('combat:open', (_e, attacker: CombatPilot) => {
+    combatAttacker = attacker
+    openCombatWindow()
+  })
+  ipcMain.handle('combat:setAttacker', (_e, attacker: CombatPilot) => {
+    combatAttacker = attacker
+    if (combatWindow && !combatWindow.isDestroyed()) combatWindow.webContents.send('combat:attacker', attacker)
+  })
+  ipcMain.handle('combat:isOpen', () => !!combatWindow && !combatWindow.isDestroyed())
+  ipcMain.handle('combat:getAttacker', () => combatAttacker)
+  ipcMain.handle('combat:simulate', (_e, a: CombatPilot, b: CombatPilot, scenario: CombatScenario) => combat.simulate(a, b, scenario))
+  ipcMain.handle('combat:defaults', (_e, a: CombatPilot, b: CombatPilot) => combat.defaults(a, b))
   ipcMain.handle('fit:catalog', () => sde.fittingCatalog())
   ipcMain.handle('fit:fittableFor', (_e, shipTypeId: number) => sde.fittableFor(shipTypeId))
   ipcMain.handle('fit:explain', (_e, spec: FitSpec, skills: SkillSource, target: string, attr: number) => dogma.explainAttr(spec, skills, target, attr))

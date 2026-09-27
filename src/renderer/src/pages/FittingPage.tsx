@@ -195,6 +195,12 @@ function Editor() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hoverId, f, skills, stats])
 
+  // The combat simulator window follows the fit being edited.
+  useEffect(() => {
+    const t = setTimeout(() => void window.api.combat.setAttacker({ fit: f, skills }), 200)
+    return () => clearTimeout(t)
+  }, [f, skills])
+
   const reqIds = [f.shipTypeId, ...f.modules.flatMap((m) => [m.typeId, m.chargeTypeId ?? 0]), ...f.drones.map((d) => d.typeId), ...f.implants].filter(Boolean)
   const reqs = useAsync(() => window.api.sde.requiredSkills(reqIds), [reqIds.join(',')])
 
@@ -275,6 +281,9 @@ function Editor() {
           }}
         >
           Копировать EFT
+        </button>
+        <button className="ghost" title="Открыть окно симуляции боя с этим фитом" onClick={() => void window.api.combat.open({ fit: f, skills })}>
+          ⚔ Симуляция боя
         </button>
         <button className="ghost" onClick={() => setFit(null)}>
           Закрыть

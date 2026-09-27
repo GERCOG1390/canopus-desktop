@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import CombatWindow from './CombatWindow'
 import Overlay from './Overlay'
 import './styles.css'
 
@@ -13,7 +14,7 @@ document.addEventListener('click', (e) => {
   }
 })
 
-// The overlay window loads the same bundle with #overlay.
-const isOverlay = location.hash === '#overlay'
+// The overlay and the combat simulator windows load the same bundle with #overlay / #combat.
+const view = location.hash === '#overlay' ? <Overlay /> : location.hash === '#combat' ? <CombatWindow /> : <App />
 
-createRoot(document.getElementById('root')!).render(<StrictMode>{isOverlay ? <Overlay /> : <App />}</StrictMode>)
+createRoot(document.getElementById('root')!).render(<StrictMode>{view}</StrictMode>)

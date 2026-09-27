@@ -56,6 +56,7 @@ const A = {
   maxGroupFitted: 1544,
   rigSize: 1547,
   maxGroupActive: 763,
+  aoeDamageReductionFactor: 1353,
   capacitorBonus: 67
 }
 
@@ -266,7 +267,8 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
         cycle,
         optimal: (a(charge, A.maxVelocity) * a(charge, A.explosionDelay)) / 1000,
         explosionRadius: a(charge, A.explosionRadius),
-        explosionVelocity: a(charge, A.explosionVelocity)
+        explosionVelocity: a(charge, A.explosionVelocity),
+        drf: a(charge, A.aoeDamageReductionFactor)
       })
     }
   }
@@ -288,7 +290,8 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       cycle,
       optimal: a(d, A.maxRange),
       falloff: a(d, A.falloff),
-      tracking: a(d, A.trackingSpeed)
+      tracking: a(d, A.trackingSpeed),
+      speed: a(d, A.maxVelocity)
     })
   }
   const sumDps = (kind: WeaponStats['kind']) => weapons.filter((w) => w.kind === kind).reduce((s, w) => s + w.dps, 0)
