@@ -119,7 +119,10 @@ function registerIpc(): void {
   ipcMain.handle('sde:skillCatalog', () => sde.skillCatalog())
   ipcMain.handle('sde:attributeIcons', () => sde.attributeIcons())
   ipcMain.handle('sde:groupNames', (_e, ids: number[]) => sde.groupNames(ids))
-  ipcMain.handle('sde:marketChildren', (_e, parent: number | null, order: 'name' | 'size', lang: 0 | 1) => sde.marketChildren(parent, order, lang))
+  ipcMain.handle('sde:marketChildren', (_e, parent: number | null, order: 'name' | 'size', lang: 0 | 1, filterKey?: string) =>
+    sde.marketChildren(parent, order, lang, filterKey)
+  )
+  ipcMain.handle('sde:setMarketFilter', (_e, key: string, ids: number[]) => sde.setMarketFilter(key, ids))
   ipcMain.handle('sde:marketPath', (_e, typeId: number) => sde.marketPath(typeId))
   ipcMain.handle('sde:requiredSkills', (_e, ids: number[]) => sde.requiredSkills(ids))
   ipcMain.handle('sde:dogmaAttrs', (_e, ids: number[], attrIds: number[]) => sde.dogmaAttrs(ids, attrIds))

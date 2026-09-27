@@ -1833,3 +1833,18 @@ html.overlay-mode body {
 .market-main {
   min-width: 0;
 }
+.browser-tree .mt-row {
+  min-height: 30px;
+}
+.browser-tree .mt-type .mt-name {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.25;
+}
+.browser-tree .mt-type {
+  white-space: normal;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}

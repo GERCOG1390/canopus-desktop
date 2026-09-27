@@ -92,6 +92,7 @@ async function load(build: number): Promise<void> {
   nameIndex = null
   intelIndex = null
   marketIndex = null
+  marketFilters.clear()
   distanceCache.clear()
 
   searchIndex = Object.values(next.types)
@@ -935,9 +936,42 @@ function sortKey(text: string): string {
   return /[а-яё]/i.test(text) ? text.replace(/[ABCEHKMOPTXacepoxy]/g, (ch) => LATIN_LOOKALIKES[ch]) : text
 }
 
-export function marketChildren(parent: number | null, order: 'name' | 'size' = 'name', lang: 0 | 1 = 0): MarketLevel {
+/** Tech I, Tech II, Storyline, Faction, Deadspace, Officer, Tech III — the in-game order of meta groups. */
+const META_ORDER: Record<number, number> = { 1: 0, 2: 1, 3: 2, 4: 3, 6: 4, 5: 5, 14: 6 }
+const metaRank = (meta?: number) => (meta === undefined ? 0 : META_ORDER[meta] ?? 7)
+
+interface MarketFilter {
+  items: Set<number>
+  /** Allowed items per market group subtree */
+  count: Map<number, number>
+}
+
+/** Item filters for the tree, registered by the UI under a key (e.g. "what fits this hull's mid slots"). */
+const marketFilters = new Map<string, MarketFilter>()
+
+export function setMarketFilter(key: string, ids: number[]): void {
   const d = need()
   const idx = getMarketIndex()
+  const items = new Set(ids)
+  const count = new Map<number, number>()
+  const countOf = (id: number): number => {
+    let n = count.get(id)
+    if (n === undefined) {
+      n = (idx.types.get(id) ?? []).filter((t) => items.has(t)).length + (idx.children.get(id) ?? []).reduce((s, c) => s + countOf(c), 0)
+      count.set(id, n)
+    }
+    return n
+  }
+  for (const id of Object.keys(d.marketGroups)) countOf(Number(id))
+  if (marketFilters.size > 20) marketFilters.clear()
+  marketFilters.set(key, { items, count })
+}
+
+export function marketChildren(parent: number | null, order: 'name' | 'size' = 'name', lang: 0 | 1 = 0, filterKey?: string): MarketLevel {
+  const d = need()
+  const idx = getMarketIndex()
+  const filter = filterKey ? marketFilters.get(filterKey) : undefined
+  const countOf = (id: number) => (filter ? filter.count.get(id) : idx.count.get(id)) ?? 0
   const name = (n: [string, string]) => sortKey(n[lang] || n[0])
   const rank = (id: number) => {
     if (order !== 'size') return 0
@@ -946,11 +980,13 @@ export function marketChildren(parent: number | null, order: 'name' | 'size' = '
     return /^Standard/i.test(d.marketGroups[id].n[0]) ? -1 : 0
   }
   const groups: MarketNode[] = (idx.children.get(parent ?? 0) ?? [])
-    .filter((id) => (idx.count.get(id) ?? 0) > 0)
+    .filter((id) => countOf(id) > 0)
     .sort((a, b) => rank(a) - rank(b) || name(d.marketGroups[a].n).localeCompare(name(d.marketGroups[b].n)))
-    .map((id) => ({ id, n: d.marketGroups[id].n, icon: d.marketGroups[id].icon, count: idx.count.get(id) ?? 0 }))
-  const types = Object.values(basics(parent === null ? [] : (idx.types.get(parent) ?? []))).sort(
-    (a, b) => (a.meta ?? 0) - (b.meta ?? 0) || name(a.n).localeCompare(name(b.n))
+    .map((id) => ({ id, n: d.marketGroups[id].n, icon: d.marketGroups[id].icon, count: countOf(id) }))
+  const ids = (parent === null ? [] : (idx.types.get(parent) ?? [])).filter((id) => !filter || filter.items.has(id))
+  // Like the game: Tech I, Tech II, storyline, faction… and by meta level inside each.
+  const types = Object.values(basics(ids)).sort(
+    (a, b) => metaRank(a.meta) - metaRank(b.meta) || (d.types[a.id].ml ?? 0) - (d.types[b.id].ml ?? 0) || name(a.n).localeCompare(name(b.n))
   )
   return { groups, types }
 }

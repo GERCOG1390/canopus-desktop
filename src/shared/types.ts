@@ -57,7 +57,9 @@ export interface CanopusApi {
     attributeIcons(): Promise<Record<number, number>>
     groupNames(ids: number[]): Promise<Record<number, L10n>>
     /** One level of the market tree (null = top level). */
-    marketChildren(parent: number | null, order: 'name' | 'size', lang: 0 | 1): Promise<MarketLevel>
+    marketChildren(parent: number | null, order: 'name' | 'size', lang: 0 | 1, filterKey?: string): Promise<MarketLevel>
+    /** Restrict the tree to these items when marketChildren gets the same key. */
+    setMarketFilter(key: string, ids: number[]): Promise<void>
     /** Market groups from the top level down to the item's group. */
     marketPath(typeId: number): Promise<number[]>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>

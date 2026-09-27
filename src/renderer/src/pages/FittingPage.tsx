@@ -470,9 +470,9 @@ function ModuleBrowser({
   const hasSubsystems = (stats?.ship.slots.sub ?? 0) > 0
   const droneBay = stats?.ship.droneBay.total ?? null
 
+  const q = query.trim().toLowerCase()
   const list = useMemo(() => {
     if (!catalog) return []
-    const q = query.trim().toLowerCase()
     if (!fittable.data || slotCount === 0) return []
     return [...catalog.values()]
       .filter((t) => t.slot === slot)
@@ -488,14 +488,19 @@ function ModuleBrowser({
         const n = getBasic(t.id)?.n
         return !!n && (n[0].toLowerCase().includes(q) || n[1].toLowerCase().includes(q))
       })
-      // Tech I/II first, then everything else; ignore the quotes around named modules.
+      // As in the game: Tech I, Tech II, storyline, faction, deadspace, officer; ignore the quotes around named modules.
       .sort((a, b) => {
-        const rank = (t: FittableType) => (t.meta === 1 || !t.meta ? 0 : t.meta === 2 ? 1 : 2)
+        const rank = (t: FittableType) => (!t.meta ? 0 : ({ 1: 0, 2: 1, 3: 2, 4: 3, 6: 4, 5: 5, 14: 6 } as Record<number, number>)[t.meta] ?? 7)
         const name = (t: FittableType) => tn(getBasic(t.id)?.n, lang).replace(/^['"‘’]+/, '')
         return rank(a) - rank(b) || name(a).localeCompare(name(b))
       })
-  }, [catalog, slot, query, meta, kind, lang, fittable.data, slotCount, noTurrets, noLaunchers, droneBay])
+  }, [catalog, slot, q, meta, kind, lang, fittable.data, slotCount, noTurrets, noLaunchers, droneBay])
 
+  // Without a search query the candidates are shown as the in-game browser: by purpose (market groups).
+  const treeFilter = useMemo(
+    () => ({ key: `fit|${shipTypeId}|${slot}|${meta}|${kind}|${droneBay}|${noTurrets}|${noLaunchers}|${list.length}`, ids: list.map((t) => t.id) }),
+    [list, shipTypeId, slot, meta, kind, droneBay, noTurrets, noLaunchers]
+  )
   const shown = list.slice(0, 300)
   return (
     <Card>
@@ -528,6 +533,11 @@ function ModuleBrowser({
       ) : error ? (
         <ErrorBox error={error} />
       ) : (
+        !q && list.length > 0 ? (
+          <div className="browser-list browser-tree">
+            <MarketTree mode="add" filter={treeFilter} onPick={onAdd} />
+          </div>
+        ) : (
         <ul className="browser-list">
           {shown.map((t) => (
             <li key={t.id} onDoubleClick={() => onAdd(t.id)}>
@@ -551,8 +561,9 @@ function ModuleBrowser({
             </li>
           )}
         </ul>
+        )
       )}
-      <p className="muted small">«+» или двойной клик — установить. Клик по названию — полная информация.</p>
+      <p className="muted small">«+» или двойной клик — установить. Кнопка «i» или клик по названию в поиске — полная информация.</p>
     </Card>
   )
 }

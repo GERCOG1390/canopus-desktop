@@ -366,6 +366,7 @@ export const EXACT: Record<string, string> = {
   'Загружаю каталог модулей…': 'Loading the module catalog…',
   Установить: 'Fit',
   '«+» или двойной клик — установить. Клик по названию — полная информация.': '"+" or double-click to fit. Click a name for full info.',
+  '«+» или двойной клик — установить. Кнопка «i» или клик по названию в поиске — полная информация.': '"+" or double-click to fit. The "i" button or a name in search results — full info.',
   'Размер ригов корабля:': 'Ship rig size:',
   малые: 'small',
   средние: 'medium',
