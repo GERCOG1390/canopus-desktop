@@ -103,6 +103,7 @@ const api: CanopusApi = {
   },
   fit: {
     calculate: (spec, skills) => invoke('fit:calculate', spec, skills),
+    skillGains: (spec, levels) => invoke('fit:skillGains', spec, levels),
     catalog: () => invoke('fit:catalog'),
     fittableFor: (shipTypeId) => invoke('fit:fittableFor', shipTypeId),
     explain: (spec, skills, target, attr) => invoke('fit:explain', spec, skills, target, attr),

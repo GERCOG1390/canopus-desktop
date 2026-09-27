@@ -7,6 +7,7 @@ import { AttrIcon } from '../components/Icon'
 import { useInfo } from '../components/InfoContext'
 import { ChargePicker } from '../components/ChargePicker'
 import { FitCost } from '../components/FitCost'
+import { FitTools, type FitTool } from './FitTools'
 import { MarketTree } from '../components/MarketTree'
 import { MissingSkillsBox } from '../components/skills'
 import { TypeLink, TypeName } from '../components/TypeLink'
@@ -154,6 +155,7 @@ function Editor() {
   const f = fit!
   /** Item under the cursor in the browser: the stats panel shows the fit as if it were added. */
   const [hoverId, setHoverId] = useState<number | null>(null)
+  const [tool, setTool] = useState<FitTool | null>(null)
   const [preview, setPreview] = useState<{ id: number; stats?: FitStats; blocked?: string } | null>(null)
 
   useEffect(() => {
@@ -282,6 +284,9 @@ function Editor() {
         >
           Копировать EFT
         </button>
+        <button className={`ghost ${tool ? 'active' : ''}`} onClick={() => setTool(tool ? null : 'learn')}>
+          Инструменты
+        </button>
         <button className="ghost" title="Открыть окно симуляции боя с этим фитом" onClick={() => void window.api.combat.open({ fit: f, skills })}>
           ⚔ Симуляция боя
         </button>
@@ -290,6 +295,8 @@ function Editor() {
         </button>
         {notice && <span className="good small">{notice}</span>}
       </div>
+
+      {tool && <FitTools tool={tool} setTool={setTool} fit={f} skills={skills} onLoad={(x) => setFit(x)} />}
 
       <div className="fitting-grid">
         <div className="fit-col">

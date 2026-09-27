@@ -136,6 +136,8 @@ export interface CanopusApi {
     defaults(a: CombatPilot, b: CombatPilot): Promise<{ speedA: number; speedB: number; sigA: number; sigB: number }>
   }
   fit: {
+    /** What the next level of each skill would change on this fit (skills that change nothing are left out). */
+    skillGains(spec: FitSpec, levels: Record<number, number>): Promise<{ skill: number; from: number; dps: number; ehp: number; activeTank: number; speed: number; align: number; capacitor: number; lockRange: number }[]>
     calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>
     catalog(): Promise<FittableType[]>
     /** Catalog items this hull can take at all (group/type restrictions, rig size, capital modules, drone bay). */
