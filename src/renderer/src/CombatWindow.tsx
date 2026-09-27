@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CombatDirection, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
 import type { FitSpec, FittableType, SavedFit } from '../../shared/fit'
-import { AppProvider, useLang } from './AppContext'
+import { AppProvider, useApp, useLang } from './AppContext'
 import { ChargePicker } from './components/ChargePicker'
 import { AttrIcon } from './components/Icon'
 import { Card, Empty, SearchBox } from './components/ui'
 import { imageUrl } from './lib/esi'
 import { fmtNum } from './lib/format'
-import { chargesFor, fromEft, loadCatalog, toEft } from './lib/fitting'
+import { chargesFor, fromEft, fromEsiItems, loadCatalog, toEft } from './lib/fitting'
+import { groupByShip, loadGameFits, type GameFitting } from './lib/gameFits'
 import { CATEGORY, searchTypesSde, tn, useTypeBasic, useTypeBasics } from './lib/sde'
 import { locale } from './i18n'
 
@@ -510,7 +511,7 @@ function SideStats({ info }: { info: CombatSideInfo }) {
   )
 }
 
-type Tab = 'ship' | 'saved' | 'eft' | 'mirror'
+type Tab = 'game' | 'ship' | 'saved' | 'eft' | 'mirror'
 
 function OpponentPicker({
   attacker,
@@ -523,8 +524,27 @@ function OpponentPicker({
   onPick: (p: CombatPilot) => void
   lang: 0 | 1
 }) {
-  const [tab, setTab] = useState<Tab>('saved')
+  const { active } = useApp()
+  const [tab, setTabState] = useState<Tab>(active ? 'game' : 'saved')
+  const [tabChosen, setTabChosen] = useState(false)
+  const setTab = (t: Tab) => {
+    setTabChosen(true)
+    setTabState(t)
+  }
+  // The character loads after the window opens: show its in-game fits unless a tab was already chosen.
+  useEffect(() => {
+    if (active && !tabChosen) setTabState('game')
+  }, [active, tabChosen])
   const [saved, setSaved] = useState<SavedFit[] | null>(null)
+  const [game, setGame] = useState<{ fits?: GameFitting[]; error?: string } | null>(null)
+  const activeId = active?.id
+  useEffect(() => {
+    if (!activeId || tab !== 'game' || game) return
+    loadGameFits(activeId)
+      .then((fits) => setGame({ fits }))
+      .catch((e: Error) => setGame({ error: e.message }))
+  }, [activeId, tab, game])
+  useTypeBasics(game?.fits?.map((f) => f.ship_type_id) ?? [])
   const [eft, setEft] = useState('')
   const [eftError, setEftError] = useState<string | null>(null)
   useTypeBasics(saved?.map((f) => f.shipTypeId) ?? [])
@@ -550,7 +570,8 @@ function OpponentPicker({
       <div className="browser-tabs">
         {(
           [
-            ['saved', 'Сохранённые фиты'],
+            ['game', 'Фиты из игры'],
+            ['saved', 'Сохранённые в Canopus'],
             ['ship', 'Корабль'],
             ['eft', 'EFT / свой фит'],
             ['mirror', 'Зеркало']
@@ -573,20 +594,56 @@ function OpponentPicker({
           )}
         />
       )}
+      {tab === 'game' &&
+        (!active ? (
+          <p className="muted small">Войдите персонажем через EVE SSO (Настройки), чтобы видеть фиты, сохранённые в игре.</p>
+        ) : !game ? (
+          <p className="muted small">…</p>
+        ) : game.error ? (
+          <p className="muted small">{`Не удалось загрузить фиты из игры: ${game.error}`}</p>
+        ) : !game.fits?.length ? (
+          <p className="muted small">В игре у персонажа нет сохранённых фитов.</p>
+        ) : (
+          <ShipFitList
+            groups={groupByShip(
+              game.fits,
+              (f) => f.ship_type_id,
+              (f) => f.name,
+              lang
+            )}
+            fitName={(f) => f.name}
+            fitKey={(f) => f.fitting_id}
+            onPick={async (f) =>
+              onPick({
+                fit: await fromEsiItems(
+                  f.ship_type_id,
+                  f.name,
+                  f.items.map((i) => ({ typeId: i.type_id, flag: i.flag, qty: i.quantity }))
+                ),
+                skills: all5
+              })
+            }
+            lang={lang}
+          />
+        ))}
       {tab === 'saved' &&
         (saved === null ? (
           <p className="muted small">…</p>
         ) : !saved.length ? (
           <p className="muted small">Сохранённых фитов нет — сохраните фит в фитинге или вставьте EFT.</p>
         ) : (
-          <ul className="combat-fit-list">
-            {saved.map((f) => (
-              <li key={f.id} onClick={() => onPick({ fit: f, skills: all5 })}>
-                <img src={imageUrl.typeIcon(f.shipTypeId, 32)} width={24} height={24} alt="" />
-                <SavedName fit={f} />
-              </li>
-            ))}
-          </ul>
+          <ShipFitList
+            groups={groupByShip(
+              saved,
+              (f) => f.shipTypeId,
+              (f) => f.name,
+              lang
+            )}
+            fitName={(f) => f.name}
+            fitKey={(f) => f.id}
+            onPick={(f) => onPick({ fit: f, skills: all5 })}
+            lang={lang}
+          />
         ))}
       {tab === 'eft' && (
         <>
@@ -618,14 +675,53 @@ function OpponentPicker({
   )
 }
 
-function SavedName({ fit }: { fit: SavedFit }) {
-  const lang = useLang()
-  const basic = useTypeBasic(fit.shipTypeId)
+/** Fits grouped by hull: click a hull to open its fits, click a fit to pick it. */
+function ShipFitList<T>({
+  groups,
+  fitName,
+  fitKey,
+  onPick,
+  lang
+}: {
+  groups: { shipTypeId: number; fits: T[] }[]
+  fitName: (f: T) => string
+  fitKey: (f: T) => string | number
+  onPick: (f: T) => void
+  lang: 0 | 1
+}) {
+  const [open, setOpen] = useState<Set<number>>(new Set(groups.length === 1 ? [groups[0].shipTypeId] : []))
+  const toggle = (id: number) =>
+    setOpen((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   return (
-    <span>
-      <b>{tn(basic?.n, lang)}</b> <span className="muted" translate="no">{fit.name}</span>
-    </span>
+    <ul className="combat-fit-list">
+      {groups.map((g) => (
+        <li key={g.shipTypeId} className="fit-ship-group">
+          <div className="fit-ship-head" onClick={() => toggle(g.shipTypeId)}>
+            <span className="mt-caret">{open.has(g.shipTypeId) ? '▾' : '▸'}</span>
+            <img src={imageUrl.typeIcon(g.shipTypeId, 32)} width={24} height={24} alt="" />
+            <ShipName id={g.shipTypeId} lang={lang} />
+            <span className="muted small">{g.fits.length}</span>
+          </div>
+          {open.has(g.shipTypeId) &&
+            g.fits.map((f) => (
+              <div key={fitKey(f)} className="fit-ship-fit" onClick={() => onPick(f)} translate="no">
+                {fitName(f)}
+              </div>
+            ))}
+        </li>
+      ))}
+    </ul>
   )
+}
+
+function ShipName({ id, lang }: { id: number; lang: 0 | 1 }) {
+  const basic = useTypeBasic(id)
+  return <b className="grow">{tn(basic?.n, lang)}</b>
 }
 
 function Verdict({ r }: { r: CombatResult }) {

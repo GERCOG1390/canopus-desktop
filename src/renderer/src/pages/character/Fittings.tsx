@@ -4,7 +4,8 @@ import { FitView, type FitItem } from '../../components/FitView'
 import { TypeLink } from '../../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading } from '../../components/ui'
 import { esi } from '../../lib/esi'
-import { getBasic, requestBasics, tn } from '../../lib/sde'
+import { groupByShip, loadGameFits, type GameFitting } from '../../lib/gameFits'
+import { getBasic, tn, useTypeBasics } from '../../lib/sde'
 import { useAsync } from '../../lib/useAsync'
 import { ScopeHint } from '.'
 
@@ -16,17 +17,10 @@ interface Asset {
   quantity: number
 }
 
-interface Fitting {
-  fitting_id: number
-  name: string
-  description: string
-  ship_type_id: number
-  items: { type_id: number; flag: string | number; quantity: number }[]
-}
-
 export default function Fittings({ id }: { id: number }) {
   const lang = useLang()
   const [openFit, setOpenFit] = useState<number | null>(null)
+  const [openShips, setOpenShips] = useState<Set<number>>(new Set())
   const [filter, setFilter] = useState('')
 
   const current = useAsync(async () => {
@@ -38,11 +32,8 @@ export default function Fittings({ id }: { id: number }) {
     return { ship, items }
   }, [id])
 
-  const saved = useAsync(async () => {
-    const fits = await esi<Fitting[]>(`/characters/${id}/fittings/`, { characterId: id })
-    requestBasics(fits.map((f) => f.ship_type_id))
-    return fits
-  }, [id])
+  const saved = useAsync(() => loadGameFits(id), [id])
+  useTypeBasics(saved.data?.map((x) => x.ship_type_id) ?? [])
 
   const f = filter.trim().toLowerCase()
   const fits = (saved.data ?? []).filter((fit) => {
@@ -50,6 +41,19 @@ export default function Fittings({ id }: { id: number }) {
     const ship = getBasic(fit.ship_type_id)
     return fit.name.toLowerCase().includes(f) || !!ship?.n.some((n) => n.toLowerCase().includes(f))
   })
+  const groups = groupByShip(
+    fits,
+    (x) => x.ship_type_id,
+    (x) => x.name,
+    lang
+  )
+  const toggleShip = (ship: number) =>
+    setOpenShips((prev) => {
+      const next = new Set(prev)
+      if (next.has(ship)) next.delete(ship)
+      else next.add(ship)
+      return next
+    })
 
   return (
     <>
@@ -82,11 +86,24 @@ export default function Fittings({ id }: { id: number }) {
         ) : !fits.length ? (
           <Empty>Фитов нет</Empty>
         ) : (
-          <table className="table">
+          <table className="table ship-fit-groups">
             <tbody>
-              {fits.map((fit) => (
-                <FitRow key={fit.fitting_id} fit={fit} open={openFit === fit.fitting_id} onToggle={() => setOpenFit(openFit === fit.fitting_id ? null : fit.fitting_id)} lang={lang} />
-              ))}
+              {groups.map((g) => {
+                // While filtering every matching hull is open.
+                const shipOpen = !!f || openShips.has(g.shipTypeId)
+                return (
+                  <ShipGroupRows
+                    key={g.shipTypeId}
+                    shipTypeId={g.shipTypeId}
+                    fits={g.fits}
+                    open={shipOpen}
+                    onToggle={() => toggleShip(g.shipTypeId)}
+                    openFit={openFit}
+                    onToggleFit={(fid) => setOpenFit(openFit === fid ? null : fid)}
+                    lang={lang}
+                  />
+                )
+              })}
             </tbody>
           </table>
         )}
@@ -95,17 +112,50 @@ export default function Fittings({ id }: { id: number }) {
   )
 }
 
-function FitRow({ fit, open, onToggle, lang }: { fit: Fitting; open: boolean; onToggle: () => void; lang: 0 | 1 }) {
-  const ship = getBasic(fit.ship_type_id)
+function ShipGroupRows({
+  shipTypeId,
+  fits,
+  open,
+  onToggle,
+  openFit,
+  onToggleFit,
+  lang
+}: {
+  shipTypeId: number
+  fits: GameFitting[]
+  open: boolean
+  onToggle: () => void
+  openFit: number | null
+  onToggleFit: (id: number) => void
+  lang: 0 | 1
+}) {
+  const ship = getBasic(shipTypeId)
   return (
     <>
-      <tr className="clickable" onClick={onToggle}>
-        <td>
-          {open ? '▾' : '▸'} <TypeLink id={fit.ship_type_id} />
+      <tr className="clickable ship-group-row" onClick={onToggle}>
+        <td colSpan={3}>
+          <span className="with-icon">
+            <span className="mt-caret">{open ? '▾' : '▸'}</span>
+            <img className="type-icon" src={`https://images.evetech.net/types/${shipTypeId}/icon?size=32`} width={28} height={28} alt="" />
+            <b>{tn(ship?.n, lang)}</b>
+          </span>
         </td>
-        <td>{fit.name}</td>
-        <td className="muted small">{ship ? tn(ship.n, lang) : ''}</td>
-        <td className="num muted">{fit.items.length} предм.</td>
+        <td className="num muted">{`${fits.length} фит.`}</td>
+      </tr>
+      {open &&
+        fits.map((fit) => <FitRow key={fit.fitting_id} fit={fit} open={openFit === fit.fitting_id} onToggle={() => onToggleFit(fit.fitting_id)} />)}
+    </>
+  )
+}
+
+function FitRow({ fit, open, onToggle }: { fit: GameFitting; open: boolean; onToggle: () => void }) {
+  return (
+    <>
+      <tr className="clickable fit-in-group" onClick={onToggle}>
+        <td colSpan={3}>
+          {open ? '▾' : '▸'} <span translate="no">{fit.name}</span>
+        </td>
+        <td className="num muted">{`${fit.items.length} предм.`}</td>
       </tr>
       {open && (
         <tr className="sub-row">

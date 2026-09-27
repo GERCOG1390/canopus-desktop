@@ -723,6 +723,10 @@ export const EXACT: Record<string, string> = {
   'Папка логов чата EVE не найдена': 'EVE chat log folder not found',
   'Лог Local не найден — зайдите в игру': 'Local log not found — log into the game',
   'Нет такого предмета': 'No such item',
+  'Фиты из игры': 'In-game fits',
+  'Сохранённые в Canopus': 'Saved in Canopus',
+  'Войдите персонажем через EVE SSO (Настройки), чтобы видеть фиты, сохранённые в игре.': 'Log in a character with EVE SSO (Settings) to see the fits saved in the game.',
+  'В игре у персонажа нет сохранённых фитов.': 'The character has no fits saved in the game.',
   'Боеприпасы': 'Ammo',
   'Как в фитинге': 'As in the fitting tool',
   'Боеприпасы изменены только в симуляторе': 'Ammo changed in the simulator only',
@@ -840,6 +844,8 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^Не удалось загрузить фиты из игры: (.+)$/, 'Could not load the in-game fits: $1'],
+  [/^(\d+) фит\.$/, '$1 fits'],
   [/^мешает: (.+)$/, 'limited by: $1'],
   [/^DPS по цели из (.+)$/, 'DPS on target of $1'],
   [/^Поперечная скорость (.+) м\/с · угловая (.+) рад\/с$/, 'Transversal $1 m/s · angular $2 rad/s'],

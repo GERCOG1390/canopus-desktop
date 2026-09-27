@@ -2420,3 +2420,40 @@ html.overlay-mode body {
 .ammo-row .charge-current {
   width: 230px;
 }
+
+/* Fits grouped by ship */
+.ship-fit-groups .ship-group-row td {
+  background: var(--panel-2);
+}
+.ship-fit-groups .fit-in-group td:first-child {
+  padding-left: 44px;
+}
+.combat-fit-list li.fit-ship-group {
+  display: block;
+  padding: 0;
+  cursor: default;
+}
+.combat-fit-list li.fit-ship-group:hover {
+  background: none;
+}
+.fit-ship-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.fit-ship-head:hover,
+.fit-ship-fit:hover {
+  background: var(--panel-2);
+}
+.fit-ship-fit {
+  padding: 4px 6px 4px 58px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.combat-fit-list {
+  max-height: 320px;
+}
