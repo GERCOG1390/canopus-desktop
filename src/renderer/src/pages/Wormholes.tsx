@@ -30,7 +30,7 @@ const CLASS_LABEL: Record<number, string> = {
   18: 'Redoubt',
   25: 'Pochven'
 }
-const classLabel = (c: number) => CLASS_LABEL[c] ?? `класс ${c}`
+const classLabel = (c: number) => CLASS_LABEL[c] ?? (c > 0 ? `класс ${c}` : 'неизвестно')
 
 const tons = (kg: number) => `${(kg / 1000).toLocaleString(locale(), { maximumFractionDigits: 0 })} т`
 const mkg = (kg: number) => `${(kg / 1e6).toLocaleString(locale(), { maximumFractionDigits: 1 })} млн кг`

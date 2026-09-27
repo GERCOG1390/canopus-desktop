@@ -723,6 +723,8 @@ export const EXACT: Record<string, string> = {
   'Папка логов чата EVE не найдена': 'EVE chat log folder not found',
   'Лог Local не найден — зайдите в игру': 'Local log not found — log into the game',
   'Нет такого предмета': 'No such item',
+  '. Canopus разберёт сигнатуры автоматически, запомнит их для системы и при следующем копировании покажет новые и исчезнувшие. Или вставьте вручную:': '. Canopus parses the signatures automatically, remembers them for the system and shows new and vanished ones on the next copy. Or paste manually:',
+  'неизвестно': 'unknown',
   'Инструменты': 'Tools',
   'Что выучить': 'What to learn',
   'Сравнить фиты': 'Compare fits',
