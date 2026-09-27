@@ -127,6 +127,7 @@ function registerIpc(): void {
 
   ipcMain.handle('fit:calculate', (_e, spec: FitSpec, skills: SkillSource) => dogma.calculateFit(spec, skills))
   ipcMain.handle('fit:catalog', () => sde.fittingCatalog())
+  ipcMain.handle('fit:fittableFor', (_e, shipTypeId: number) => sde.fittableFor(shipTypeId))
   ipcMain.handle('fit:explain', (_e, spec: FitSpec, skills: SkillSource, target: string, attr: number) => dogma.explainAttr(spec, skills, target, attr))
   ipcMain.handle('fit:charges', (_e, id: number) => sde.chargesFor(id))
   ipcMain.handle('fit:list', () => dogma.listFits())

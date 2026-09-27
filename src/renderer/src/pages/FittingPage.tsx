@@ -346,7 +346,7 @@ function Editor() {
         </div>
 
         <div className="fit-col browser-col">
-          <ModuleBrowser catalog={catalog.data} loading={catalog.loading} error={catalog.error} slot={browserSlot} setSlot={setBrowserSlot} onAdd={addType} shipTypeId={f.shipTypeId} />
+          <ModuleBrowser catalog={catalog.data} loading={catalog.loading} error={catalog.error} slot={browserSlot} setSlot={setBrowserSlot} onAdd={addType} shipTypeId={f.shipTypeId} stats={stats} />
         </div>
 
         <div className="fit-col stats-col">{error ? <ErrorBox error={error} /> : stats ? <StatsPanel stats={stats} fit={f} /> : <Loading label="Считаю…" />}</div>
@@ -445,7 +445,8 @@ function ModuleBrowser({
   slot,
   setSlot,
   onAdd,
-  shipTypeId
+  shipTypeId,
+  stats
 }: {
   catalog?: Map<number, FittableType>
   loading: boolean
@@ -454,18 +455,32 @@ function ModuleBrowser({
   setSlot: (s: Slot | 'drone' | 'implant') => void
   onAdd: (id: number) => void
   shipTypeId: number
+  /** Current fit: slot counts and hardpoints (T3 hulls get them from subsystems) */
+  stats?: FitStats | null
 }) {
   const lang = useLang()
   const [query, setQuery] = useState('')
   const [meta, setMeta] = useState<'all' | 't1' | 't2' | 'faction'>('all')
   const [kind, setKind] = useState<'all' | 'turret' | 'launcher'>('all')
   const rigSize = useAsync(() => window.api.sde.dogmaAttrs([shipTypeId], [1547]).then((r) => r[shipTypeId][1547]), [shipTypeId])
+  const fittable = useAsync(() => window.api.fit.fittableFor(shipTypeId).then((ids) => new Set(ids)), [shipTypeId])
+  const slotCount = slot === 'drone' || slot === 'implant' ? null : stats?.ship.slots[slot] ?? null
+  const noTurrets = stats ? stats.ship.turrets.total <= 0 : false
+  const noLaunchers = stats ? stats.ship.launchers.total <= 0 : false
+  const hasSubsystems = (stats?.ship.slots.sub ?? 0) > 0
+  const droneBay = stats?.ship.droneBay.total ?? null
 
   const list = useMemo(() => {
     if (!catalog) return []
     const q = query.trim().toLowerCase()
+    if (!fittable.data || slotCount === 0) return []
     return [...catalog.values()]
       .filter((t) => t.slot === slot)
+      // Only what this hull can actually take.
+      .filter((t) => fittable.data!.has(t.id))
+      // A drone must fit into the drone bay (its size comes from the fit: hull, subsystems, rigs).
+      .filter((t) => t.slot !== 'drone' || droneBay === null || (droneBay > 0 && (getBasic(t.id)?.v ?? 0) <= droneBay))
+      .filter((t) => !(t.turret && noTurrets) && !(t.launcher && noLaunchers))
       .filter((t) => kind === 'all' || (kind === 'turret' ? t.turret : t.launcher))
       .filter((t) => meta === 'all' || (meta === 't1' ? t.meta === 1 || !t.meta : meta === 't2' ? t.meta === 2 : t.meta && ![1, 2].includes(t.meta)))
       .filter((t) => {
@@ -479,7 +494,7 @@ function ModuleBrowser({
         const name = (t: FittableType) => tn(getBasic(t.id)?.n, lang).replace(/^['"‘’]+/, '')
         return rank(a) - rank(b) || name(a).localeCompare(name(b))
       })
-  }, [catalog, slot, query, meta, kind, lang])
+  }, [catalog, slot, query, meta, kind, lang, fittable.data, slotCount, noTurrets, noLaunchers, droneBay])
 
   const shown = list.slice(0, 300)
   return (
@@ -508,7 +523,7 @@ function ModuleBrowser({
         )}
       </div>
       {slot === 'rig' && rigSize.data ? <p className="muted small">Размер ригов корабля: {['', 'малые', 'средние', 'большие', 'капитальные'][rigSize.data] ?? rigSize.data}</p> : null}
-      {loading ? (
+      {loading || fittable.loading ? (
         <Loading label="Загружаю каталог модулей…" />
       ) : error ? (
         <ErrorBox error={error} />
@@ -524,7 +539,17 @@ function ModuleBrowser({
             </li>
           ))}
           {list.length > shown.length && <li className="muted small">…ещё {list.length - shown.length}, уточните поиск</li>}
-          {!list.length && <li className="muted small">Ничего не найдено</li>}
+          {!list.length && (
+            <li className="muted small">
+              {slotCount === 0
+                ? hasSubsystems && slot !== 'sub' && slot !== 'rig'
+                  ? 'Слотов этого типа пока нет — сначала установите подсистемы'
+                  : 'У этого корабля нет слотов этого типа'
+                : slot === 'drone' && droneBay === 0
+                  ? 'У этого корабля нет отсека для дронов'
+                  : 'Ничего не найдено'}
+            </li>
+          )}
         </ul>
       )}
       <p className="muted small">«+» или двойной клик — установить. Клик по названию — полная информация.</p>

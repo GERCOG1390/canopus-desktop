@@ -87,6 +87,8 @@ async function load(build: number): Promise<void> {
   descriptions = null
   requiredForIndex = usedInIndex = variationIndex = typesByGroup = null
   fittables = null
+  fitRuleAttrs = null
+  fittableCache.clear()
   nameIndex = null
   intelIndex = null
   marketIndex = null
@@ -437,6 +439,74 @@ export function fittingCatalog(): FittableType[] {
     })
   }
   fittables = out
+  return out
+}
+
+interface FitRuleAttrs {
+  groups: number[]
+  types: number[]
+  fitsToType: number
+  rigSize: number
+  isCapital: number
+}
+
+let fitRuleAttrs: FitRuleAttrs | null = null
+const fittableCache = new Map<number, number[]>()
+
+function getFitRuleAttrs(d: SdeDb): FitRuleAttrs {
+  if (fitRuleAttrs) return fitRuleAttrs
+  const byName = new Map(Object.entries(d.attributes).map(([id, a]) => [a.name, Number(id)]))
+  const all = [...byName.entries()]
+  fitRuleAttrs = {
+    groups: all.filter(([n]) => /^canFitShipGroup\d+$/.test(n)).map(([, id]) => id),
+    types: all.filter(([n]) => /^canFitShipType\d+$/.test(n)).map(([, id]) => id),
+    fitsToType: byName.get('fitsToShipType') ?? 1380,
+    rigSize: byName.get('rigSize') ?? 1547,
+    isCapital: byName.get('isCapitalSize') ?? 1785
+  }
+  return fitRuleAttrs
+}
+
+/** Modules larger than this are capital-size: only ships with isCapitalSize can fit them. */
+const CAPITAL_MODULE_VOLUME = 3500
+
+/**
+ * Items from the fitting catalog that this hull can take at all, by the game's static rules:
+ * ship group / type restrictions (canFitShipGroup / canFitShipType), subsystems for their own hull,
+ * rig size, capital-size modules on capitals only.
+ * Slot counts, hardpoints and the drone bay depend on the fit (T3 subsystems) and are checked in the UI.
+ */
+export function fittableFor(shipTypeId: number): number[] {
+  const cached = fittableCache.get(shipTypeId)
+  if (cached) return cached
+  const d = sdeForDogma()
+  const ship = d.types[shipTypeId]
+  if (!ship) return []
+  const r = getFitRuleAttrs(d)
+  const sa = d.dogma[shipTypeId]?.a ?? {}
+  const out: number[] = []
+  for (const f of fittingCatalog()) {
+    const a = d.dogma[f.id]?.a ?? {}
+    const t = d.types[f.id]
+    if (f.slot === 'implant') {
+      out.push(f.id)
+      continue
+    }
+    // Drone bay size depends on the fit (T3 subsystems add one): checked in the UI.
+    if (f.slot === 'drone') {
+      out.push(f.id)
+      continue
+    }
+    const groups = r.groups.map((x) => a[x]).filter(Boolean)
+    const types = r.types.map((x) => a[x]).filter(Boolean)
+    if ((groups.length || types.length) && !groups.includes(ship.g) && !types.includes(shipTypeId)) continue
+    if (f.slot === 'sub' && a[r.fitsToType] !== shipTypeId) continue
+    if (f.slot === 'rig' && (a[r.rigSize] ?? 0) !== (sa[r.rigSize] ?? -1)) continue
+    if ((t.vol ?? 0) > CAPITAL_MODULE_VOLUME && !sa[r.isCapital]) continue
+    out.push(f.id)
+  }
+  if (fittableCache.size > 30) fittableCache.clear()
+  fittableCache.set(shipTypeId, out)
   return out
 }
 

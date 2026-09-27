@@ -95,6 +95,8 @@ export interface CanopusApi {
   fit: {
     calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>
     catalog(): Promise<FittableType[]>
+    /** Catalog items this hull can take at all (group/type restrictions, rig size, capital modules, drone bay). */
+    fittableFor(shipTypeId: number): Promise<number[]>
     explain(spec: FitSpec, skills: SkillSource, target: string, attr: number): Promise<{ base: number; value: number; mods: { type: number; kind: string; op: number; value: number }[] }>
     charges(moduleTypeId: number): Promise<number[]>
     list(): Promise<SavedFit[]>
