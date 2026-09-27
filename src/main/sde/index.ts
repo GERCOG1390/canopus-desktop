@@ -999,3 +999,15 @@ export function marketPath(typeId: number): number[] {
   for (let g = d.types[typeId]?.mg; g !== undefined && path.length < 12; g = d.marketGroups[g]?.p) path.unshift(g)
   return path
 }
+
+/** Published items anywhere under a market group (for market-wide scans like hub arbitrage). */
+export function marketTypesIn(groupId: number): number[] {
+  const idx = getMarketIndex()
+  const out: number[] = []
+  const walk = (g: number) => {
+    out.push(...(idx.types.get(g) ?? []))
+    for (const c of idx.children.get(g) ?? []) walk(c)
+  }
+  walk(groupId)
+  return out
+}

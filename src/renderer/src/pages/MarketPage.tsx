@@ -5,12 +5,13 @@ import { Card, Empty, ErrorBox, Loading, RequireLogin, SearchBox, Sparkline, Sta
 import { esi, imageUrl, resolveIds, resolveLocations } from '../lib/esi'
 import { LocationName } from '../components/LocationName'
 import { MarketTree } from '../components/MarketTree'
+import { Arbitrage, LpStore } from './MarketTools'
 import { fmtDate, fmtIsk, fmtNum } from '../lib/format'
 import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/market'
 import { getBasic, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 
-type Tab = 'prices' | 'appraisal' | 'orders'
+type Tab = 'prices' | 'appraisal' | 'arbitrage' | 'lp' | 'orders'
 
 export default function MarketPage() {
   const { pageArg } = useApp()
@@ -24,6 +25,8 @@ export default function MarketPage() {
         tabs={[
           { id: 'prices', label: 'Цены' },
           { id: 'appraisal', label: 'Оценка лута' },
+          { id: 'arbitrage', label: 'Арбитраж' },
+          { id: 'lp', label: 'LP-магазин' },
           { id: 'orders', label: 'Мои ордера' }
         ]}
         value={tab}
@@ -31,6 +34,8 @@ export default function MarketPage() {
       />
       {tab === 'prices' && <Prices />}
       {tab === 'appraisal' && <Appraisal />}
+      {tab === 'arbitrage' && <Arbitrage />}
+      {tab === 'lp' && <LpStore />}
       {tab === 'orders' && <MyOrders />}
     </div>
   )

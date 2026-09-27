@@ -65,6 +65,8 @@ export interface CanopusApi {
     setMarketFilter(key: string, ids: number[]): Promise<void>
     /** Market groups from the top level down to the item's group. */
     marketPath(typeId: number): Promise<number[]>
+    /** Published items anywhere under a market group. */
+    marketTypesIn(groupId: number): Promise<number[]>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
     dogmaAttrs(ids: number[], attrIds: number[]): Promise<Record<number, Record<number, number>>>
     blueprintForProduct(productId: number): Promise<InfoBundle['producedBy'] | null>

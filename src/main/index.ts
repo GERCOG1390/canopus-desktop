@@ -208,6 +208,7 @@ function registerIpc(): void {
   )
   ipcMain.handle('sde:setMarketFilter', (_e, key: string, ids: number[]) => sde.setMarketFilter(key, ids))
   ipcMain.handle('sde:marketPath', (_e, typeId: number) => sde.marketPath(typeId))
+  ipcMain.handle('sde:marketTypesIn', (_e, groupId: number) => sde.marketTypesIn(groupId))
   ipcMain.handle('sde:requiredSkills', (_e, ids: number[]) => sde.requiredSkills(ids))
   ipcMain.handle('sde:dogmaAttrs', (_e, ids: number[], attrIds: number[]) => sde.dogmaAttrs(ids, attrIds))
   ipcMain.handle('sde:blueprintForProduct', (_e, id: number) => sde.blueprintForProduct(id))
