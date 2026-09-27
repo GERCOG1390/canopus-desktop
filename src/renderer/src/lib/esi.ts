@@ -92,6 +92,26 @@ export async function resolveLocations(ids: Iterable<number>, characterId: numbe
   return out
 }
 
+const locationSystemCache = new Map<number, Promise<number | null>>()
+
+/** Solar system of a location: a system itself, an NPC station or a player structure (needs docking access). */
+export function locationSystem(id: number, characterId: number | null): Promise<number | null> {
+  if (id >= 30_000_000 && id < 33_000_000) return Promise.resolve(id)
+  let pending = locationSystemCache.get(id)
+  if (!pending) {
+    if (id >= 60_000_000 && id < 64_000_000) {
+      pending = esi<{ system_id: number }>(`/universe/stations/${id}/`).then((s) => s.system_id)
+    } else if (id >= 1e12 && characterId) {
+      pending = esi<{ solar_system_id: number }>(`/universe/structures/${id}/`, { characterId }).then((s) => s.solar_system_id)
+    } else {
+      pending = Promise.resolve(null)
+    }
+    pending = pending.catch(() => null)
+    locationSystemCache.set(id, pending)
+  }
+  return pending
+}
+
 // ---------- Static-ish universe data ----------
 
 export interface TypeInfo {

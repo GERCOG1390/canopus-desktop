@@ -1725,3 +1725,8 @@ html.overlay-mode body {
   width: auto;
   margin: 0;
 }
+.location-name {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}

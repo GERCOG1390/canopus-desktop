@@ -5,6 +5,7 @@ import { TypeLink } from '../../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, Stat } from '../../components/ui'
 import { ATTR_NAMES, IMPLANT_BONUS, IMPLANT_SLOT_ATTR } from '../../lib/dogma'
 import { esi, resolveLocations } from '../../lib/esi'
+import { LocationName } from '../../components/LocationName'
 import { fmtDate, fmtDuration } from '../../lib/format'
 import { tn } from '../../lib/sde'
 import { useAsync, useTick } from '../../lib/useAsync'
@@ -58,7 +59,7 @@ export default function ClonesTab({ id }: { id: number }) {
           value={char.remap?.bonus_remaps ?? '—'}
           sub={char.remap?.accrued_remap_cooldown_date ? `следующее: ${fmtDate(char.remap.accrued_remap_cooldown_date)}` : undefined}
         />
-        <Stat label="Домашняя станция" value={<span className="small">{clones?.home_location ? locations.get(clones.home_location.location_id) : '—'}</span>} />
+        <Stat label="Домашняя станция" value={<span className="small">{clones?.home_location ? <LocationName id={clones.home_location.location_id} name={locations.get(clones.home_location.location_id) ?? '?'} characterId={id} /> : '—'}</span>} />
       </div>
 
       <div className="two-col">
@@ -119,8 +120,12 @@ export default function ClonesTab({ id }: { id: number }) {
           <div className="grid-cards">
             {clones.jump_clones.map((c) => (
               <div key={c.jump_clone_id} className="subcard">
-                <div className="subcard-title">{c.name || locations.get(c.location_id) || `Локация ${c.location_id}`}</div>
-                {c.name && <div className="muted small">{locations.get(c.location_id)}</div>}
+                <div className="subcard-title">{c.name || <LocationName id={c.location_id} name={locations.get(c.location_id) ?? `Локация ${c.location_id}`} characterId={id} />}</div>
+                {c.name && (
+                  <div className="muted small">
+                    <LocationName id={c.location_id} name={locations.get(c.location_id) ?? ''} characterId={id} />
+                  </div>
+                )}
                 {c.implants.length ? <ImplantList implants={bySlot(c.implants)} slot={slot} /> : <div className="muted small">без имплантов</div>}
               </div>
             ))}

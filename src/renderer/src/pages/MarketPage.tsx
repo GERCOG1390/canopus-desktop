@@ -3,6 +3,7 @@ import { useApp, useLang } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, RequireLogin, SearchBox, Sparkline, Stat, Tabs } from '../components/ui'
 import { esi, imageUrl, resolveIds, resolveLocations } from '../lib/esi'
+import { LocationName } from '../components/LocationName'
 import { fmtDate, fmtIsk, fmtNum } from '../lib/format'
 import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/market'
 import { getBasic, searchTypesSde } from '../lib/sde'
@@ -408,7 +409,9 @@ function MyOrders() {
                 <td className="num">
                   {fmtNum(o.volume_remain)} / {fmtNum(o.volume_total)}
                 </td>
-                <td className="muted">{data.names.get(o.location_id) ?? 'Структура'}</td>
+                <td className="muted">
+                  <LocationName id={o.location_id} name={data.names.get(o.location_id) ?? 'Структура'} characterId={active.id} />
+                </td>
               </tr>
             )
           })}

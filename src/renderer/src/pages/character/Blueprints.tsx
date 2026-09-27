@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { TypeLink } from '../../components/TypeLink'
 import { Card, Empty, Loading, Stat } from '../../components/ui'
 import { esi, resolveLocations } from '../../lib/esi'
+import { LocationName } from '../../components/LocationName'
 import { fmtNum } from '../../lib/format'
 import { getBasic, useTypeBasics } from '../../lib/sde'
 import { useAsync } from '../../lib/useAsync'
@@ -79,7 +80,7 @@ export default function Blueprints({ id }: { id: number }) {
                   <td className="num">{b.material_efficiency}%</td>
                   <td className="num">{b.time_efficiency}%</td>
                   <td className="num">{b.runs === -1 ? '∞' : fmtNum(b.runs)}</td>
-                  <td className="muted small">{data.locations.get(b.location_id) ?? 'в контейнере'}</td>
+                  <td className="muted small">{data.locations.has(b.location_id) ? <LocationName id={b.location_id} name={data.locations.get(b.location_id)!} characterId={id} /> : 'в контейнере'}</td>
                 </tr>
               ))}
             </tbody>

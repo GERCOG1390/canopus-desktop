@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { LocationName } from '../../components/LocationName'
 import { TypeLink } from '../../components/TypeLink'
 import { Card, ErrorBox, Loading, Stat } from '../../components/ui'
 import { esi, resolveLocations } from '../../lib/esi'
@@ -95,7 +96,7 @@ export default function Assets({ id }: { id: number }) {
               const isOpen = open === g.id || (!!f && visible.length <= 3)
               const items = [...g.items.values()].filter((i) => !f || g.name.toLowerCase().includes(f) || matches(i.typeId)).sort((a, b) => b.value - a.value)
               return (
-                <LocationRows key={g.id} group={g} items={items} open={isOpen} onToggle={() => setOpen(open === g.id ? null : g.id)} />
+                <LocationRows key={g.id} characterId={id} group={g} items={items} open={isOpen} onToggle={() => setOpen(open === g.id ? null : g.id)} />
               )
             })}
           </tbody>
@@ -105,12 +106,12 @@ export default function Assets({ id }: { id: number }) {
   )
 }
 
-function LocationRows({ group, items, open, onToggle }: { group: LocationGroup; items: { typeId: number; qty: number; value: number }[]; open: boolean; onToggle: () => void }) {
+function LocationRows({ characterId, group, items, open, onToggle }: { characterId: number; group: LocationGroup; items: { typeId: number; qty: number; value: number }[]; open: boolean; onToggle: () => void }) {
   return (
     <>
       <tr className="clickable" onClick={onToggle}>
         <td>
-          {open ? '▾' : '▸'} {group.name}
+          {open ? '▾' : '▸'} <LocationName id={group.id} name={group.name} characterId={characterId} />
         </td>
         <td className="num">{fmtNum(group.count)}</td>
         <td className="num">{fmtIsk(group.value, true)}</td>

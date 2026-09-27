@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { TypeLink } from '../../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, Stat, Tabs } from '../../components/ui'
 import { esi, resolveLocations, resolveNames } from '../../lib/esi'
+import { LocationName } from '../../components/LocationName'
 import { fmtDate, fmtIsk, fmtNum } from '../../lib/format'
 import { useAsync } from '../../lib/useAsync'
 
@@ -174,7 +175,7 @@ export default function Wallet({ id }: { id: number }) {
                     {fmtIsk(t.unit_price * t.quantity, true)}
                   </td>
                   <td className="small">{data.names.get(t.client_id)}</td>
-                  <td className="muted small">{data.locations.get(t.location_id)}</td>
+                  <td className="muted small">{data.locations.has(t.location_id) && <LocationName id={t.location_id} name={data.locations.get(t.location_id)!} characterId={id} />}</td>
                 </tr>
               ))}
             </tbody>

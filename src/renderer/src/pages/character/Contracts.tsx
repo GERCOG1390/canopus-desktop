@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { TypeLink } from '../../components/TypeLink'
 import { Card, Empty, Loading } from '../../components/ui'
 import { esi, resolveLocations, resolveNames } from '../../lib/esi'
+import { LocationName } from '../../components/LocationName'
 import { fmtDate, fmtIsk, fmtNum } from '../../lib/format'
 import { useAsync } from '../../lib/useAsync'
 import { ScopeHint } from '.'
@@ -122,8 +123,17 @@ function ContractDetails({ c, id, locations }: { c: Contract; id: number; locati
   return (
     <div className="contract-details">
       <div className="small muted">
-        {c.start_location_id ? `Откуда: ${locations.get(c.start_location_id) ?? c.start_location_id}` : ''}
-        {c.end_location_id && c.end_location_id !== c.start_location_id ? ` · Куда: ${locations.get(c.end_location_id) ?? c.end_location_id}` : ''}
+        {c.start_location_id ? (
+          <>
+            <span>Откуда:</span> <LocationName id={c.start_location_id} name={locations.get(c.start_location_id) ?? String(c.start_location_id)} characterId={id} />
+          </>
+        ) : null}
+        {c.end_location_id && c.end_location_id !== c.start_location_id ? (
+          <>
+            {' · '}
+            <span>Куда:</span> <LocationName id={c.end_location_id} name={locations.get(c.end_location_id) ?? String(c.end_location_id)} characterId={id} />
+          </>
+        ) : null}
         {c.collateral ? ` · Залог: ${fmtIsk(c.collateral, true)}` : ''}
         {c.volume ? ` · Объём: ${fmtNum(c.volume)} м³` : ''}
         {` · Истекает: ${fmtDate(c.date_expired)}`}
