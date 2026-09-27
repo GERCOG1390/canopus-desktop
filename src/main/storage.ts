@@ -21,7 +21,7 @@ export function loadSettings(): Settings {
     if (existsSync(settingsPath())) {
       const saved = JSON.parse(readFileSync(settingsPath(), 'utf8')) as Partial<Settings>
       const intel = { ...DEFAULT_INTEL, ...saved.intel, overlay: { ...DEFAULT_INTEL.overlay, ...saved.intel?.overlay } }
-      return { ...DEFAULT_SETTINGS, ...saved, intel, notify: { ...DEFAULT_NOTIFY, ...saved.notify } }
+      return { ...DEFAULT_SETTINGS, ...saved, clientId: DEFAULT_CLIENT_ID, intel, notify: { ...DEFAULT_NOTIFY, ...saved.notify } }
     }
   } catch (err) {
     console.error('Failed to read settings, using defaults', err)

@@ -1,6 +1,6 @@
 // EVE SSO (OAuth 2.0 authorization code + PKCE) for a native desktop client.
-// No client secret is needed: register the app at https://developers.eveonline.com
-// with the callback URL below and paste its Client ID into Canopus settings.
+// No client secret is needed. Canopus uses its own application registered at
+// https://developers.eveonline.com with the callback URL below; its Client ID is built in.
 // The login page opens in a Canopus window that catches the redirect to the custom
 // callback scheme itself, so it works regardless of the default browser and of how
 // Windows routes eveauthcanopus:// links (that route, see index.ts, stays as a fallback).
@@ -11,7 +11,7 @@ import { appendFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createHash, randomBytes } from 'node:crypto'
 import type { CharacterAuth } from '../shared/types'
-import { loadSettings, loadTokens, saveTokens, type StoredToken } from './storage'
+import { DEFAULT_CLIENT_ID, loadTokens, saveTokens, type StoredToken } from './storage'
 
 const AUTHORIZE_URL = 'https://login.eveonline.com/v2/oauth/authorize'
 const TOKEN_URL = 'https://login.eveonline.com/v2/oauth/token'
@@ -59,11 +59,8 @@ export function initAuth(): void {
 
 const base64url = (buf: Buffer): string => buf.toString('base64url')
 
-function clientId(): string {
-  const id = loadSettings().clientId.trim()
-  if (!id) throw new Error('Укажите Client ID приложения EVE в настройках')
-  return id
-}
+/** Canopus' own EVE application: built in, not user-configurable. */
+const clientId = (): string => DEFAULT_CLIENT_ID
 
 interface TokenResponse {
   access_token: string

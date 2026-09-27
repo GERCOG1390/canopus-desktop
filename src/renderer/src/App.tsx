@@ -84,7 +84,7 @@ function LanguageScope({ children }: { children: ReactNode }) {
 
 function Shell() {
   const { active, characters, settings, page, navigate } = useApp()
-  const needsSetup = settings !== null && (!settings.clientId || characters.length === 0)
+  const needsSetup = settings !== null && characters.length === 0
   const current = PAGES.find((p) => p.id === page)!
 
   return (
