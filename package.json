@@ -1,6 +1,6 @@
 {
   "name": "canopus",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Canopus — desktop companion for EVE Online: character, fitting with a dogma engine, intel, market, map and industry",
   "main": "./out/main/index.js",
   "private": true,
