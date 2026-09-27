@@ -723,6 +723,19 @@ export const EXACT: Record<string, string> = {
   'Папка логов чата EVE не найдена': 'EVE chat log folder not found',
   'Лог Local не найден — зайдите в игру': 'Local log not found — log into the game',
   'Нет такого предмета': 'No such item',
+  'Трей и уведомления': 'Tray and notifications',
+  'Сворачивать в трей при закрытии окна (уведомления продолжают работать)': 'Minimize to the tray when the window is closed (notifications keep working)',
+  'Canopus раз в 5 минут проверяет всех вошедших персонажей и показывает уведомление Windows — один раз на каждое событие.': 'Every 5 minutes Canopus checks all logged-in characters and shows a Windows notification — once per event.',
+  'Очередь навыков кончается или пуста': 'Skill queue ending or empty',
+  'Экстракторы планетарки остановились': 'PI extractors stopped',
+  'Работа в индустрии готова': 'Industry job ready',
+  'Усталость от прыжков прошла': 'Jump fatigue over',
+  'Ваш ордер на рынке перебили': 'Your market order was undercut',
+  'Доступен прыжок клона': 'Clone jump available',
+  'Предупреждать об очереди навыков заранее': 'Warn about the skill queue in advance',
+  'Только когда пуста': 'Only when empty',
+  'Проверить сейчас': 'Check now',
+  'Проверяю…': 'Checking…',
   'Фиты из игры': 'In-game fits',
   'Сохранённые в Canopus': 'Saved in Canopus',
   'Войдите персонажем через EVE SSO (Настройки), чтобы видеть фиты, сохранённые в игре.': 'Log in a character with EVE SSO (Settings) to see the fits saved in the game.',
@@ -844,6 +857,7 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^За (\d+) ч$/, '$1 h before'],
   [/^Не удалось загрузить фиты из игры: (.+)$/, 'Could not load the in-game fits: $1'],
   [/^(\d+) фит\.$/, '$1 fits'],
   [/^мешает: (.+)$/, 'limited by: $1'],

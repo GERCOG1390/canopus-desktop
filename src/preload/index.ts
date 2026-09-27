@@ -74,6 +74,10 @@ const api: CanopusApi = {
     systemId: (name) => invoke('intel:systemId', name)
   },
   onSettingsChanged: (listener) => on('intel:settingsChanged', listener),
+  notify: {
+    history: () => invoke('notify:history'),
+    checkNow: () => invoke('notify:checkNow')
+  },
   combat: {
     open: (attacker) => invoke('combat:open', attacker),
     setAttacker: (attacker) => invoke('combat:setAttacker', attacker),

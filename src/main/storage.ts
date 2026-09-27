@@ -2,6 +2,7 @@ import { app, safeStorage } from 'electron'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DEFAULT_INTEL } from '../shared/intel'
+import { DEFAULT_NOTIFY } from '../shared/notify'
 import type { Settings } from '../shared/types'
 
 const settingsPath = (): string => join(app.getPath('userData'), 'settings.json')
@@ -13,14 +14,14 @@ const tokensPath = (): string => join(app.getPath('userData'), 'tokens.bin')
  */
 export const DEFAULT_CLIENT_ID = 'a3159d301b8d450a86f4a95f26e55fd9'
 
-const DEFAULT_SETTINGS: Settings = { clientId: DEFAULT_CLIENT_ID, activeCharacterId: null, alwaysOnTop: false, lang: 'ru', intel: DEFAULT_INTEL }
+const DEFAULT_SETTINGS: Settings = { clientId: DEFAULT_CLIENT_ID, activeCharacterId: null, alwaysOnTop: false, lang: 'ru', intel: DEFAULT_INTEL, notify: DEFAULT_NOTIFY }
 
 export function loadSettings(): Settings {
   try {
     if (existsSync(settingsPath())) {
       const saved = JSON.parse(readFileSync(settingsPath(), 'utf8')) as Partial<Settings>
       const intel = { ...DEFAULT_INTEL, ...saved.intel, overlay: { ...DEFAULT_INTEL.overlay, ...saved.intel?.overlay } }
-      return { ...DEFAULT_SETTINGS, ...saved, intel }
+      return { ...DEFAULT_SETTINGS, ...saved, intel, notify: { ...DEFAULT_NOTIFY, ...saved.notify } }
     }
   } catch (err) {
     console.error('Failed to read settings, using defaults', err)

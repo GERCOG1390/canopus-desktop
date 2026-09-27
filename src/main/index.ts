@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from 'electron'
+import { app, BrowserWindow, ipcMain, Menu, nativeImage, shell, Tray } from 'electron'
 import { join, resolve } from 'node:path'
 import type { RequestOptions, Settings } from '../shared/types'
 import * as auth from './auth'
@@ -12,11 +12,16 @@ import type { FitSpec, SkillSource } from '../shared/fit'
 import type { IntelSettings, OverlaySummary } from '../shared/intel'
 import * as intel from './intel'
 import { loadSettings, saveSettings } from './storage'
+import * as notifier from './notifier'
+import trayIconPath from '../../build/icon.png?asset'
 
 // A separate profile (settings, tokens, SDE cache) — handy for testing and screenshots.
 if (process.env.CANOPUS_USER_DATA) app.setPath('userData', process.env.CANOPUS_USER_DATA)
 
 let mainWindow: BrowserWindow | null = null
+let tray: Tray | null = null
+/** Set when the app really quits (tray menu, update): closing the window then doesn't just hide it. */
+let quitting = false
 
 function openExternal(url: string): void {
   if (/^https:\/\//i.test(url)) void shell.openExternal(url)
@@ -50,11 +55,56 @@ function createWindow(): void {
   })
 
   loadRenderer(mainWindow)
+  // With the tray enabled, closing the window hides Canopus; notifications keep running.
+  mainWindow.on('close', (e) => {
+    if (quitting || !loadSettings().notify.tray || !tray) return
+    e.preventDefault()
+    mainWindow?.hide()
+  })
   // The overlay is a secondary window: closing the main window quits the app.
   mainWindow.on('closed', () => {
     mainWindow = null
     app.quit()
   })
+}
+
+function showMain(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return createWindow()
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function createTray(): void {
+  const icon = nativeImage.createFromPath(trayIconPath).resize({ width: 16, height: 16 })
+  tray = new Tray(icon)
+  tray.setToolTip('Canopus')
+  const en = () => loadSettings().lang === 'en'
+  const menu = () =>
+    Menu.buildFromTemplate([
+      { label: en() ? 'Open Canopus' : 'Открыть Canopus', click: showMain },
+      {
+        label: en() ? 'Intel overlay' : 'Оверлей разведки',
+        type: 'checkbox',
+        checked: loadSettings().intel.overlay.enabled,
+        click: (item) => {
+          intel.setOverlay({ enabled: item.checked }, loadRenderer, PRELOAD)
+          sendToMain('intel:settingsChanged', null)
+        }
+      },
+      { label: en() ? 'Check notifications now' : 'Проверить уведомления', click: () => void notifier.checkNow() },
+      { type: 'separator' },
+      {
+        label: en() ? 'Quit' : 'Выход',
+        click: () => {
+          quitting = true
+          app.quit()
+        }
+      }
+    ])
+  tray.on('click', showMain)
+  // Rebuilt on every open so the labels follow the language and the overlay state.
+  tray.on('right-click', () => tray?.popUpContextMenu(menu()))
 }
 
 const PRELOAD = join(__dirname, '../preload/index.js')
@@ -140,6 +190,8 @@ function registerIpc(): void {
   ipcMain.handle('intel:systemId', (_e, name: string) => sde.systemIdByName(name))
 
   ipcMain.handle('shell:openExternal', (_e, url: string) => openExternal(url))
+  ipcMain.handle('notify:history', () => notifier.notifyHistory())
+  ipcMain.handle('notify:checkNow', () => notifier.checkNow())
 
   ipcMain.handle('sde:status', () => sde.getStatus())
   ipcMain.handle('sde:update', () => sde.initSde())
@@ -201,10 +253,7 @@ if (!primaryInstance) {
   app.on('second-instance', (_e, argv) => {
     const url = argv.find((a) => a.toLowerCase().startsWith(`${auth.PROTOCOL}://`))
     if (url) auth.handleCallbackUrl(url)
-    if (mainWindow) {
-      if (mainWindow.isMinimized()) mainWindow.restore()
-      mainWindow.focus()
-    }
+    showMain()
   })
 }
 
@@ -220,10 +269,14 @@ app.whenReady().then(() => {
   intel.initIntel(sendToMain)
   intel.applyOverlay(loadRenderer, PRELOAD)
   intel.registerShortcuts(loadRenderer, PRELOAD, () => sendToMain('intel:settingsChanged', null))
+  createTray()
+  notifier.initNotifier(showMain)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
+
+app.on('before-quit', () => (quitting = true))
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

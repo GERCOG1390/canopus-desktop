@@ -2,6 +2,7 @@
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
 import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
+import type { NotifyEvent, NotifySettings } from './notify'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
@@ -27,6 +28,7 @@ export interface Settings {
   /** Language for item names and descriptions from the SDE. */
   lang: 'ru' | 'en'
   intel: IntelSettings
+  notify: NotifySettings
 }
 
 export interface CanopusApi {
@@ -69,6 +71,11 @@ export interface CanopusApi {
   }
   /** Settings changed outside the renderer (e.g. overlay hotkeys). */
   onSettingsChanged(listener: () => void): () => void
+  notify: {
+    /** Notifications shown since Canopus started, newest first. */
+    history(): Promise<NotifyEvent[]>
+    checkNow(): Promise<void>
+  }
   intel: {
     onClipboard(listener: (e: ClipboardEvent) => void): () => void
     onLog(listener: (e: LogEvent) => void): () => void
