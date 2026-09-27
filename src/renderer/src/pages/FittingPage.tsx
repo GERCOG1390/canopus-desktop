@@ -540,7 +540,7 @@ function ModuleBrowser({
         ) : (
         <ul className="browser-list">
           {shown.map((t) => (
-            <li key={t.id} onDoubleClick={() => onAdd(t.id)}>
+            <li key={t.id}>
               <button className="ghost small add-btn" onClick={() => onAdd(t.id)} title="Установить">
                 +
               </button>
@@ -563,7 +563,7 @@ function ModuleBrowser({
         </ul>
         )
       )}
-      <p className="muted small">«+» или двойной клик — установить. Кнопка «i» или клик по названию в поиске — полная информация.</p>
+      <p className="muted small">«+» — установить. Клик по модулю — полная информация.</p>
     </Card>
   )
 }
