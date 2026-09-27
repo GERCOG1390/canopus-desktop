@@ -268,7 +268,8 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
         optimal: (a(charge, A.maxVelocity) * a(charge, A.explosionDelay)) / 1000,
         explosionRadius: a(charge, A.explosionRadius),
         explosionVelocity: a(charge, A.explosionVelocity),
-        drf: a(charge, A.aoeDamageReductionFactor)
+        drf: a(charge, A.aoeDamageReductionFactor),
+        missileVelocity: a(charge, A.maxVelocity)
       })
     }
   }

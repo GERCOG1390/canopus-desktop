@@ -59,6 +59,8 @@ export interface WeaponStats {
   explosionVelocity?: number
   /** Missile damage reduction factor (drf) */
   drf?: number
+  /** Missile flight speed, m/s (the range is speed × flight time) */
+  missileVelocity?: number
   /** Drone speed, m/s */
   speed?: number
 }

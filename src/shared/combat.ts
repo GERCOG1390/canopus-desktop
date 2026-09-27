@@ -67,6 +67,8 @@ export interface CombatSideInfo {
   ehp: number
   hp: { shield: number; armor: number; hull: number }
   resist: { shield: number[]; armor: number[]; hull: number[] }
+  /** Weapon reach: turret optimal (+ falloff) or missile flight range, m */
+  ranges: { kind: 'turret' | 'missile'; typeId: number; optimal: number; falloff?: number }[]
 }
 
 export interface CombatResult {

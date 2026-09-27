@@ -2152,3 +2152,235 @@ html.overlay-mode body {
 .legend-b::before {
   background: #ff7b72;
 }
+
+/* Combat simulator: versus header, tactical map, summary */
+.combat-versus {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.combat-vs {
+  align-self: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.combat-side-card.side-a {
+  border-top: 3px solid var(--accent);
+}
+.combat-side-card.side-b {
+  border-top: 3px solid #ff7b72;
+}
+.combat-side-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.combat-picker {
+  margin-top: 6px;
+}
+.combat-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 14px;
+  align-items: start;
+}
+.combat-map {
+  width: 100%;
+  height: auto;
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+.combat-map .map-bg {
+  fill: #070b10;
+}
+.combat-map .map-grid {
+  fill: none;
+  stroke: rgba(125, 143, 163, 0.12);
+}
+.combat-map .ring circle {
+  fill: none;
+  stroke-width: 1.2;
+}
+.combat-map .ring-a circle {
+  stroke: rgba(79, 179, 232, 0.55);
+}
+.combat-map .ring-b circle {
+  stroke: rgba(255, 123, 114, 0.55);
+}
+.combat-map .ring circle.falloff {
+  stroke-dasharray: 5 5;
+  stroke-width: 1;
+}
+.combat-map .ring text {
+  font-size: 10px;
+}
+.combat-map .ring-a text {
+  fill: rgba(79, 179, 232, 0.8);
+}
+.combat-map .ring-b text {
+  fill: rgba(255, 123, 114, 0.8);
+}
+.combat-map .los {
+  stroke: rgba(240, 208, 112, 0.6);
+  stroke-dasharray: 3 4;
+}
+.combat-map .los-label {
+  fill: #f0d070;
+  font-size: 12px;
+  font-weight: 600;
+}
+.combat-map .speed-ring {
+  fill: none;
+  stroke-dasharray: 2 4;
+  stroke-width: 1;
+}
+.combat-map .speed-a {
+  stroke: rgba(79, 179, 232, 0.35);
+}
+.combat-map .speed-b {
+  stroke: rgba(255, 123, 114, 0.35);
+}
+.combat-map .vec {
+  stroke-width: 2.5;
+}
+.combat-map .vec-a {
+  stroke: var(--accent);
+}
+.combat-map .vec-b {
+  stroke: #ff7b72;
+}
+.combat-map .arrowhead-a {
+  fill: var(--accent);
+}
+.combat-map .arrowhead-b {
+  fill: #ff7b72;
+}
+.combat-map .ship circle {
+  fill: #0b0f14;
+  stroke-width: 2;
+}
+.combat-map .ship-a circle {
+  stroke: var(--accent);
+}
+.combat-map .ship-b circle {
+  stroke: #ff7b72;
+}
+.combat-map .draggable,
+.combat-map .handle {
+  cursor: grab;
+}
+.combat-map.dragging,
+.combat-map.dragging .draggable,
+.combat-map.dragging .handle {
+  cursor: grabbing;
+}
+.combat-map .handle {
+  fill: #0b0f14;
+  stroke-width: 2;
+}
+.combat-map .handle-a {
+  stroke: var(--accent);
+}
+.combat-map .handle-b {
+  stroke: #ff7b72;
+}
+.combat-map .handle:hover {
+  fill: rgba(255, 255, 255, 0.15);
+}
+.combat-map .vec-label {
+  font-size: 11px;
+  font-weight: 600;
+}
+.combat-map .vec-label-a {
+  fill: var(--accent);
+}
+.combat-map .vec-label-b {
+  fill: #ff7b72;
+}
+.combat-map .map-scale line {
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+.combat-map .map-scale text,
+.combat-map .map-hint {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.combat-exact {
+  margin-top: 8px;
+}
+.combat-exact summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.combat-presets {
+  align-items: center;
+  margin: 10px 0 0;
+}
+.combat-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.combat-line {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.combat-line.side-a {
+  border-left: 3px solid var(--accent);
+}
+.combat-line.side-b {
+  border-left: 3px solid #ff7b72;
+}
+.combat-line-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.combat-line-main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 4px 0 6px;
+}
+.combat-line-main b {
+  font-size: 26px;
+}
+.combat-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--panel-2);
+  overflow: hidden;
+}
+.combat-line.side-a .combat-bar div {
+  height: 100%;
+  background: var(--accent);
+}
+.combat-line.side-b .combat-bar div {
+  height: 100%;
+  background: #ff7b72;
+}
+.combat-line-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.combat-geo {
+  padding: 0 4px;
+}

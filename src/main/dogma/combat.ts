@@ -24,6 +24,8 @@ interface Geometry {
   /** Target's own speed (for missiles and drones), m/s */
   targetSpeed: number
   targetSig: number
+  /** How fast the target moves away from the shooter, m/s (negative when closing in) */
+  receding: number
 }
 
 /** Share of a weapon's damage that lands, and what limits it. */
@@ -38,7 +40,13 @@ function application(w: WeaponStats, g: Geometry): { factor: number; limit?: str
     return { factor, limit }
   }
   if (w.kind === 'missile') {
-    if (w.optimal !== undefined && g.distance > w.optimal) return { factor: 0, limit: 'вне дальности полёта' }
+    // A missile chasing a target that moves away covers (speed − receding speed) × flight time;
+    // against one coming closer it reaches farther.
+    if (w.optimal !== undefined) {
+      const flightTime = w.missileVelocity ? w.optimal / w.missileVelocity : 0
+      const reach = w.missileVelocity ? Math.max(0, (w.missileVelocity - g.receding) * flightTime) : w.optimal
+      if (g.distance > reach) return { factor: 0, limit: g.receding > 0 && g.distance <= w.optimal ? 'цель уходит от ракет' : 'вне дальности полёта' }
+    }
     const e = w.explosionRadius ?? 0
     const ve = w.explosionVelocity ?? 0
     const drf = w.drf ?? 0.5
@@ -160,8 +168,20 @@ function sideInfo(pilot: CombatPilot, s: FitStats, sig: number): CombatSideInfo 
     signature: sig,
     ehp: d.ehp,
     hp: { shield: d.shield.hp, armor: d.armor.hp, hull: d.hull.hp },
-    resist: { shield: d.shield.resist, armor: d.armor.resist, hull: d.hull.resist }
+    resist: { shield: d.shield.resist, armor: d.armor.resist, hull: d.hull.resist },
+    ranges: weaponRanges(s)
   }
+}
+
+/** Distinct weapon ranges of a fit, for the range rings on the tactical map. */
+function weaponRanges(s: FitStats): CombatSideInfo['ranges'] {
+  const out: CombatSideInfo['ranges'] = []
+  for (const w of s.offense.weapons) {
+    if (w.kind !== 'turret' && w.kind !== 'missile') continue
+    const r = { kind: w.kind, typeId: w.typeId, optimal: w.optimal ?? 0, falloff: w.kind === 'turret' ? (w.falloff ?? 0) : undefined }
+    if (!out.some((x) => x.kind === r.kind && Math.abs(x.optimal - r.optimal) < 1 && (x.falloff ?? 0) === (r.falloff ?? 0))) out.push(r)
+  }
+  return out
 }
 
 /** Farthest distance any weapon of either side still reaches, for the chart. */
@@ -183,11 +203,14 @@ export function simulate(a: CombatPilot, b: CombatPilot, sc: CombatScenario): Co
   const rad = Math.PI / 180
   // Sideways components along the same axis: opposite directions add up.
   const transversal = Math.abs(sc.speedB * Math.sin(sc.headingB * rad) - sc.speedA * Math.sin(sc.headingA * rad))
+  // Rate the distance grows (same for both shooters): the opponent moving away, you moving closer.
+  const receding = sc.speedB * Math.cos(sc.headingB * rad) - sc.speedA * Math.cos(sc.headingA * rad)
   const geo = (distance: number, target: 'a' | 'b'): Geometry => ({
     distance,
     transversal,
     targetSpeed: target === 'b' ? sc.speedB : sc.speedA,
-    targetSig: target === 'b' ? sigB : sigA
+    targetSig: target === 'b' ? sigB : sigA,
+    receding
   })
 
   const maxD = chartRange([sa, sb], sc.distance)
