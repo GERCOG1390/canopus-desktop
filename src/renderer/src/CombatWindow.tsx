@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CombatDirection, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
-import type { SavedFit } from '../../shared/fit'
+import type { FitSpec, FittableType, SavedFit } from '../../shared/fit'
 import { AppProvider, useLang } from './AppContext'
+import { ChargePicker } from './components/ChargePicker'
 import { AttrIcon } from './components/Icon'
 import { Card, Empty, SearchBox } from './components/ui'
 import { imageUrl } from './lib/esi'
 import { fmtNum } from './lib/format'
-import { fromEft, toEft } from './lib/fitting'
+import { chargesFor, fromEft, loadCatalog, toEft } from './lib/fitting'
 import { CATEGORY, searchTypesSde, tn, useTypeBasic, useTypeBasics } from './lib/sde'
 import { locale } from './i18n'
 
@@ -58,6 +59,17 @@ function Simulator() {
   const lang = useLang()
   const [attacker, setAttacker] = useState<CombatPilot | null>(null)
   const [defender, setDefender] = useState<CombatPilot | null>(null)
+  /** Ammo chosen here for your weapons (module type → charge); the fitting tool's fit is not changed. */
+  const [ammoA, setAmmoA] = useState<Record<number, number | undefined>>({})
+  const attackerShip = attacker?.fit.shipTypeId
+  useEffect(() => setAmmoA({}), [attackerShip])
+  const you = useMemo<CombatPilot | null>(
+    () =>
+      attacker && Object.keys(ammoA).length
+        ? { ...attacker, fit: { ...attacker.fit, modules: attacker.fit.modules.map((m) => (m.typeId in ammoA ? { ...m, chargeTypeId: ammoA[m.typeId] } : m)) } }
+        : attacker,
+    [attacker, ammoA]
+  )
   const [sc, setSc] = useState<CombatScenario>({ distance: 10_000, speedA: 0, headingA: 0, speedB: 0, headingB: 90 })
   const [maxSpeed, setMaxSpeed] = useState({ a: 1000, b: 1000 })
   const [result, setResult] = useState<CombatResult | null>(null)
@@ -74,7 +86,7 @@ function Simulator() {
   const shipsKey = `${attacker?.fit.shipTypeId}|${defender?.fit.shipTypeId}|${attacker?.fit.modules.length}|${defender?.fit.modules.length}`
   useEffect(() => {
     if (!attacker || !defender) return
-    void window.api.combat.defaults(attacker, defender).then((d) => {
+    void window.api.combat.defaults(you ?? attacker, defender).then((d) => {
       setSc((s) => ({ ...s, speedA: Math.round(d.speedA), speedB: Math.round(d.speedB), sigA: undefined, sigB: undefined }))
       setMaxSpeed({ a: Math.max(500, Math.ceil(d.speedA * 1.5)), b: Math.max(500, Math.ceil(d.speedB * 1.5)) })
     })
@@ -86,7 +98,7 @@ function Simulator() {
     let live = true
     const t = setTimeout(() => {
       window.api.combat
-        .simulate(attacker, defender, sc)
+        .simulate(you ?? attacker, defender, sc)
         .then((r) => live && (setResult(r), setError(null)))
         .catch((e: Error) => live && setError(e.message))
     }, 60)
@@ -94,7 +106,7 @@ function Simulator() {
       live = false
       clearTimeout(t)
     }
-  }, [attacker, defender, sc])
+  }, [attacker, you, defender, sc])
 
   const set = (patch: Partial<CombatScenario>) => setSc((s) => ({ ...s, ...patch }))
   const [picking, setPicking] = useState(false)
@@ -119,6 +131,14 @@ function Simulator() {
           ) : (
             <Empty>Откройте фит во вкладке «Фитинг» и нажмите «Симуляция боя».</Empty>
           )}
+          {you && (
+            <AmmoPanel
+              fit={you.fit}
+              onCharge={(moduleId, charge) => setAmmoA((a) => ({ ...a, [moduleId]: charge }))}
+              note={Object.keys(ammoA).length ? 'Боеприпасы изменены только в симуляторе' : undefined}
+              onReset={Object.keys(ammoA).length ? () => setAmmoA({}) : undefined}
+            />
+          )}
           {result && <SideStats info={result.a} />}
         </Card>
         <div className="combat-vs">VS</div>
@@ -132,6 +152,14 @@ function Simulator() {
             )}
           </div>
           {defender && <ShipLabel id={defender.fit.shipTypeId} name={defender.fit.name} sub={`Навыки: все V · модулей: ${defender.fit.modules.length}`} />}
+          {defender && !picking && (
+            <AmmoPanel
+              fit={defender.fit}
+              onCharge={(moduleId, charge) =>
+                setDefender((d) => d && { ...d, fit: { ...d.fit, modules: d.fit.modules.map((m) => (m.typeId === moduleId ? { ...m, chargeTypeId: charge } : m)) } })
+              }
+            />
+          )}
           {defender && result && !picking && <SideStats info={result.b} />}
           {(!defender || picking) && (
             <OpponentPicker
@@ -761,3 +789,54 @@ function Chart({ r, distance, onDistance }: { r: CombatResult; distance: number;
   )
 }
 
+
+/** Ammo for every kind of weapon on a fit: one picker per module type (all identical guns load the same). */
+function AmmoPanel({ fit, onCharge, note, onReset }: { fit: FitSpec; onCharge: (moduleTypeId: number, chargeTypeId: number | undefined) => void; note?: string; onReset?: () => void }) {
+  const lang = useLang()
+  const [catalog, setCatalog] = useState<Map<number, FittableType> | null>(null)
+  useEffect(() => {
+    void loadCatalog().then(setCatalog)
+  }, [])
+  const groups = useMemo(() => {
+    const m = new Map<number, { count: number; charge?: number }>()
+    for (const mod of fit.modules) {
+      if (!catalog?.get(mod.typeId)?.charges) continue
+      const g = m.get(mod.typeId) ?? { count: 0, charge: mod.chargeTypeId }
+      g.count++
+      m.set(mod.typeId, g)
+    }
+    return [...m.entries()]
+  }, [fit, catalog])
+  if (!groups.length) return null
+  return (
+    <div className="ammo-panel">
+      <div className="ammo-title">
+        <span>Боеприпасы</span>
+        {onReset && (
+          <button className="ghost small" onClick={onReset}>
+            Как в фитинге
+          </button>
+        )}
+      </div>
+      {groups.map(([moduleId, g]) => (
+        <AmmoRow key={moduleId} moduleId={moduleId} count={g.count} charge={g.charge} lang={lang} onCharge={(c) => onCharge(moduleId, c)} />
+      ))}
+      {note && <div className="muted small">{note}</div>}
+    </div>
+  )
+}
+
+function AmmoRow({ moduleId, count, charge, lang, onCharge }: { moduleId: number; count: number; charge?: number; lang: 0 | 1; onCharge: (c: number | undefined) => void }) {
+  const basic = useTypeBasic(moduleId)
+  const [charges, setCharges] = useState<number[]>(charge ? [charge] : [])
+  useEffect(() => {
+    void chargesFor(moduleId).then(setCharges)
+  }, [moduleId])
+  return (
+    <div className="ammo-row">
+      <img className="type-icon" src={imageUrl.typeIcon(moduleId, 32)} width={20} height={20} alt="" />
+      <span className="ammo-weapon">{`${count > 1 ? `${count}× ` : ''}${tn(basic?.n, lang)}`}</span>
+      <ChargePicker charges={charges} value={charge} onChange={onCharge} />
+    </div>
+  )
+}

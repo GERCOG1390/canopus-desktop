@@ -2384,3 +2384,39 @@ html.overlay-mode body {
 .combat-geo {
   padding: 0 4px;
 }
+
+/* Combat simulator: ammo per weapon */
+.ammo-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+.ammo-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.ammo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ammo-weapon {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.ammo-row .charge-current {
+  width: 230px;
+}
