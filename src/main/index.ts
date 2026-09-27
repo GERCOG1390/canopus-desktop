@@ -13,6 +13,7 @@ import type { IntelSettings, OverlaySummary } from '../shared/intel'
 import * as intel from './intel'
 import { loadSettings, saveSettings } from './storage'
 import * as notifier from './notifier'
+import * as combatlog from './combatlog'
 import trayIconPath from '../../build/icon.png?asset'
 
 // A separate profile (settings, tokens, SDE cache) — handy for testing and screenshots.
@@ -167,7 +168,10 @@ function registerIpc(): void {
       intel.applyClipboardSetting()
       intel.applyOverlay(loadRenderer, PRELOAD)
     }
-    if (patch.activeCharacterId !== undefined || patch.intel?.logDir !== prev.intel.logDir) intel.restartLog()
+    if (patch.activeCharacterId !== undefined || patch.intel?.logDir !== prev.intel.logDir) {
+      intel.restartLog()
+      combatlog.restartCombatLog()
+    }
     if (patch.intel && (patch.intel.logDir !== prev.intel.logDir || patch.intel.channels.join('\n') !== prev.intel.channels.join('\n'))) {
       intel.restartChannels()
     }
@@ -191,6 +195,7 @@ function registerIpc(): void {
 
   ipcMain.handle('shell:openExternal', (_e, url: string) => openExternal(url))
   ipcMain.handle('notify:history', () => notifier.notifyHistory())
+  ipcMain.handle('ratting:events', () => combatlog.combatLogEvents())
   ipcMain.handle('notify:checkNow', () => notifier.checkNow())
 
   ipcMain.handle('sde:status', () => sde.getStatus())
@@ -273,6 +278,7 @@ app.whenReady().then(() => {
   intel.registerShortcuts(loadRenderer, PRELOAD, () => sendToMain('intel:settingsChanged', null))
   createTray()
   notifier.initNotifier(showMain)
+  combatlog.initCombatLog(sendToMain)
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })

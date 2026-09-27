@@ -2,15 +2,26 @@ import { useEffect, useMemo, useState } from 'react'
 import { useIntel } from '../IntelContext'
 import { Card, Empty, Stat, Tabs } from '../components/ui'
 import { locale } from '../i18n'
+import type { CombatLogEvent } from '../../../shared/ratting'
+import { fmtDuration, fmtIsk, fmtNum } from '../lib/format'
+import { useTick } from '../lib/useAsync'
 
-type Tab = 'sigs'
+type Tab = 'sigs' | 'ratting'
 
 export default function ActivitiesPage() {
   const [tab, setTab] = useState<Tab>('sigs')
   return (
     <div className="page">
-      <Tabs tabs={[{ id: 'sigs', label: 'Сигнатуры' }]} value={tab} onChange={setTab} />
+      <Tabs
+        tabs={[
+          { id: 'sigs', label: 'Сигнатуры' },
+          { id: 'ratting', label: 'Крабинг' }
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
       {tab === 'sigs' && <Signatures />}
+      {tab === 'ratting' && <RattingTracker />}
     </div>
   )
 }
@@ -241,6 +252,133 @@ function Signatures() {
           </Card>
         </>
       )}
+    </>
+  )
+}
+
+// ---------------- Ratting tracker (game log) ----------------
+
+/** A break this long starts a new ratting session. */
+const SESSION_GAP_MS = 20 * 60_000
+/** Window for the "right now" DPS. */
+const LIVE_WINDOW_MS = 10_000
+
+function RattingTracker() {
+  const [events, setEvents] = useState<CombatLogEvent[]>([])
+  const [manualStart, setManualStart] = useState<number | null>(null)
+  const now = useTick(1000)
+
+  useEffect(() => {
+    void window.api.ratting.events().then(setEvents)
+    const offEvents = window.api.ratting.onEvents((e) => setEvents((prev) => [...prev, ...e]))
+    const offReset = window.api.ratting.onReset(() => setEvents([]))
+    return () => {
+      offEvents()
+      offReset()
+    }
+  }, [])
+
+  const s = useMemo(() => {
+    const action = events.filter((e) => e.kind !== 'system')
+    // The current session: activity since the last long break (or since "new session").
+    let start = action[0]?.t ?? 0
+    for (let i = 1; i < action.length; i++) if (action[i].t - action[i - 1].t > SESSION_GAP_MS) start = action[i].t
+    if (manualStart && manualStart > start) start = manualStart
+    const ev = action.filter((e) => e.t >= start)
+    const last = ev.at(-1)?.t ?? start
+    const end = now - last < SESSION_GAP_MS ? Math.max(now, last) : last
+    const hours = Math.max((end - start) / 3_600_000, 1 / 60)
+    const bounties = ev.filter((e) => e.kind === 'bounty')
+    const isk = bounties.reduce((a, e) => a + e.amount, 0)
+    const out = ev.filter((e) => e.kind === 'out')
+    const inc = ev.filter((e) => e.kind === 'in')
+    const dealt = out.reduce((a, e) => a + e.amount, 0)
+    const taken = inc.reduce((a, e) => a + e.amount, 0)
+    // Seconds with shooting, to average DPS over the fighting only.
+    const busySeconds = new Set(out.map((e) => Math.floor(e.t / 1000))).size
+    const liveOut = out.filter((e) => now - e.t <= LIVE_WINDOW_MS).reduce((a, e) => a + e.amount, 0) / (LIVE_WINDOW_MS / 1000)
+    const liveIn = inc.filter((e) => now - e.t <= LIVE_WINDOW_MS).reduce((a, e) => a + e.amount, 0) / (LIVE_WINDOW_MS / 1000)
+    const top = (list: CombatLogEvent[]) => {
+      const m = new Map<string, number>()
+      for (const e of list) m.set(e.who, (m.get(e.who) ?? 0) + e.amount)
+      return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+    }
+    // Bounties per 5 minutes for the chart.
+    const bucket = 5 * 60_000
+    const buckets: number[] = []
+    for (const e of bounties) {
+      const i = Math.floor((e.t - start) / bucket)
+      buckets[i] = (buckets[i] ?? 0) + e.amount
+    }
+    const system = [...events].reverse().find((e) => e.kind === 'system')?.who ?? null
+    return { start, end, hours, isk, kills: bounties.length, dealt, taken, busySeconds, liveOut, liveIn, targets: top(out), attackers: top(inc), buckets: Array.from(buckets, (v) => v ?? 0), system, active: now - last < 60_000 && ev.length > 0 }
+  }, [events, manualStart, now])
+
+  if (!events.length)
+    return (
+      <Empty>
+        Боевой лог не найден. Canopus читает игровой журнал (Документы\EVE\logs\Gamelogs) активного персонажа — зайдите в игру и начните бой; статистика появится
+        автоматически.
+      </Empty>
+    )
+
+  const maxBucket = Math.max(1, ...s.buckets)
+  return (
+    <>
+      <div className="stats-row">
+        <Stat label="ISK в час" value={<span className="good">{fmtIsk(s.isk / s.hours, true)}</span>} sub={`награды за сессию: ${fmtIsk(s.isk, true)}`} />
+        <Stat label="Убито NPC" value={fmtNum(s.kills)} sub={`сессия ${fmtDuration(s.end - s.start)}${s.system ? ` · ${s.system}` : ''}`} />
+        <Stat label="Ваш DPS" value={s.active ? fmtNum(Math.round(s.liveOut)) : '—'} sub={`в среднем в бою ${fmtNum(Math.round(s.busySeconds ? s.dealt / s.busySeconds : 0))}`} />
+        <Stat label="Входящий DPS" value={<span className={s.liveIn > 0 ? 'bad' : ''}>{s.active ? fmtNum(Math.round(s.liveIn)) : '—'}</span>} sub={`получено урона: ${fmtNum(s.taken)}`} />
+      </div>
+      <div className="row">
+        <button className="ghost" onClick={() => setManualStart(Date.now())}>
+          Начать новую сессию
+        </button>
+        {manualStart && (
+          <button className="ghost" onClick={() => setManualStart(null)}>
+            Сессия по логу
+          </button>
+        )}
+        <span className="muted small">Сессия начинается после перерыва больше 20 минут. Награды — как в игре, «добавлено к следующей выплате».</span>
+      </div>
+      <Card title="Награды по 5 минут">
+        <div className="bounty-chart">
+          {s.buckets.map((v, i) => (
+            <div key={i} className="bounty-bar" title={`${i * 5}–${i * 5 + 5} мин: ${fmtIsk(v, true)}`} style={{ height: `${(v / maxBucket) * 100}%` }} />
+          ))}
+        </div>
+      </Card>
+      <div className="two-col">
+        <Card title="По кому идёт урон">
+          <table className="table compact">
+            <tbody>
+              {s.targets.map(([who, dmg]) => (
+                <tr key={who}>
+                  <td translate="no">{who}</td>
+                  <td className="num">{fmtNum(dmg)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+        <Card title="Кто бьёт по вам">
+          {!s.attackers.length ? (
+            <p className="muted small">Урона не получено.</p>
+          ) : (
+            <table className="table compact">
+              <tbody>
+                {s.attackers.map(([who, dmg]) => (
+                  <tr key={who}>
+                    <td translate="no">{who}</td>
+                    <td className="num bad">{fmtNum(dmg)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      </div>
     </>
   )
 }

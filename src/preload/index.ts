@@ -76,6 +76,11 @@ const api: CanopusApi = {
     systemId: (name) => invoke('intel:systemId', name)
   },
   onSettingsChanged: (listener) => on('intel:settingsChanged', listener),
+  ratting: {
+    events: () => invoke('ratting:events'),
+    onEvents: (listener) => on('ratting:events', listener),
+    onReset: (listener) => on('ratting:reset', listener)
+  },
   notify: {
     history: () => invoke('notify:history'),
     checkNow: () => invoke('notify:checkNow')

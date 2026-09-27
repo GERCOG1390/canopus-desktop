@@ -2575,3 +2575,19 @@ html.overlay-mode body {
 .sig-table tr.arrived td {
   background: rgba(255, 210, 122, 0.07);
 }
+
+/* Ratting tracker */
+.bounty-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 120px;
+  padding-top: 6px;
+}
+.bounty-bar {
+  flex: 1;
+  min-width: 4px;
+  max-width: 28px;
+  background: linear-gradient(180deg, #5fd38d, rgba(76, 196, 122, 0.35));
+  border-radius: 3px 3px 0 0;
+}

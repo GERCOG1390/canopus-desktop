@@ -3,6 +3,7 @@
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
 import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
 import type { NotifyEvent, NotifySettings } from './notify'
+import type { CombatLogEvent } from './ratting'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
 import type { WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
@@ -75,6 +76,13 @@ export interface CanopusApi {
   }
   /** Settings changed outside the renderer (e.g. overlay hotkeys). */
   onSettingsChanged(listener: () => void): () => void
+  ratting: {
+    /** Events parsed from the current game log. */
+    events(): Promise<CombatLogEvent[]>
+    onEvents(listener: (e: CombatLogEvent[]) => void): () => void
+    /** A new game log started (relog): previous events are gone. */
+    onReset(listener: (e: { file: string }) => void): () => void
+  }
   notify: {
     /** Notifications shown since Canopus started, newest first. */
     history(): Promise<NotifyEvent[]>
