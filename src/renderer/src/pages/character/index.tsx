@@ -5,6 +5,8 @@ import Assets from './Assets'
 import Blueprints from './Blueprints'
 import Clones from './Clones'
 import Contracts from './Contracts'
+import Contacts from './Contacts'
+import Calendar from './Calendar'
 import Fittings from './Fittings'
 import Overview from './Overview'
 import Reputation from './Reputation'
@@ -12,7 +14,7 @@ import Skills from './Skills'
 import SkillPlanner from './SkillPlanner'
 import Wallet from './Wallet'
 
-type Tab = 'overview' | 'skills' | 'plan' | 'clones' | 'fits' | 'assets' | 'blueprints' | 'wallet' | 'contracts' | 'reputation'
+type Tab = 'overview' | 'skills' | 'plan' | 'clones' | 'fits' | 'assets' | 'blueprints' | 'wallet' | 'contracts' | 'contacts' | 'calendar' | 'reputation'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Обзор' },
@@ -24,6 +26,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'blueprints', label: 'Чертежи' },
   { id: 'wallet', label: 'Кошелёк' },
   { id: 'contracts', label: 'Контракты' },
+  { id: 'contacts', label: 'Контакты' },
+  { id: 'calendar', label: 'Календарь' },
   { id: 'reputation', label: 'Репутация' }
 ]
 
@@ -45,6 +49,8 @@ export default function CharacterPage() {
       {tab === 'blueprints' && <Blueprints id={id} />}
       {tab === 'wallet' && <Wallet id={id} />}
       {tab === 'contracts' && <Contracts id={id} />}
+      {tab === 'contacts' && <Contacts id={id} />}
+      {tab === 'calendar' && <Calendar id={id} />}
       {tab === 'reputation' && <Reputation id={id} />}
     </div>
   )

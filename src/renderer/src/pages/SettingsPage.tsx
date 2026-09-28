@@ -4,6 +4,7 @@ import { Card, ErrorBox } from '../components/ui'
 import { imageUrl } from '../lib/esi'
 import { locale } from '../i18n'
 import { fmtDate } from '../lib/format'
+import { useAsync } from '../lib/useAsync'
 import type { NotifyEvent, NotifySettings } from '../../../shared/notify'
 
 export default function SettingsPage() {
@@ -15,13 +16,17 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
 
 
-  async function doLogin() {
+  const extra = useAsync(() => window.api.auth.extraScopes(), [])
+
+  async function doLogin(extended = false) {
     setBusy(true)
     setError(null)
     try {
-      await login()
+      await login(extended)
     } catch (e) {
-      setError((e as Error).message)
+      const msg = (e as Error).message
+      // The SSO refuses scopes the EVE application doesn't list.
+      setError(extended && /scope|отмен|cancel/i.test(msg) ? `${msg}. Если EVE SSO отказал в разрешениях, их нужно добавить в приложение Canopus на developers.eveonline.com (см. ниже).` : msg)
     } finally {
       setBusy(false)
     }
@@ -36,7 +41,14 @@ export default function SettingsPage() {
           {characters.map((c) => (
             <li key={c.id} className={c.id === active?.id ? 'selected' : ''}>
               <img src={imageUrl.portrait(c.id, 64)} width={40} height={40} alt="" />
-              <span className="grow">{c.name}</span>
+              <span className="grow">
+                {c.name}
+                {extra.data && extra.data.every((sc) => c.scopes.includes(sc)) ? (
+                  <span className="good small"> · действия в игре разрешены</span>
+                ) : (
+                  <span className="muted small"> · только чтение</span>
+                )}
+              </span>
               {c.id !== active?.id && (
                 <button className="ghost" onClick={() => setActive(c.id)}>
                   Сделать активным
@@ -48,10 +60,25 @@ export default function SettingsPage() {
             </li>
           ))}
         </ul>
-        <button onClick={doLogin} disabled={busy}>
-          {busy ? 'Ожидаю вход в браузере…' : 'Добавить персонажа (EVE SSO)'}
-        </button>
+        <div className="row">
+          <button onClick={() => void doLogin()} disabled={busy}>
+            {busy ? 'Ожидаю вход…' : 'Добавить персонажа (EVE SSO)'}
+          </button>
+          <button className="ghost" onClick={() => void doLogin(true)} disabled={busy} title="Войти ещё раз с разрешениями на действия в игре">
+            Разрешить действия в игре
+          </button>
+        </div>
+        <p className="muted small">
+          «Разрешить действия в игре» — вход с дополнительными разрешениями: открывать окна в клиенте (рынок, Show Info, контракты, письмо), сохранять фиты в игру, почта,
+          контакты, управление флотом, календарь. Canopus ничего не делает в игре сам — только по вашей кнопке.
+        </p>
         <ErrorBox error={error} />
+        {extra.data && (
+          <details className="small">
+            <summary className="muted">Для владельца приложения Canopus: какие разрешения должны быть включены на developers.eveonline.com</summary>
+            <div className="mono small">{extra.data.join(' ')}</div>
+          </details>
+        )}
       </Card>
 
 

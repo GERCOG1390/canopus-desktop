@@ -3,6 +3,8 @@ import { TypeLink } from '../../components/TypeLink'
 import { Card, Empty, Loading } from '../../components/ui'
 import { esi, resolveLocations, resolveNames } from '../../lib/esi'
 import { LocationName } from '../../components/LocationName'
+import { GameButton } from '../../components/GameButton'
+import { openContractInGame, SCOPE } from '../../lib/gameActions'
 import { fmtDate, fmtIsk, fmtNum } from '../../lib/format'
 import { useAsync } from '../../lib/useAsync'
 import { ScopeHint } from '.'
@@ -122,6 +124,9 @@ function ContractDetails({ c, id, locations }: { c: Contract; id: number; locati
   )
   return (
     <div className="contract-details">
+      <GameButton scope={SCOPE.openWindow} action={(who) => openContractInGame(who, c.contract_id)} title="Открыть этот контракт в клиенте игры">
+        Открыть в игре
+      </GameButton>
       <div className="small muted">
         {c.start_location_id ? (
           <>

@@ -50,6 +50,23 @@ export const SCOPES = [
   'esi-alliances.read_contacts.v1'
 ].filter((s, i, all) => all.indexOf(s) === i)
 
+/**
+ * Permissions to act in the game, asked for only on request: the EVE application must list them on
+ * developers.eveonline.com, otherwise the SSO would refuse the whole login.
+ */
+export const EXTRA_SCOPES = [
+  'esi-ui.open_window.v1',
+  'esi-fittings.write_fittings.v1',
+  'esi-mail.read_mail.v1',
+  'esi-mail.send_mail.v1',
+  'esi-mail.organize_mail.v1',
+  'esi-characters.write_contacts.v1',
+  'esi-fleets.read_fleet.v1',
+  'esi-fleets.write_fleet.v1',
+  'esi-calendar.read_calendar_events.v1',
+  'esi-calendar.respond_calendar_events.v1'
+]
+
 let tokens: StoredToken[] = []
 const refreshing = new Map<number, Promise<string>>()
 
@@ -131,7 +148,7 @@ export function handleCallbackUrl(raw: string): boolean {
   return true
 }
 
-export async function login(): Promise<CharacterAuth> {
+export async function login(extended = false): Promise<CharacterAuth> {
   const id = clientId()
   const verifier = base64url(randomBytes(32))
   const challenge = base64url(createHash('sha256').update(verifier).digest())
@@ -142,7 +159,7 @@ export async function login(): Promise<CharacterAuth> {
     response_type: 'code',
     redirect_uri: CALLBACK_URL,
     client_id: id,
-    scope: SCOPES.join(' '),
+    scope: (extended ? [...SCOPES, ...EXTRA_SCOPES] : SCOPES).join(' '),
     code_challenge: challenge,
     code_challenge_method: 'S256',
     state

@@ -5,6 +5,8 @@ import { TypeLink } from '../../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading } from '../../components/ui'
 import { esi } from '../../lib/esi'
 import { groupByShip, loadGameFits, type GameFitting } from '../../lib/gameFits'
+import { GameButton } from '../../components/GameButton'
+import { deleteGameFit, SCOPE } from '../../lib/gameActions'
 import { getBasic, tn, useTypeBasics } from '../../lib/sde'
 import { useAsync } from '../../lib/useAsync'
 import { ScopeHint } from '.'
@@ -32,7 +34,10 @@ export default function Fittings({ id }: { id: number }) {
     return { ship, items }
   }, [id])
 
-  const saved = useAsync(() => loadGameFits(id), [id])
+  // Bumped after a fit is deleted in the game: reload past the cache.
+  const [version, setVersion] = useState(0)
+  const saved = useAsync(() => loadGameFits(id, version > 0), [id, version])
+  const onDeleted = () => setVersion((v) => v + 1)
   useTypeBasics(saved.data?.map((x) => x.ship_type_id) ?? [])
 
   const f = filter.trim().toLowerCase()
@@ -100,6 +105,7 @@ export default function Fittings({ id }: { id: number }) {
                     onToggle={() => toggleShip(g.shipTypeId)}
                     openFit={openFit}
                     onToggleFit={(fid) => setOpenFit(openFit === fid ? null : fid)}
+                    onDeleted={onDeleted}
                     lang={lang}
                   />
                 )
@@ -119,6 +125,7 @@ function ShipGroupRows({
   onToggle,
   openFit,
   onToggleFit,
+  onDeleted,
   lang
 }: {
   shipTypeId: number
@@ -127,6 +134,7 @@ function ShipGroupRows({
   onToggle: () => void
   openFit: number | null
   onToggleFit: (id: number) => void
+  onDeleted: () => void
   lang: 0 | 1
 }) {
   const ship = getBasic(shipTypeId)
@@ -143,12 +151,12 @@ function ShipGroupRows({
         <td className="num muted">{`${fits.length} фит.`}</td>
       </tr>
       {open &&
-        fits.map((fit) => <FitRow key={fit.fitting_id} fit={fit} open={openFit === fit.fitting_id} onToggle={() => onToggleFit(fit.fitting_id)} />)}
+        fits.map((fit) => <FitRow key={fit.fitting_id} fit={fit} open={openFit === fit.fitting_id} onToggle={() => onToggleFit(fit.fitting_id)} onDeleted={onDeleted} />)}
     </>
   )
 }
 
-function FitRow({ fit, open, onToggle }: { fit: GameFitting; open: boolean; onToggle: () => void }) {
+function FitRow({ fit, open, onToggle, onDeleted }: { fit: GameFitting; open: boolean; onToggle: () => void; onDeleted: () => void }) {
   return (
     <>
       <tr className="clickable fit-in-group" onClick={onToggle}>
@@ -161,6 +169,17 @@ function FitRow({ fit, open, onToggle }: { fit: GameFitting; open: boolean; onTo
         <tr className="sub-row">
           <td colSpan={4}>
             {fit.description && <p className="muted small">{fit.description}</p>}
+            <GameButton
+              scope={SCOPE.writeFits}
+              className="ghost small danger"
+              confirm={`Удалить фит «${fit.name}» из игры? Это нельзя отменить.`}
+              action={async (who) => {
+                await deleteGameFit(who, fit.fitting_id)
+                onDeleted()
+              }}
+            >
+              Удалить из игры
+            </GameButton>
             <FitView shipTypeId={fit.ship_type_id} name={fit.name} items={fit.items.map((i) => ({ typeId: i.type_id, flag: i.flag, qty: i.quantity }))} />
           </td>
         </tr>

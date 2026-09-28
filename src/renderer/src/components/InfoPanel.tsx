@@ -15,6 +15,8 @@ import { LevelPips, MissingSkillsBox, SkillStatusIcon } from './skills'
 import { RichText, TypeLink, typeImage } from './TypeLink'
 import { ErrorBox, Loading, Tabs } from './ui'
 import { locale } from '../i18n'
+import { GameButton } from './GameButton'
+import { openInfoInGame, openMarketInGame, SCOPE } from '../lib/gameActions'
 
 type TabId = 'desc' | 'attrs' | 'effects' | 'req' | 'skill' | 'mastery' | 'vars' | 'industry' | 'reprocess' | 'market'
 
@@ -115,6 +117,16 @@ function InfoView({ typeId }: { typeId: number }) {
             {b.race && <span className="meta-badge">{tn(b.race, lang)}</span>}
             {b.faction && <span className="meta-badge">{tn(b.faction, lang)}</span>}
             {!t.pub && <span className="meta-badge">не публикуется</span>}
+          </div>
+          <div className="row game-actions">
+            <GameButton scope={SCOPE.openWindow} action={(who) => openInfoInGame(who, t.id)} title="Открыть Show Info этого предмета в клиенте игры">
+              Показать в игре
+            </GameButton>
+            {t.mg && (
+              <GameButton scope={SCOPE.openWindow} action={(who) => openMarketInGame(who, t.id)} title="Открыть рынок этого предмета в клиенте игры">
+                Рынок в игре
+              </GameButton>
+            )}
           </div>
           {isShip && (
             <button

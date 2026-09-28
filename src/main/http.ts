@@ -87,7 +87,11 @@ export async function request(url: string, options: RequestOptions = {}): Promis
   const cacheable = method === 'GET'
   const key = `${options.characterId ?? 0}|${options.allPages ? 'all' : 'one'}|${url}`
 
-  if (cacheable) {
+  // A change in the game makes this character's cached answers stale.
+  if (!cacheable && options.characterId) {
+    for (const k of cache.keys()) if (k.startsWith(`${options.characterId}|`)) cache.delete(k)
+  }
+  if (cacheable && !options.fresh) {
     const hit = cache.get(key)
     if (hit && hit.expires > Date.now()) return hit.data
     const pending = inflight.get(key)

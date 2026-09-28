@@ -5,6 +5,8 @@ import { Card, Empty, ErrorBox, Loading, RequireLogin, SearchBox, Sparkline, Sta
 import { esi, imageUrl, resolveIds, resolveLocations } from '../lib/esi'
 import { LocationName } from '../components/LocationName'
 import { MarketTree } from '../components/MarketTree'
+import { GameButton } from '../components/GameButton'
+import { openMarketInGame, SCOPE } from '../lib/gameActions'
 import { Arbitrage, LpStore } from './MarketTools'
 import { fmtDate, fmtIsk, fmtNum } from '../lib/format'
 import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/market'
@@ -134,6 +136,10 @@ function TypeMarket({ typeId }: { typeId: number }) {
               {basic && basic.n[1] !== basic.n[0] ? `${basic.n[0]} · ` : ''}type_id {typeId} · нажмите на название — полная информация
             </div>
           </div>
+          <div className="grow" />
+          <GameButton scope={SCOPE.openWindow} action={(who) => openMarketInGame(who, typeId)} title="Открыть рынок этого предмета в клиенте игры">
+            Открыть рынок в игре
+          </GameButton>
         </div>
       </Card>
 

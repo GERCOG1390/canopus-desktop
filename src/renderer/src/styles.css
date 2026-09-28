@@ -2679,3 +2679,81 @@ html.overlay-mode body {
   flex-wrap: wrap;
   gap: 2px 10px;
 }
+
+/* Standings */
+.st-excellent {
+  color: #4f8bff;
+  font-weight: 600;
+}
+.st-good {
+  color: #6fb6ff;
+}
+.st-neutral {
+  color: var(--muted);
+}
+.st-bad {
+  color: #ff9a3c;
+}
+.st-terrible {
+  color: #ff5b50;
+  font-weight: 600;
+}
+.game-actions {
+  margin-top: 6px;
+}
+.game-btn.has-error {
+  border-color: rgba(229, 83, 75, 0.6);
+}
+
+/* Mail */
+.mail-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.mail-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mail-label {
+  display: flex;
+  justify-content: space-between;
+  text-align: left;
+}
+.mail-label.active {
+  background: var(--panel-2);
+  border-color: var(--accent);
+}
+.mail-unread {
+  color: var(--accent);
+}
+.mail-list tr.mail-new td {
+  font-weight: 600;
+}
+.mail-body {
+  white-space: pre-wrap;
+  margin-top: 12px;
+  line-height: 1.5;
+}
+.mail-main label {
+  margin-bottom: 8px;
+}
+
+/* Fleet */
+.fleet-squad {
+  margin: 8px 0 4px 14px;
+}
+.fleet-squad-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.fleet-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}

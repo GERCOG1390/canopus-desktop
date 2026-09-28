@@ -8,6 +8,8 @@ import { useInfo } from '../components/InfoContext'
 import { ChargePicker } from '../components/ChargePicker'
 import { FitCost } from '../components/FitCost'
 import { FitTools, type FitTool } from './FitTools'
+import { GameButton } from '../components/GameButton'
+import { saveFitToGame, SCOPE } from '../lib/gameActions'
 import { MarketTree } from '../components/MarketTree'
 import { MissingSkillsBox } from '../components/skills'
 import { TypeLink, TypeName } from '../components/TypeLink'
@@ -275,6 +277,9 @@ function Editor() {
           </option>
         </select>
         <button onClick={save}>Сохранить</button>
+        <GameButton scope={SCOPE.writeFits} action={(who) => saveFitToGame(who, f)} title="Сохранить этот фит в список фитов в игре" done="в игре">
+          В игру
+        </GameButton>
         <button
           className="ghost"
           onClick={() => {

@@ -4,7 +4,7 @@ import type { CharacterAuth, Settings } from '../../shared/types'
 import { setUiLang } from './i18n'
 import { retryMissing, type Lang } from './lib/sde'
 
-export type PageId = 'character' | 'intel' | 'fitting' | 'market' | 'map' | 'industry' | 'activities' | 'pvp' | 'settings'
+export type PageId = 'character' | 'intel' | 'fitting' | 'market' | 'map' | 'industry' | 'activities' | 'mail' | 'fleet' | 'pvp' | 'settings'
 
 interface AppState {
   settings: Settings | null
@@ -18,7 +18,8 @@ interface AppState {
   pageArg: number | null
   navigate: (page: PageId, arg?: number | null) => void
   updateSettings: (patch: Partial<Settings>) => Promise<void>
-  login: () => Promise<void>
+  /** `extended`: also ask for the permissions to act in the game */
+  login: (extended?: boolean) => Promise<void>
   logout: (id: number) => Promise<void>
   setActive: (id: number) => Promise<void>
 }
@@ -56,8 +57,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSettings(await window.api.settings.set(patch))
   }, [])
 
-  const login = useCallback(async () => {
-    const ch = await window.api.auth.login()
+  const login = useCallback(async (extended?: boolean) => {
+    const ch = await window.api.auth.login(extended)
     setCharacters(await window.api.auth.characters())
     setSettings(await window.api.settings.set({ activeCharacterId: ch.id }))
   }, [])

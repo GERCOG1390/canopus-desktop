@@ -9,12 +9,14 @@ import type { JumpHop, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
-  method?: 'GET' | 'POST'
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   body?: unknown
   /** Attach the ESI access token of this character (ESI hosts only). */
   characterId?: number
   /** Follow X-Pages and concatenate all pages of an array response. */
   allPages?: boolean
+  /** Skip the cache (e.g. right after changing something in the game) */
+  fresh?: boolean
 }
 
 export interface CharacterAuth {
@@ -36,7 +38,9 @@ export interface Settings {
 export interface CanopusApi {
   request<T = unknown>(url: string, options?: RequestOptions): Promise<T>
   auth: {
-    login(): Promise<CharacterAuth>
+    /** Log in; `extended` also asks for the permissions to act in the game (open windows, fits, mail, contacts, fleet, calendar). */
+    login(extended?: boolean): Promise<CharacterAuth>
+    extraScopes(): Promise<string[]>
     characters(): Promise<CharacterAuth[]>
     logout(characterId: number): Promise<void>
     callbackUrl(): Promise<string>

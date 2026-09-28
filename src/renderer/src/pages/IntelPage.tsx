@@ -3,6 +3,8 @@ import type { IntelReport, Threat } from '../../../shared/intel'
 import { useApp } from '../AppContext'
 import { REPORT_FRESH_MS, useIntel } from '../IntelContext'
 import { TypeLink } from '../components/TypeLink'
+import { GameButton } from '../components/GameButton'
+import { addContacts, SCOPE } from '../lib/gameActions'
 import { Card, Empty, Sec, Stat, Tabs } from '../components/ui'
 import { imageUrl } from '../lib/esi'
 import { fmtNum } from '../lib/format'
@@ -150,6 +152,19 @@ function LocalTab() {
             </div>
           )}
 
+          {counts.hostile + counts.high > 0 && (
+            <div className="row">
+              <GameButton
+                scope={SCOPE.writeContacts}
+                confirm={`Добавить опасных пилотов (${pilots.filter((p) => p.threat === 'high' || p.threat === 'hostile').length}) в контакты с ужасной репутацией (−10)?`}
+                action={(who) => addContacts(who, pilots.filter((p) => p.threat === 'high' || p.threat === 'hostile').map((p) => p.id), -10)}
+                title="Опасные пилоты будут видны красными в игре"
+                done="добавлены"
+              >
+                {`Опасных в контакты (−10): ${counts.hostile + counts.high}`}
+              </GameButton>
+            </div>
+          )}
           <Card>
             <table className="table intel-table">
               <thead>
