@@ -3492,3 +3492,11 @@ button.danger-fill:hover:not(:disabled) {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* A card with actions but no title: no empty rule, actions to the right. */
+.card-head h3:empty {
+  display: none;
+}
+.card-head h3:empty + .card-actions {
+  margin-left: auto;
+}
