@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import { AppProvider, useApp, type PageId } from './AppContext'
 import { CharacterProvider } from './CharacterContext'
 import { CommandPalette, type NavPage } from './components/CommandPalette'
@@ -127,6 +127,53 @@ function EveClock() {
   )
 }
 
+/**
+ * In-app alert when a dangerous pilot shows up in Local (the Windows notification may be off or
+ * missed while the game has focus). Threats arrive a few at a time, so each pilot is shown once.
+ */
+function DangerToast() {
+  const { scan } = useIntel()
+  const { navigate } = useApp()
+  const seen = useRef(new Set<number>())
+  const [shown, setShown] = useState<string[]>([])
+  useEffect(() => {
+    if (!scan) return
+    const fresh = scan.pilots.filter((p) => scan.arrived.has(p.id) && (p.threat === 'hostile' || p.threat === 'high') && !seen.current.has(p.id))
+    if (!fresh.length) return
+    for (const p of fresh) seen.current.add(p.id)
+    setShown(fresh.map((p) => p.name))
+    const t = setTimeout(() => setShown([]), 12_000)
+    return () => clearTimeout(t)
+  }, [scan])
+  if (!shown.length) return null
+  return (
+    <div className="danger-toast" role="alert">
+      <Glyph name="alert" size={20} className="danger-toast-icon" />
+      <div className="grow">
+        <b>{shown.length > 1 ? `Опасные пилоты в локале: ${shown.length}` : 'Опасный пилот вошёл в локал'}</b>
+        <div className="muted" translate="no">
+          {shown.slice(0, 3).join(', ')}
+          {shown.length > 3 ? '…' : ''}
+        </div>
+        <div className="row">
+          <button
+            className="danger-fill"
+            onClick={() => {
+              navigate('intel')
+              setShown([])
+            }}
+          >
+            Показать
+          </button>
+          <button className="ghost" onClick={() => setShown([])}>
+            Скрыть
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function NavButton({ p, badge, danger }: { p: NavPage; badge?: ReactNode; danger?: boolean }) {
   const { page, navigate } = useApp()
   return (
@@ -227,6 +274,7 @@ function Shell() {
       </div>
       <InfoPanel />
       <CommandPalette pages={PAGES} open={palette} onClose={() => setPalette(false)} />
+      <DangerToast />
     </div>
   )
 }

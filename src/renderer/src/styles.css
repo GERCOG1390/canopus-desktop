@@ -1680,41 +1680,74 @@ td.attr-name {
 }
 /* ---------- intel ---------- */
 
+/* Threat colours: hostile/high red-orange, medium amber, low neutral, friendly the accent. */
+.tm-hostile,
+.threat-hostile {
+  --t: #f07a66;
+}
+.tm-high,
+.threat-high {
+  --t: #f0965a;
+}
+.tm-medium,
+.threat-medium {
+  --t: var(--warn);
+}
+.tm-low,
+.threat-low,
+.tm-unknown,
+.threat-unknown {
+  --t: var(--muted);
+}
+.tm-friendly,
+.threat-friendly {
+  --t: var(--accent-text);
+}
 .threat {
   display: inline-block;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   padding: 2px 7px;
   border-radius: 4px;
   white-space: nowrap;
+  color: var(--t);
+  background: color-mix(in srgb, var(--t) 16%, transparent);
 }
-.threat-hostile {
-  background: rgba(229, 83, 75, 0.25);
-  color: #ff8a80;
+.threat-meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
 }
-.threat-high {
-  background: rgba(230, 120, 40, 0.25);
-  color: #ffb070;
+.tm-bars {
+  display: inline-flex;
+  gap: 2px;
 }
-.threat-medium {
-  background: rgba(230, 190, 60, 0.18);
-  color: #f0d070;
+.tm-bars span {
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--panel-2);
 }
-.threat-low {
-  background: color-mix(in srgb, var(--muted) 15%, transparent);
-  color: var(--muted);
+.tm-bars span.on {
+  background: var(--t);
 }
-.threat-friendly {
-  background: color-mix(in srgb, var(--accent) 20%, transparent);
-  color: var(--accent-text);
+.tm-text {
+  font-size: 12px;
+  color: var(--t);
 }
-.threat-unknown {
-  color: var(--muted);
+.intel-table tr.row-hostile td,
+.intel-table tr.row-high td {
+  background: color-mix(in srgb, var(--bad-fill) 7%, transparent);
 }
 .new-badge {
   margin-left: 6px;
   font-size: 10px;
-  color: #ffd27a;
+  letter-spacing: 0.1em;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--accent-text);
+  background: var(--accent-soft);
   text-transform: uppercase;
 }
 .intel-head {
@@ -1723,15 +1756,28 @@ td.attr-name {
   align-items: center;
 }
 .intel-system {
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 26px;
   font-weight: 600;
+  margin-top: 2px;
+}
+.sec-chip {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 2px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--line-strong);
+  background: var(--card);
 }
 .intel-help {
   max-width: 420px;
   text-align: right;
 }
 .intel-table tr.arrived td {
-  background: rgba(255, 210, 122, 0.07);
+  box-shadow: inset 0 1px 0 var(--accent-line), inset 0 -1px 0 var(--accent-line);
 }
 .intel-table tr.rel-red td:first-child,
 .intel-table tr.rel-red td:nth-child(2) {
@@ -1741,7 +1787,7 @@ td.attr-name {
   border-radius: 3px;
 }
 .ticker {
-  color: var(--accent);
+  color: var(--text-2);
   font-family: var(--font-mono);
 }
 .ship-icons {
@@ -1770,8 +1816,9 @@ td.attr-name {
   border-color: var(--accent);
 }
 .clip-toast {
-  background: var(--accent-2);
-  color: #fff;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--text);
   padding: 8px 12px;
   border-radius: 6px;
   cursor: pointer;
@@ -2138,7 +2185,11 @@ html.overlay-mode body {
 .charge-picker {
   position: relative;
   flex: 0 1 180px;
-  min-width: 96px;
+  min-width: 72px;
+}
+.charge-current {
+  overflow: hidden;
+  white-space: nowrap;
 }
 .charge-current {
   display: flex;
@@ -2205,7 +2256,7 @@ html.overlay-mode body {
 }
 .module-row > .type-link {
   flex: 1 1 0;
-  min-width: 70px;
+  min-width: 40px;
   flex: 1 1 auto;
   overflow: hidden;
 }
@@ -2218,7 +2269,7 @@ html.overlay-mode body {
   flex: 0 0 0;
 }
 .module-row .charge-current {
-  width: 200px;
+  width: 100%;
 }
 
 /* Live preview of a hovered module in the fitting stats */
@@ -2705,8 +2756,8 @@ html.overlay-mode body {
   white-space: nowrap;
   font-size: 13px;
 }
-.ammo-row .charge-current {
-  width: 230px;
+.ammo-row .charge-picker {
+  flex: 0 1 230px;
 }
 
 /* Fits grouped by ship */
@@ -3379,4 +3430,65 @@ html.overlay-mode body {
   width: 14px;
   height: 14px;
   border-radius: 50%;
+}
+
+
+/* ---------- danger toast ---------- */
+
+.danger-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 70;
+  width: 380px;
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  background: color-mix(in srgb, var(--bad-fill) 10%, var(--panel-2));
+  border: 1px solid color-mix(in srgb, var(--bad-fill) 55%, transparent);
+  border-radius: 10px;
+  box-shadow:
+    0 18px 44px rgba(0, 0, 0, 0.6),
+    0 0 24px color-mix(in srgb, var(--bad-fill) 18%, transparent);
+  animation: toast-in 0.18s ease-out;
+}
+.danger-toast-icon {
+  color: var(--bad);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.danger-toast .row {
+  margin-top: 10px;
+}
+button.danger-fill {
+  background: var(--bad-fill);
+  color: #fff;
+}
+button.danger-fill:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--bad-fill) 85%, white);
+}
+@keyframes toast-in {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .danger-toast {
+    animation: none;
+  }
+}
+
+/* Module rows keep their buttons; the name and the charge give way. */
+.module-row {
+  gap: 6px;
+}
+.module-row > button,
+.module-row > .state-btn {
+  flex-shrink: 0;
+}
+.charge-current > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

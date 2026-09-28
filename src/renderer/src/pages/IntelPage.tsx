@@ -52,8 +52,21 @@ const ago = (ms: number) => {
   return s < 60 ? `${s} с назад` : s < 3600 ? `${Math.floor(s / 60)} мин назад` : `${Math.floor(s / 3600)} ч назад`
 }
 
+const THREAT_BARS: Record<Threat, number> = { hostile: 5, high: 4, medium: 3, low: 1, friendly: 0, unknown: 0 }
+
+/** Threat as a five-segment meter plus its word: readable without relying on colour alone. */
 function ThreatBadge({ threat }: { threat: Threat }) {
-  return <span className={`threat threat-${threat}`}>{THREAT_LABEL[threat]}</span>
+  const n = THREAT_BARS[threat]
+  return (
+    <span className={`threat-meter tm-${threat}`}>
+      <span className="tm-bars" aria-hidden="true">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <span key={i} className={i < n ? 'on' : ''} />
+        ))}
+      </span>
+      <span className="tm-text">{THREAT_LABEL[threat]}</span>
+    </span>
+  )
 }
 
 function LocalTab() {
@@ -93,7 +106,12 @@ function LocalTab() {
             <div className="intel-system">
               {system ? (
                 <>
-                  {system.sec !== undefined && <Sec value={system.sec} />} {system.name}
+                  <span translate="no">{system.name}</span>
+                  {system.sec !== undefined && (
+                    <span className="sec-chip">
+                      <Sec value={system.sec} />
+                    </span>
+                  )}
                 </>
               ) : (
                 <span className="muted">{logStatus?.error ?? 'ожидаю лог…'}</span>
@@ -201,7 +219,7 @@ function PilotRow({ p, isNew, onOpen }: { p: PilotIntel; isNew: boolean; onOpen:
   const lang = useLang()
   const years = p.birthday ? (Date.now() - new Date(p.birthday).getTime()) / (365.25 * 86400_000) : null
   return (
-    <tr className={`clickable ${isNew ? 'arrived' : ''} rel-${p.relation}`} onClick={onOpen}>
+    <tr className={`clickable ${isNew ? 'arrived' : ''} rel-${p.relation} row-${p.threat}`} onClick={onOpen}>
       <td>
         <ThreatBadge threat={p.threat} />
         {isNew && <span className="new-badge">новый</span>}

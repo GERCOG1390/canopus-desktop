@@ -20,7 +20,8 @@ const PATHS = {
   update: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4',
   user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5M19 8v6M16 11h6',
   globe: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z',
-  rows: 'M4 6h16M4 12h16M4 18h16'
+  rows: 'M4 6h16M4 12h16M4 18h16',
+  alert: 'M12 3l10 18H2zM12 10v5M12 18v.5'
 } as const
 
 export type GlyphName = keyof typeof PATHS
