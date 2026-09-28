@@ -2,6 +2,7 @@
 // (the player copies Local / D-scan / fleet window with Ctrl+A, Ctrl+C). Plus the overlay window.
 
 import { app, BrowserWindow, clipboard, globalShortcut, Notification, screen } from 'electron'
+import appIconPath from '../../build/icon.png?asset'
 import { existsSync, openSync, readSync, closeSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ChannelInfo, ClipboardKind, IntelReport, IntelSettings, LogEvent, OverlaySummary } from '../shared/intel'
@@ -385,6 +386,7 @@ function createOverlay(load: (w: BrowserWindow, hash: string) => void, preload: 
   const area = screen.getPrimaryDisplay().workArea
   const b = cfg.bounds ?? { width: 300, height: 420, x: area.x + area.width - 320, y: area.y + 120 }
   overlay = new BrowserWindow({
+    icon: appIconPath,
     ...b,
     frame: false,
     transparent: true,

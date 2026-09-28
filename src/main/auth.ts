@@ -7,6 +7,7 @@
 // No local port is opened.
 
 import { app, BrowserWindow } from 'electron'
+import appIconPath from '../../build/icon.png?asset'
 import { appendFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createHash, randomBytes } from 'node:crypto'
@@ -203,6 +204,7 @@ const redact = (url: string): string =>
 
 function openLoginWindow(url: string): BrowserWindow {
   const win = new BrowserWindow({
+    icon: appIconPath,
     width: 520,
     height: 760,
     title: 'EVE Online — login',

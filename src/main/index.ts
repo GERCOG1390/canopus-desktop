@@ -16,7 +16,7 @@ import * as notifier from './notifier'
 import * as combatlog from './combatlog'
 import * as updater from './updater'
 import { storeGet, storeSet } from './userstore'
-import trayIconPath from '../../build/icon.png?asset'
+import appIconPath from '../../build/icon.png?asset'
 
 // A separate profile (settings, tokens, SDE cache) — handy for testing and screenshots.
 if (process.env.CANOPUS_USER_DATA) app.setPath('userData', process.env.CANOPUS_USER_DATA)
@@ -33,6 +33,7 @@ function openExternal(url: string): void {
 function createWindow(): void {
   const settings = loadSettings()
   mainWindow = new BrowserWindow({
+    icon: appIconPath,
     width: 1320,
     height: 860,
     minWidth: 960,
@@ -79,7 +80,7 @@ function showMain(): void {
 }
 
 function createTray(): void {
-  const icon = nativeImage.createFromPath(trayIconPath).resize({ width: 16, height: 16 })
+  const icon = nativeImage.createFromPath(appIconPath).resize({ width: 16, height: 16 })
   tray = new Tray(icon)
   tray.setToolTip('Canopus')
   const en = () => loadSettings().lang === 'en'
@@ -130,6 +131,7 @@ function openCombatWindow(): void {
     return
   }
   combatWindow = new BrowserWindow({
+    icon: appIconPath,
     width: 1280,
     height: 880,
     minWidth: 960,

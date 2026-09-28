@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { AppProvider, useApp, type PageId } from './AppContext'
 import { CharacterProvider } from './CharacterContext'
 import { CommandPalette, type NavPage } from './components/CommandPalette'
-import { Glyph, type GlyphName } from './components/Glyph'
+import { BrandMark, Glyph, type GlyphName } from './components/Glyph'
 import { InfoProvider } from './components/InfoContext'
 import { InfoPanel } from './components/InfoPanel'
 import { imageUrl } from './lib/esi'
@@ -170,7 +170,7 @@ function Shell() {
       <nav className="sidebar" aria-label="Разделы">
         <div className="brand">
           <span className="brand-star">
-            <Glyph name="star" size={20} />
+            <BrandMark size={26} />
           </span>
           <span translate="no">CANOPUS</span>
         </div>

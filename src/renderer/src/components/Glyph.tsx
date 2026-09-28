@@ -43,3 +43,20 @@ export function Glyph({ name, size = 18, className = '' }: { name: GlyphName; si
     </svg>
   )
 }
+
+/** The Canopus star, the same shape as the app icon. */
+export function BrandMark({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="60 60 392 392" aria-hidden="true">
+      <defs>
+        <linearGradient id="brand-star" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fff6e0" />
+          <stop offset="0.5" stopColor="#ffd98a" />
+          <stop offset="1" stopColor="#e0a94a" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="256" cy="256" rx="184" ry="60" fill="none" stroke="var(--accent)" strokeOpacity="0.75" strokeWidth="14" transform="rotate(-24 256 256)" />
+      <path d="M256 70 C 270 190, 322 242, 442 256 C 322 270, 270 322, 256 442 C 242 322, 190 270, 70 256 C 190 242, 242 190, 256 70 Z" fill="url(#brand-star)" />
+    </svg>
+  )
+}
