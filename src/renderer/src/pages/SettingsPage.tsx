@@ -6,6 +6,7 @@ import { locale } from '../i18n'
 import { fmtDate } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 import { useUpdate } from '../lib/update'
+import { THEMES } from '../lib/appearance'
 import type { NotifyEvent, NotifySettings } from '../../../shared/notify'
 
 export default function SettingsPage() {
@@ -123,6 +124,8 @@ export default function SettingsPage() {
         </label>
       </Card>
 
+      <AppearanceCard />
+
       <NotifyCard />
 
       <UpdateCard />
@@ -133,6 +136,40 @@ export default function SettingsPage() {
         </p>
       </Card>
     </div>
+  )
+}
+
+function AppearanceCard() {
+  const { settings, updateSettings } = useApp()
+  if (!settings) return null
+  return (
+    <Card title="Внешний вид">
+      <div className="theme-picker" role="radiogroup" aria-label="Цвет акцента">
+        {THEMES.map((t) => (
+          <button
+            key={t.id}
+            role="radio"
+            aria-checked={settings.theme === t.id}
+            className={`theme-swatch ${settings.theme === t.id ? 'selected' : ''}`}
+            onClick={() => void updateSettings({ theme: t.id })}
+          >
+            <span className="theme-dot" style={{ background: t.color }} />
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div className="row">
+        <div className="tabs" role="radiogroup" aria-label="Плотность">
+          <button className={settings.density === 'comfortable' ? 'tab active' : 'tab'} onClick={() => void updateSettings({ density: 'comfortable' })}>
+            Удобно
+          </button>
+          <button className={settings.density === 'compact' ? 'tab active' : 'tab'} onClick={() => void updateSettings({ density: 'compact' })}>
+            Компактно
+          </button>
+        </div>
+        <span className="muted small">Компактно — мельче текст и плотнее строки, больше данных на экране (удобно в бою).</span>
+      </div>
+    </Card>
   )
 }
 

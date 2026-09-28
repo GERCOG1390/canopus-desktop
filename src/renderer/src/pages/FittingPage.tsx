@@ -256,8 +256,18 @@ function Editor() {
     }
   }
 
-  const setModule = (index: number, patch: Partial<FitSpec['modules'][number]>) =>
-    updateFit((x) => ({ ...x, modules: x.modules.map((m, i) => (i === index ? { ...m, ...patch } : m)) }))
+  /** A group of identical modules is edited as one: state and charge change for all of them. */
+  const setModules = (indices: number[], patch: Partial<FitSpec['modules'][number]>) =>
+    updateFit((x) => ({ ...x, modules: x.modules.map((m, i) => (indices.includes(i) ? { ...m, ...patch } : m)) }))
+  /** Slots whose identical modules are shown one per row. */
+  const [expanded, setExpanded] = useState<Set<Slot>>(new Set())
+  const toggleExpanded = (slot: Slot) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(slot)) next.delete(slot)
+      else next.add(slot)
+      return next
+    })
   const removeModule = (index: number) => updateFit((x) => ({ ...x, modules: x.modules.filter((_, i) => i !== index) }))
 
   async function save() {
@@ -303,6 +313,8 @@ function Editor() {
 
       {tool && <FitTools tool={tool} setTool={setTool} fit={f} skills={skills} onLoad={(x) => setFit(x)} />}
 
+      {stats && <FitMetrics stats={preview?.stats ?? stats} base={preview?.stats ? stats : undefined} />}
+
       <div className="fitting-grid">
         <div className="fit-col">
           <Card>
@@ -338,20 +350,31 @@ function Editor() {
                     {mods.length}/{total}
                   </span>
                 </div>
-                {mods.map(({ m, i }) => (
-                  <ModuleRow
-                    key={i}
-                    module={m}
-                    info={catalog.data?.get(m.typeId)}
-                    result={stats?.modules.find((r) => r.index === i)}
-                    onState={(s) => setModule(i, { state: s })}
-                    onCharge={(c) => setModule(i, { chargeTypeId: c })}
-                    onRemove={() => removeModule(i)}
-                  />
-                ))}
+                {groupModules(mods, expanded.has(slot)).map((g) => {
+                  const { m, i } = g[0]
+                  const indices = g.map((x) => x.i)
+                  return (
+                    <ModuleRow
+                      key={i}
+                      module={m}
+                      count={g.length}
+                      expanded={expanded.has(slot)}
+                      onToggleGroup={() => toggleExpanded(slot)}
+                      info={catalog.data?.get(m.typeId)}
+                      result={stats?.modules.find((r) => r.index === i)}
+                      onState={(s) => setModules(indices, { state: s })}
+                      onCharge={(c) => setModules(indices, { chargeTypeId: c })}
+                      onRemove={() => removeModule(indices[indices.length - 1])}
+                    />
+                  )
+                })}
                 {Array.from({ length: Math.max(0, total - mods.length) }, (_, k) => (
-                  <div key={`e${k}`} className="module-row empty" onClick={() => setBrowserSlot(slot)}>
-                    — пустой слот —
+                  <div
+                    key={`e${k}`}
+                    className={`module-row empty ${k === 0 && browserSlot === slot ? 'target' : ''}`}
+                    onClick={() => setBrowserSlot(slot)}
+                  >
+                    {k === 0 && browserSlot === slot ? 'Пустой слот — выберите модуль справа' : '— пустой слот —'}
                   </div>
                 ))}
               </div>
@@ -456,8 +479,22 @@ function ShipChanger({ onPick }: { onPick: (id: number) => void }) {
 
 const STATE_LABEL: Record<ModuleState, string> = { offline: 'Выключен', online: 'Онлайн', active: 'Активен', overload: 'Перегрев' }
 
+/** Identical modules (type, state and charge) together, in the order they first appear. */
+function groupModules<T extends { m: FitSpec['modules'][number]; i: number }>(mods: T[], expanded: boolean): T[][] {
+  if (expanded) return mods.map((x) => [x])
+  const groups = new Map<string, T[]>()
+  for (const x of mods) {
+    const key = `${x.m.typeId}:${x.m.state}:${x.m.chargeTypeId ?? ''}`
+    groups.set(key, [...(groups.get(key) ?? []), x])
+  }
+  return [...groups.values()]
+}
+
 function ModuleRow({
   module: m,
+  count = 1,
+  expanded,
+  onToggleGroup,
   info,
   result,
   onState,
@@ -465,6 +502,10 @@ function ModuleRow({
   onRemove
 }: {
   module: FitSpec['modules'][number]
+  /** Identical modules shown as this one row */
+  count?: number
+  expanded?: boolean
+  onToggleGroup?: () => void
   info?: FittableType
   result?: FitStats['modules'][number]
   onState: (s: ModuleState) => void
@@ -486,6 +527,15 @@ function ModuleRow({
           onState(nextState(m.state, info, true))
         }}
       />
+      {(count > 1 || expanded) && onToggleGroup && (
+        <button
+          className="qty-btn"
+          title={count > 1 ? 'Одинаковые модули: показать по одному' : 'Собрать одинаковые модули в одну строку'}
+          onClick={onToggleGroup}
+        >
+          {count > 1 ? `${count}×` : '⋯'}
+        </button>
+      )}
       <TypeLink id={m.typeId} size={24} />
       <span className="grow" />
       {info?.charges && (
@@ -497,7 +547,7 @@ function ModuleRow({
         </button>
       )}
       {problems.length > 0 && <span className="bad" title={problems.join('\n')}>⚠</span>}
-      <button className="ghost small danger" onClick={onRemove} title="Снять модуль">
+      <button className="ghost small danger" onClick={onRemove} title={count > 1 ? 'Снять один модуль' : 'Снять модуль'}>
         ✕
       </button>
     </div>
@@ -812,6 +862,77 @@ function Delta({ v, b, digits = 1, better = 'up', unit = '' }: { v: number; b?: 
   )
 }
 
+/** A resource card: used / total with a bar; amber when nearly full, red when over. */
+function ResourceCard({ label, used, total, unit, prev }: { label: string; used: number; total: number; unit: string; prev?: number }) {
+  const over = used > total + 1e-6
+  const near = !over && total > 0 && total - used < total * 0.03
+  const pct = total ? Math.min(100, (used / total) * 100) : used ? 100 : 0
+  return (
+    <div className={`stat metric ${over ? 'metric-over' : near ? 'metric-near' : ''}`}>
+      <div className="metric-head">
+        <span className="stat-label">{label}</span>
+        <Delta v={used} b={prev} better="down" />
+      </div>
+      <div className="metric-mono">
+        {n1(used)} / {n1(total)} {unit}
+      </div>
+      <div className={`progress ${over ? 'over' : near ? 'near' : ''}`}>
+        <div style={{ width: `${pct}%` }} />
+      </div>
+      {over ? (
+        <div className="stat-sub bad">{`не хватает ${n1(used - total)} ${unit}`}</div>
+      ) : near ? (
+        <div className="stat-sub metric-warn">{`осталось ${n1(total - used)} ${unit}`}</div>
+      ) : (
+        <div className="stat-sub">{`свободно ${n1(total - used)} ${unit}`}</div>
+      )}
+    </div>
+  )
+}
+
+/** The numbers a pilot checks first, above the editor; they follow the previewed module too. */
+function FitMetrics({ stats: s, base: b }: { stats: FitStats; base?: FitStats }) {
+  const damage = s.offense.weapons.reduce((acc, w) => acc.map((x, i) => x + w.damage[i] / (w.cycle || 1)) as number[], [0, 0, 0, 0])
+  const damageTotal = damage.reduce((a, x) => a + x, 0)
+  return (
+    <div className={`fit-metrics ${b ? 'previewing' : ''}`}>
+      <div className="stat metric dps-tip" tabIndex={0}>
+        <div className="metric-head">
+          <span className="stat-label">DPS</span>
+          <Delta v={s.offense.totalDps} b={b?.offense.totalDps} />
+        </div>
+        <div className="metric-value accent">{n1(s.offense.totalDps)}</div>
+        <div className="stat-sub">{`с перезарядкой ${n1(s.offense.totalDpsReload)}`}</div>
+        <DpsTooltip s={s} />
+      </div>
+      <div className="stat metric">
+        <div className="metric-head">
+          <span className="stat-label">Залп</span>
+          <Delta v={s.offense.totalVolley} b={b?.offense.totalVolley} digits={0} />
+        </div>
+        <div className="metric-value">{fmtNum(s.offense.totalVolley)}</div>
+        {damageTotal > 0 ? (
+          <div className="damage-bar" title={damage.map((d, i) => `${DAMAGE_NAMES[i]}: ${Math.round((d / damageTotal) * 100)}%`).join(', ')}>
+            {damage.map((d, i) => (d > 0 ? <span key={i} className={`dmg-seg dmg-${RES_CLASS[i]}`} style={{ width: `${(d / damageTotal) * 100}%` }} /> : null))}
+          </div>
+        ) : (
+          <div className="stat-sub">нет оружия</div>
+        )}
+      </div>
+      <div className="stat metric">
+        <div className="metric-head">
+          <span className="stat-label">Эффективное HP</span>
+          <Delta v={s.defense.ehp} b={b?.defense.ehp} digits={0} />
+        </div>
+        <div className="metric-value">{fmtNum(s.defense.ehp)}</div>
+        <div className="stat-sub">{b ? `было ${fmtNum(b.defense.ehp)}` : `${fmtNum(s.defense.hp)} HP без сопротивлений`}</div>
+      </div>
+      <ResourceCard label="Процессор" used={s.ship.cpu.used} total={s.ship.cpu.total} unit="tf" prev={b?.ship.cpu.used} />
+      <ResourceCard label="Энергосеть" used={s.ship.power.used} total={s.ship.power.total} unit="MW" prev={b?.ship.power.used} />
+    </div>
+  )
+}
+
 function StatsPanel({
   stats: s,
   base: b,
@@ -851,8 +972,6 @@ function StatsPanel({
 
       <section>
         <h4>Ресурсы</h4>
-        <Bar attr={ICON.cpu} label="ЦПУ" used={s.ship.cpu.used} total={s.ship.cpu.total} unit=" tf" prev={b?.ship.cpu.used} />
-        <Bar attr={ICON.power} label="Реактор" used={s.ship.power.used} total={s.ship.power.total} unit=" MW" prev={b?.ship.power.used} />
         <Bar attr={ICON.calibration} label="Калибровка" used={s.ship.calibration.used} total={s.ship.calibration.total} digits={0} prev={b?.ship.calibration.used} />
         <div className="res-row">
           <span className="with-icon">
@@ -872,20 +991,6 @@ function StatsPanel({
 
       <section>
         <h4>Огневая мощь</h4>
-        <div className="big-stats">
-          <div className="dps-tip">
-            <AttrIcon attr={ICON.rof} size={24} />
-            <b>{n1(s.offense.totalDps)}</b>
-            <span>DPS</span>
-            <Delta v={s.offense.totalDps} b={b?.offense.totalDps} />
-            <DpsTooltip s={s} />
-          </div>
-          <div>
-            <b>{fmtNum(s.offense.totalVolley)}</b>
-            <span>залп</span>
-            <Delta v={s.offense.totalVolley} b={b?.offense.totalVolley} digits={0} />
-          </div>
-        </div>
         {damageTotal > 0 && (
           <div className="damage-profile">
             {damage.map((d, i) => (
@@ -897,34 +1002,28 @@ function StatsPanel({
           </div>
         )}
         {s.offense.weapons.length ? (
-          <table className="table compact">
-            <tbody>
-              {groupWeapons(s.offense.weapons).map((w) => (
-                <tr key={`${w.kind}-${w.typeId}-${w.chargeTypeId}`}>
-                  <td>
-                    {w.count > 1 && <span className="muted">{w.count}× </span>}
-                    <TypeLink id={w.typeId} />
-                    {w.chargeTypeId && (
-                      <div className="muted small">
-                        <TypeName id={w.chargeTypeId} />
-                      </div>
-                    )}
-                  </td>
-                  <td className="num">{n1(w.dps)} DPS</td>
-                  <td className="num muted small">
-                    <span className="with-icon">
-                      <AttrIcon attr={w.kind === 'missile' ? ICON.explosionRadius : ICON.optimal} size={16} />
-                      {w.kind === 'missile'
-                        ? `${km(w.optimal ?? 0)} · ${fmtNum(w.explosionRadius ?? 0)} м`
-                        : w.optimal !== undefined
-                          ? `${km(w.optimal)} + ${km(w.falloff ?? 0)}`
-                          : ''}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="weapon-list">
+            {groupWeapons(s.offense.weapons).map((w) => (
+              <div className="weapon-row" key={`${w.kind}-${w.typeId}-${w.chargeTypeId}`}>
+                <div className="weapon-name">
+                  {w.count > 1 && <span className="qty">{w.count}×</span>}
+                  <TypeLink id={w.typeId} />
+                </div>
+                <b className="weapon-dps">{n1(w.dps)} DPS</b>
+                <div className="weapon-sub muted small">
+                  {w.chargeTypeId ? <TypeName id={w.chargeTypeId} /> : <span />}
+                  <span className="with-icon">
+                    <AttrIcon attr={w.kind === 'missile' ? ICON.explosionRadius : ICON.optimal} size={16} />
+                    {w.kind === 'missile'
+                      ? `${km(w.optimal ?? 0)} · ${fmtNum(w.explosionRadius ?? 0)} м`
+                      : w.optimal !== undefined
+                        ? `${km(w.optimal)} + ${km(w.falloff ?? 0)}`
+                        : ''}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <p className="muted small">Нет активного оружия с зарядами.</p>
         )}
@@ -932,18 +1031,6 @@ function StatsPanel({
 
       <section>
         <h4>Системы защиты</h4>
-        <div className="big-stats">
-          <div>
-            <b>{fmtNum(s.defense.ehp)}</b>
-            <span>EHP</span>
-            <Delta v={s.defense.ehp} b={b?.defense.ehp} digits={0} />
-          </div>
-          <div>
-            <b>{fmtNum(s.defense.hp)}</b>
-            <span>HP</span>
-            <Delta v={s.defense.hp} b={b?.defense.hp} digits={0} />
-          </div>
-        </div>
         <table className="table compact resist-table">
           <thead>
             <tr>

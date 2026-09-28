@@ -38,7 +38,7 @@ function createWindow(): void {
     minWidth: 960,
     minHeight: 600,
     title: 'Canopus',
-    backgroundColor: '#0b0f14',
+    backgroundColor: '#131416',
     autoHideMenuBar: true,
     alwaysOnTop: settings.alwaysOnTop,
     show: false,
@@ -135,7 +135,7 @@ function openCombatWindow(): void {
     minWidth: 960,
     minHeight: 640,
     title: 'Canopus — симуляция боя',
-    backgroundColor: '#0b0f14',
+    backgroundColor: '#131416',
     autoHideMenuBar: true,
     webPreferences: { preload: PRELOAD, contextIsolation: true, sandbox: true }
   })

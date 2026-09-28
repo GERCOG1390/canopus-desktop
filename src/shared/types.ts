@@ -36,7 +36,13 @@ export interface Settings {
   notify: NotifySettings
   /** Check GitHub for new versions, download them in the background and install on restart. */
   autoUpdate: boolean
+  /** Accent theme; the violet base is the same for all of them. */
+  theme: ThemeId
+  /** compact: denser rows and 13px text; comfortable: 14px. */
+  density: 'compact' | 'comfortable'
 }
+
+export type ThemeId = 'canopus' | 'photon' | 'amarr' | 'caldari' | 'gallente' | 'minmatar'
 
 export interface CanopusApi {
   request<T = unknown>(url: string, options?: RequestOptions): Promise<T>

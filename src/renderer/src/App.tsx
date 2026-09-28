@@ -1,18 +1,18 @@
-import { Fragment, type ReactNode } from 'react'
-import { AppProvider, useApp, useLang, type PageId } from './AppContext'
+import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { AppProvider, useApp, type PageId } from './AppContext'
 import { CharacterProvider } from './CharacterContext'
-import { InfoProvider, useInfo } from './components/InfoContext'
+import { CommandPalette, type NavPage } from './components/CommandPalette'
+import { Glyph, type GlyphName } from './components/Glyph'
+import { InfoProvider } from './components/InfoContext'
 import { InfoPanel } from './components/InfoPanel'
-import { TypeLink } from './components/TypeLink'
-import { SearchBox } from './components/ui'
 import { imageUrl } from './lib/esi'
-import { searchTypesSde } from './lib/sde'
+import { fmtNum } from './lib/format'
 import { FittingProvider } from './lib/fitting'
 import { useUpdate } from './lib/update'
 import CharacterPage from './pages/character'
 import FittingPage from './pages/FittingPage'
 import IntelPage from './pages/IntelPage'
-import { IntelProvider } from './IntelContext'
+import { IntelProvider, useIntel } from './IntelContext'
 import IndustryPage from './pages/IndustryPage'
 import MapPage from './pages/MapPage'
 import MarketPage from './pages/MarketPage'
@@ -22,19 +22,20 @@ import MailPage from './pages/MailPage'
 import FleetPage from './pages/FleetPage'
 import SettingsPage from './pages/SettingsPage'
 
-const PAGES: { id: PageId; label: string; icon: string; render: () => ReactNode }[] = [
-  { id: 'character', label: 'Персонаж', icon: '◉', render: () => <CharacterPage /> },
-  { id: 'intel', label: 'Разведка', icon: '◎', render: () => <IntelPage /> },
-  { id: 'fitting', label: 'Фитинг', icon: '⬡', render: () => <FittingPage /> },
-  { id: 'market', label: 'Рынок', icon: '◈', render: () => <MarketPage /> },
-  { id: 'map', label: 'Карта', icon: '✦', render: () => <MapPage /> },
-  { id: 'industry', label: 'Индустрия', icon: '⚙', render: () => <IndustryPage /> },
-  { id: 'activities', label: 'Активности', icon: '◇', render: () => <ActivitiesPage /> },
-  { id: 'mail', label: 'Почта', icon: '✉', render: () => <MailPage /> },
-  { id: 'fleet', label: 'Флот', icon: '⚑', render: () => <FleetPage /> },
-  { id: 'pvp', label: 'PvP', icon: '✕', render: () => <PvpPage /> },
-  { id: 'settings', label: 'Настройки', icon: '☰', render: () => <SettingsPage /> }
+const PAGES: (NavPage & { render: () => ReactNode })[] = [
+  { id: 'character', label: 'Персонаж', group: 'Пилот', icon: 'character', render: () => <CharacterPage /> },
+  { id: 'mail', label: 'Почта', group: 'Пилот', icon: 'mail', render: () => <MailPage /> },
+  { id: 'fleet', label: 'Флот', group: 'Пилот', icon: 'fleet', render: () => <FleetPage /> },
+  { id: 'intel', label: 'Разведка', group: 'Бой', icon: 'intel', render: () => <IntelPage /> },
+  { id: 'fitting', label: 'Фитинг', group: 'Бой', icon: 'fitting', render: () => <FittingPage /> },
+  { id: 'pvp', label: 'PvP', group: 'Бой', icon: 'pvp', render: () => <PvpPage /> },
+  { id: 'market', label: 'Рынок', group: 'Экономика', icon: 'market', render: () => <MarketPage /> },
+  { id: 'industry', label: 'Индустрия', group: 'Экономика', icon: 'industry', render: () => <IndustryPage /> },
+  { id: 'map', label: 'Карта', group: 'Космос', icon: 'map', render: () => <MapPage /> },
+  { id: 'activities', label: 'Активности', group: 'Космос', icon: 'activities', render: () => <ActivitiesPage /> },
+  { id: 'settings', label: 'Настройки', group: '', icon: 'settings', render: () => <SettingsPage /> }
 ]
+const GROUPS = ['Пилот', 'Бой', 'Экономика', 'Космос']
 
 function SdeBanner() {
   const { sde } = useApp()
@@ -90,25 +91,52 @@ function UpdateBanner() {
   )
 }
 
-function GlobalSearch() {
-  const lang = useLang()
-  const { open } = useInfo()
-  const { sde } = useApp()
+/** Tranquility status from ESI: player count, or offline. */
+function ServerStatus() {
+  const [players, setPlayers] = useState<number | null | undefined>(undefined)
+  useEffect(() => {
+    const load = () =>
+      window.api
+        .request<{ players: number }>('https://esi.evetech.net/latest/status/?datasource=tranquility', { fresh: true })
+        .then((r) => setPlayers(r.players))
+        .catch(() => setPlayers(null))
+    void load()
+    const t = setInterval(load, 60_000)
+    return () => clearInterval(t)
+  }, [])
+  if (players === undefined) return null
   return (
-    <div className="global-search">
-      <SearchBox
-        placeholder={sde.state === 'ready' ? 'Поиск: корабль, модуль, навык, имплант…' : 'База SDE загружается…'}
-        search={(q) => searchTypesSde(q, lang)}
-        onSelect={(t) => open(t.id)}
-        clearOnSelect
-        renderItem={(t) => (
-          <>
-            <TypeLink id={t.id} />
-            {t.alt && <span className="muted small"> {t.alt}</span>}
-          </>
-        )}
-      />
+    <div className="status-chip" title="Сервер Tranquility">
+      <span className={players === null ? 'led off' : 'led'} />
+      {players === null ? 'Tranquility · нет связи' : `Tranquility · ${fmtNum(players)}`}
     </div>
+  )
+}
+
+/** EVE time is UTC. */
+function EveClock() {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 15_000)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <span className="eve-clock" title="Время EVE (UTC)" translate="no">
+      EVE {now.toISOString().slice(11, 16)}
+    </span>
+  )
+}
+
+function NavButton({ p, badge, danger }: { p: NavPage; badge?: ReactNode; danger?: boolean }) {
+  const { page, navigate } = useApp()
+  return (
+    <button className={p.id === page ? 'nav active' : 'nav'} aria-current={p.id === page ? 'page' : undefined} onClick={() => navigate(p.id)}>
+      <span className="nav-icon">
+        <Glyph name={p.icon as GlyphName} />
+      </span>
+      {p.label}
+      {badge !== undefined && badge !== null && badge !== 0 && <span className={danger ? 'nav-badge danger' : 'nav-badge'}>{badge}</span>}
+    </button>
   )
 }
 
@@ -120,44 +148,85 @@ function LanguageScope({ children }: { children: ReactNode }) {
 
 function Shell() {
   const { active, characters, settings, page, navigate } = useApp()
+  const { scan } = useIntel()
+  const [palette, setPalette] = useState(false)
   const needsSetup = settings !== null && characters.length === 0
   const current = PAGES.find((p) => p.id === page)!
+  const dangerous = scan?.pilots.filter((p) => p.threat === 'hostile' || p.threat === 'high').length ?? 0
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyK') {
+        e.preventDefault()
+        setPalette((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   return (
     <div className="app">
-      <nav className="sidebar">
+      <nav className="sidebar" aria-label="Разделы">
         <div className="brand">
-          <span className="brand-star">✧</span> Canopus
+          <span className="brand-star">
+            <Glyph name="star" size={20} />
+          </span>
+          <span translate="no">CANOPUS</span>
         </div>
-        {PAGES.map((p) => (
-          <button key={p.id} className={p.id === page ? 'nav active' : 'nav'} onClick={() => navigate(p.id)}>
-            <span className="nav-icon">{p.icon}</span>
-            {p.label}
-            {p.id === 'settings' && needsSetup && <span className="dot" title="Требуется настройка" />}
-          </button>
+        {GROUPS.map((g) => (
+          <Fragment key={g}>
+            <div className="nav-group">{g}</div>
+            {PAGES.filter((p) => p.group === g).map((p) => (
+              <NavButton key={p.id} p={p} badge={p.id === 'intel' ? dangerous : undefined} danger />
+            ))}
+          </Fragment>
         ))}
         <div className="grow" />
+        <NavButton p={PAGES.find((p) => p.id === 'settings')!} badge={needsSetup ? '●' : undefined} />
         {active ? (
-          <button className="sidebar-char" onClick={() => navigate('settings')}>
-            <img src={imageUrl.portrait(active.id, 64)} width={32} height={32} alt="" />
-            <span>{active.name}</span>
+          <button className="sidebar-char" onClick={() => navigate('settings')} title="Персонажи и вход">
+            <img src={imageUrl.portrait(active.id, 64)} width={34} height={34} alt="" />
+            <span className="sidebar-char-name">
+              <span translate="no">{active.name}</span>
+              <span className="muted small">{characters.length > 1 ? `персонажей: ${characters.length}` : 'сменить персонажа'}</span>
+            </span>
           </button>
         ) : (
-          <button className="sidebar-char muted" onClick={() => navigate('settings')}>
+          <button className="sidebar-char" onClick={() => navigate('settings')}>
             Войти через EVE SSO
           </button>
         )}
       </nav>
-      <main className="content">
-        <SdeBanner />
-        <UpdateBanner />
-        <div className="page-head">
-          <h1>{current.label}</h1>
-          <GlobalSearch />
-        </div>
-        {current.render()}
-      </main>
+      <div className="main">
+        <header className="topbar">
+          <div className="crumbs">
+            {current.group && (
+              <>
+                <span>{current.group}</span>
+                <Glyph name="chevron" size={14} />
+              </>
+            )}
+            <h1>{current.label}</h1>
+          </div>
+          <div className="grow" />
+          <button className="palette-trigger" onClick={() => setPalette(true)}>
+            <Glyph name="search" size={16} />
+            <span className="grow">Найти предмет, раздел или команду…</span>
+            <kbd>Ctrl K</kbd>
+          </button>
+          <div className="grow" />
+          <ServerStatus />
+          <EveClock />
+        </header>
+        <main className="content">
+          <SdeBanner />
+          <UpdateBanner />
+          {current.render()}
+        </main>
+      </div>
       <InfoPanel />
+      <CommandPalette pages={PAGES} open={palette} onClose={() => setPalette(false)} />
     </div>
   )
 }

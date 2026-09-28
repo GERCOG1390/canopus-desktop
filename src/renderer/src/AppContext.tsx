@@ -3,6 +3,7 @@ import type { SdeStatus } from '../../shared/sde'
 import type { CharacterAuth, Settings } from '../../shared/types'
 import { setUiLang } from './i18n'
 import { retryMissing, type Lang } from './lib/sde'
+import { applyAppearance } from './lib/appearance'
 
 export type PageId = 'character' | 'intel' | 'fitting' | 'market' | 'map' | 'industry' | 'activities' | 'mail' | 'fleet' | 'pvp' | 'settings'
 
@@ -79,6 +80,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const lang: Lang = settings?.lang === 'en' ? 0 : 1
   // The UI language follows the same setting as item names (applied before children render).
   setUiLang(settings?.lang === 'en' ? 'en' : 'ru')
+  useEffect(() => applyAppearance(settings), [settings?.theme, settings?.density])
 
   return (
     <Ctx.Provider value={{ settings, characters, active, lang, sde, page, pageArg, navigate, updateSettings, login, logout, setActive }}>
