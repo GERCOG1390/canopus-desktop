@@ -723,6 +723,8 @@ export const EXACT: Record<string, string> = {
   'Папка логов чата EVE не найдена': 'EVE chat log folder not found',
   'Лог Local не найден — зайдите в игру': 'Local log not found — log into the game',
   'Нет такого предмета': 'No such item',
+  'Топливо': 'Fuel',
+  ': кемп на воротах в': ': camp at the gate to',
   'Без перезарядки': 'Without reload',
   'С перезарядкой': 'With reload',
   'с перезарядкой': 'with reload',
@@ -1205,11 +1207,13 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^(\d+) ч$/, '$1 h'],
+  [/^(.+) ед\. на св\. год$/, '$1 units per LY'],
+  [/^— убийств: (\d+), последнее (\d+) мин назад$/, '— kills: $1, last $2 min ago'],
   [/^Опасных в контакты \(−10\): (\d+)$/, 'Dangerous to contacts (−10): $1'],
   [/^Добавить опасных пилотов \((\d+)\) в контакты с ужасной репутацией \(−10\)\?$/, 'Add the dangerous pilots ($1) to contacts with terrible standing (−10)?'],
   [/^Удалить фит «(.+)» из игры\? Это нельзя отменить\.$/, 'Delete the fit "$1" from the game? This can\'t be undone.'],
   [/^Удалить (.+) из контактов\?$/, 'Remove $1 from contacts?'],
-  [/^(.+): (\d+)$/, '$1: $2'],
   [/^Не найдены: (.+)$/, 'Not found: $1'],
   [/^Удалить крыло «(.+)»\? \(только пустое\)$/, 'Delete the wing "$1"? (empty only)'],
   [/^Удалить сквад «(.+)»\? \(только пустой\)$/, 'Delete the squad "$1"? (empty only)'],

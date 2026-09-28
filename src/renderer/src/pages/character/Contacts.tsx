@@ -8,6 +8,7 @@ import { esi, imageUrl, resolveIds, resolveNames } from '../../lib/esi'
 import { addContacts, deleteContacts, editContacts, hasScope, SCOPE } from '../../lib/gameActions'
 import { useAsync } from '../../lib/useAsync'
 import { ScopeHint } from '.'
+import { translate } from '../../i18n'
 
 interface Contact {
   contact_id: number
@@ -96,7 +97,7 @@ export default function Contacts({ id }: { id: number }) {
         <Empty>Контактов нет.</Empty>
       ) : (
         groups.map((g) => (
-          <Card key={g.s} title={`${g.label}: ${g.list.length}`}>
+          <Card key={g.s} title={`${translate(g.label)}: ${g.list.length}`}>
             <table className="table compact">
               <tbody>
                 {g.list.map((c) => (

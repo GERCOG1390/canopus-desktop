@@ -5,13 +5,14 @@
 <h1 align="center">Canopus</h1>
 
 <p align="center">
-  A desktop companion for <b>EVE Online</b>: character sheet, a fitting tool with its own dogma engine,
-  automatic Local intel with an in-game overlay, market, map and industry — in one Windows app.
+  A free desktop companion for <b>EVE Online</b>: a fitting tool with its own dogma engine and a combat simulator,
+  Local and intel-channel monitoring, route safety, wormholes, market arbitrage, industry and your whole character — in one Windows app.
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>Download for Windows</b></a> ·
-  English / Русский interface
+  <a href="../../releases/latest"><b>⬇ Download for Windows</b></a> ·
+  English / Русский interface ·
+  <a href="LICENSE">MIT</a>
 </p>
 
 ![Fitting](docs/screenshots/fitting.png)
@@ -19,40 +20,73 @@
 ## Features
 
 ### Fitting tool
-- Dogma engine driven by CCP's Static Data Export: skills, hull bonuses, modules (offline / online / active / overheated), charges, drones, implants and stacking penalties.
-- Resources, firepower with damage profile, EHP and resistances per layer, active tank, capacitor stability, navigation and targeting.
-- Calculate with **all skills V** or with **your character's skills**, with the missing skills and their training time.
-- Import / export EFT, save fits, open any fit from your character, current ship, a killmail or Show Info.
-- Checked against the in-game fitting window: identical DPS, volley and EHP for a real fit.
+- Dogma engine driven by CCP's Static Data Export: skills, hull and role bonuses, subsystems, modules (offline / online / active / overheated), charges, drones, implants and stacking penalties.
+- Ship browser grouped by class and race, and a module browser grouped like the in-game market (shield, armor, propulsion, turrets by type…) with T1 / T2 / faction / deadspace / officer badges. Only modules that actually fit the ship are offered; turret and launcher hardpoints are enforced.
+- **Live preview**: hover a module in the list and every stat updates in place with the difference highlighted — compare without fitting.
+- Ammo picker grouped by tech level with damage-type icons.
+- Firepower with damage profile; hover the DPS to see DPS with reload and the split between weapons and drones. EHP and resistances per layer, active tank, capacitor stability, navigation and targeting.
+- Calculate with **all skills V** or with **your character's skills**: what to train and how long it takes.
+- Fit cost at Jita prices, side-by-side fit comparison and **popular fits from zKillboard** for the same hull.
+- Import / export EFT, open fits from your character, current ship, a killmail or Show Info — and **save a fit straight to your in-game fittings**.
 
-### Show Info for everything
-Every ship, module, skill, implant and item is clickable and opens a panel like the in-game Show Info: description and traits, dogma attributes with the game's icons, a readable **Effects** tab ("when active: shield resistances +32.5%"), the skill requirement tree with your levels and training time, what a skill unlocks, masteries, variations, blueprints, reprocessing and hub prices.
+| Popular fits | Show Info |
+|---|---|
+| ![Popular fits](docs/screenshots/fit-popular.png) | ![Show Info](docs/screenshots/show-info.png) |
 
-![Show Info](docs/screenshots/show-info.png)
+### Combat simulator
+A separate window that pits your fit against an opponent — any saved fit, one of your in-game fits, or a bare hull.
+Drag the ships and velocity vectors on an interactive map (or pick orbiting, head-on, kiting…), switch ammo for both sides,
+and see applied DPS for every weapon with the reason it's reduced (tracking, falloff, explosion velocity / radius),
+damage per tank layer against local repairs, and who dies first.
 
-### Intel: automatic Local scan and overlay
-- Press **Ctrl+A, Ctrl+C** in the Local window — Canopus picks the list up from the clipboard and checks every pilot: corporation and alliance, age, kills and losses, recent activity, danger ratio, what they fly.
-- Current system is read from the Local chat log; new arrivals are highlighted, leavers listed, and a Windows notification with sound fires when a dangerous pilot enters.
-- D-scan and fleet window analysis: ships by class and type, on-grid count, warnings for interdictors, bombers, recons, logistics and capitals.
-- Intel channel monitor: pick your alliance's intel channels and Canopus follows their chat logs, finds systems (including shorthand like "1DQ") and ships in every report and shows how many stargate jumps away they are. Reports within your chosen range trigger a notification; "clr" / "nv" are recognised as all-clear.
-- An always-on-top overlay for windowed / borderless mode (**Ctrl+Shift+L** show / hide, **Ctrl+Shift+K** click-through).
+![Combat simulator](docs/screenshots/combat.png)
 
-| Local scan | D-scan | Overlay |
+### Intel
+- **Local scan** — press **Ctrl+A, Ctrl+C** in the Local window: every pilot is checked for corporation, alliance, age, kills and losses, danger ratio and favourite ships. New arrivals are highlighted and a Windows notification fires when a dangerous pilot enters.
+- **Intel channels** — Canopus follows your alliance's intel chat logs, recognises systems (including shorthand like "1DQ") and ships in every report and shows how many jumps away they are; reports within your range raise an alert, "clr" / "nv" mean all clear.
+- **D-scan and fleet window** analysis with warnings for interdictors, bombers, recons, logistics and capitals.
+- An always-on-top **overlay** for windowed / borderless mode (**Ctrl+Shift+L** show / hide, **Ctrl+Shift+K** click-through).
+
+| Intel channels | Local scan | Overlay |
 |---|---|---|
-| ![Local](docs/screenshots/intel-local.png) | ![D-scan](docs/screenshots/intel-dscan.png) | ![Overlay](docs/screenshots/overlay.png) |
+| ![Intel channels](docs/screenshots/intel-channels.png) | ![Local](docs/screenshots/intel-local.png) | ![Overlay](docs/screenshots/overlay.png) |
 
-### Character
-Overview, skill queue, all skills, attributes with implants, jump clones, current ship fit, saved fittings, assets with Jita valuation, blueprints, wallet journal and transactions, contracts, loyalty points, standings and jump fatigue (via EVE SSO).
+### Map and travel
+- **Route safety** — every system on the route with security, ship / pod kills in the last hour and gate camps from zKillboard; set the destination in the game with one click.
+- **Jump planner** for capitals and black ops: range with your skills, fuel per jump and jump fatigue along a chain of cyno jumps.
+- **Wormholes** — look up any hole type (class, lifetime, mass, max jump mass) and how many of your ships can pass. Thera / Turnur connections from EVE-Scout.
 
-### Market, map, industry, PvP
-- **Market** — prices in Jita, Amarr, Dodixie, Rens and Hek, the Jita order book, 90-day history, loot appraisal (English or Russian names) and your orders with outbid detection.
-- **Map** — routes with ship / pod kills and jumps per system for the last hour, "set destination" in the game client, Thera / Turnur connections from EVE-Scout.
-- **Industry** — manufacturing and reaction calculator (ME / TE, structure bonus, system cost index, taxes, SCC surcharge), industry jobs and planetary colonies with extractor timers.
-- **PvP** — zKillboard stats and recent fights; click a fight to see the victim's fit and the attackers.
-
-| Market | Route | Industry |
+| Route safety | Jump planner | Wormholes |
 |---|---|---|
-| ![Market](docs/screenshots/market.png) | ![Map](docs/screenshots/map-route.png) | ![Industry](docs/screenshots/industry.png) |
+| ![Route safety](docs/screenshots/route-safety.png) | ![Jump planner](docs/screenshots/jump-planner.png) | ![Wormholes](docs/screenshots/wormholes.png) |
+
+### Activities
+- **Signatures** — copy the probe scanner and Canopus remembers the signatures per system, marks new and vanished ones and tells what to expect at each site.
+- **Ratting** — bounties from the wallet, damage dealt and received from the combat log.
+- **Abyss** — a run log with results by tier and by ship.
+
+![Signatures](docs/screenshots/signatures.png)
+
+### Market and industry
+- Market browser with the in-game category tree, prices in Jita, Amarr, Dodixie, Rens and Hek, the order book and 90-day history.
+- **Arbitrage between trade hubs** by market category, with taxes, margin, volume and profit per m³.
+- Loot appraisal (English or Russian names), LP store, your orders with outbid detection.
+- Manufacturing and reaction calculator (ME / TE, structure bonuses, system cost index, taxes), industry jobs and planetary colonies with extractor timers.
+
+| Arbitrage | Market | Industry |
+|---|---|---|
+| ![Arbitrage](docs/screenshots/arbitrage.png) | ![Market](docs/screenshots/market.png) | ![Industry](docs/screenshots/industry.png) |
+
+### Character, mail and fleet
+- Overview, skill queue and a **skill planner**, attributes with implants, jump clones, assets with Jita valuation, blueprints, wallet, contracts, loyalty points, standings and jump fatigue.
+- **Contacts**, **calendar**, **EVE mail** and **fleet** management — invite, move and kick members.
+- **Tray and Windows notifications** for every character: skill queue running out, PI extractors, finished industry jobs, jump fatigue, outbid market orders, jump clone ready.
+- zKillboard statistics and recent fights with the victim's fit.
+
+### In-game actions (optional)
+With your permission Canopus acts in the game through CCP's official ESI: opens the market, contract or info window,
+sets the destination, saves fits, sends mail, edits contacts, manages the fleet and answers calendar events.
+These permissions are requested only when you press **Settings → Allow in-game actions**; otherwise Canopus is read-only.
 
 ## Install
 
@@ -63,17 +97,17 @@ Download from [Releases](../../releases/latest):
 
 The builds are not code-signed yet, so Windows SmartScreen may warn on first launch: click **More info → Run anyway**.
 
-On first start Canopus downloads CCP's Static Data Export (~95 MB) and builds a local database; it updates itself when CCP publishes a new build. Game icons are fetched from CCP's resource server on demand and cached.
+On first start Canopus downloads CCP's Static Data Export (~95 MB) and builds a local database; it updates itself when CCP publishes a new build. Game icons are fetched from CCP's image server on demand and cached.
 
 ## Getting started
 
-1. **Settings → Add character (EVE SSO)** and log in in your browser. Canopus uses EVE SSO with PKCE; tokens are stored encrypted with Windows DPAPI.
+1. **Log in with EVE SSO** (bottom left) — CCP's login page opens inside the app. Canopus uses EVE SSO with PKCE; tokens are stored encrypted with Windows DPAPI and never leave your PC.
 2. **Settings → Language** switches the interface and item names between English and Russian.
-3. For intel, run EVE windowed or borderless and copy Local with **Ctrl+A, Ctrl+C**.
+3. For intel, run EVE windowed or borderless, copy Local with **Ctrl+A, Ctrl+C** and choose your intel channels.
 
 ## Fair play
 
-Canopus only uses official and player-visible data: CCP's ESI and SDE, the chat logs the game writes to your Documents folder, and what you copy to the clipboard yourself. It never reads the game client's memory or screen and never automates input — the same approach as Pyfa or RIFT.
+Canopus only uses official and player-visible data: CCP's ESI and SDE, the chat and game logs the client writes to your Documents folder, and what you copy to the clipboard yourself. It never reads the game client's memory or screen and never automates input — the same approach as Pyfa or RIFT.
 
 ## Data sources
 
@@ -92,9 +126,11 @@ npm run dist       # installer and portable .exe in release/
 
 Stack: Electron, electron-vite, React, TypeScript.
 
-- `src/main` — Electron main process: HTTP cache, EVE SSO, SDE pipeline (`sde/`), dogma engine (`dogma/`), intel log and clipboard watchers, overlay, icon protocol.
+- `src/main` — Electron main process: HTTP cache, EVE SSO, SDE pipeline (`sde/`), dogma engine and combat model (`dogma/`), log and clipboard watchers, notifications, overlay.
 - `src/renderer` — React UI; `i18n/` translates the interface on render.
 - `src/shared` — types shared across processes.
+
+Bug reports and ideas are welcome in [Issues](../../issues).
 
 ## License
 

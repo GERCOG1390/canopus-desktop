@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useIntel } from '../IntelContext'
 import { Card, Empty, Stat, Tabs } from '../components/ui'
-import { locale } from '../i18n'
+import { locale, translate } from '../i18n'
 import type { CombatLogEvent } from '../../../shared/ratting'
 import { fmtDate, fmtDuration, fmtIsk, fmtNum } from '../lib/format'
 import { useLang } from '../AppContext'
@@ -205,7 +205,7 @@ function Signatures() {
             <Stat label="Исчезло" value={snap.gone.length} sub={snap.gone.map((g) => g.id).join(', ') || '—'} />
             <Stat
               label="По типам"
-              value={<span className="small">{[...counts.entries()].map(([k, n]) => `${KIND_LABEL[k]} ${n}`).join(' · ') || '—'}</span>}
+              value={<span className="small">{[...counts.entries()].map(([k, n]) => `${translate(KIND_LABEL[k])} ${n}`).join(' · ') || '—'}</span>}
               sub={snap.system}
             />
           </div>
