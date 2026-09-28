@@ -15,7 +15,7 @@
   <a href="LICENSE">MIT</a>
 </p>
 
-![Fitting](docs/screenshots/fitting.png)
+![Live preview in the fitting tool: hover a module and every stat updates](docs/screenshots/fitting-preview.gif)
 
 ## Features
 
@@ -29,9 +29,9 @@
 - Fit cost at Jita prices, side-by-side fit comparison and **popular fits from zKillboard** for the same hull.
 - Import / export EFT, open fits from your character, current ship, a killmail or Show Info — and **save a fit straight to your in-game fittings**.
 
-| Popular fits | Show Info |
-|---|---|
-| ![Popular fits](docs/screenshots/fit-popular.png) | ![Show Info](docs/screenshots/show-info.png) |
+| Fitting | Popular fits | Show Info |
+|---|---|---|
+| ![Fitting](docs/screenshots/fitting.png) | ![Popular fits](docs/screenshots/fit-popular.png) | ![Show Info](docs/screenshots/show-info.png) |
 
 ### Combat simulator
 A separate window that pits your fit against an opponent — any saved fit, one of your in-game fits, or a bare hull.
@@ -95,6 +95,8 @@ Download from [Releases](../../releases/latest):
 - **Canopus-Setup-x.y.z.exe** — installer (Start menu and desktop shortcuts).
 - **Canopus-x.y.z-portable.exe** — single file, no installation.
 
+Both update themselves: Canopus checks GitHub for new versions, downloads them in the background (verified by SHA-256) and installs on restart. This can be turned off in **Settings → Updates**.
+
 The builds are not code-signed yet, so Windows SmartScreen may warn on first launch: click **More info → Run anyway**.
 
 On first start Canopus downloads CCP's Static Data Export (~95 MB) and builds a local database; it updates itself when CCP publishes a new build. Game icons are fetched from CCP's image server on demand and cached.
@@ -130,7 +132,7 @@ Stack: Electron, electron-vite, React, TypeScript.
 - `src/renderer` — React UI; `i18n/` translates the interface on render.
 - `src/shared` — types shared across processes.
 
-Bug reports and ideas are welcome in [Issues](../../issues).
+Questions and ideas: [Discussions](../../discussions) · bug reports: [Issues](../../issues).
 
 ## License
 

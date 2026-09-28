@@ -14,6 +14,7 @@ import * as intel from './intel'
 import { loadSettings, saveSettings } from './storage'
 import * as notifier from './notifier'
 import * as combatlog from './combatlog'
+import * as updater from './updater'
 import { storeGet, storeSet } from './userstore'
 import trayIconPath from '../../build/icon.png?asset'
 
@@ -201,6 +202,15 @@ function registerIpc(): void {
   ipcMain.handle('store:get', (_e, key: string) => storeGet(key))
   ipcMain.handle('store:set', (_e, key: string, value: unknown) => storeSet(key, value))
   ipcMain.handle('notify:checkNow', () => notifier.checkNow())
+  ipcMain.handle('update:status', () => updater.updateStatus())
+  ipcMain.handle('update:check', () => updater.checkForUpdate(true))
+  ipcMain.handle('update:download', () => updater.downloadUpdate())
+  ipcMain.handle('update:install', () =>
+    updater.installAndRestart(() => {
+      quitting = true
+      app.quit()
+    })
+  )
 
   ipcMain.handle('sde:status', () => sde.getStatus())
   ipcMain.handle('sde:update', () => sde.initSde())
@@ -287,12 +297,14 @@ app.whenReady().then(() => {
   createTray()
   notifier.initNotifier(showMain)
   combatlog.initCombatLog(sendToMain)
+  updater.initUpdater((status) => sendToMain('update:status', status))
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
 app.on('before-quit', () => (quitting = true))
+app.on('will-quit', () => updater.applyOnQuit())
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()

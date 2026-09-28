@@ -89,6 +89,13 @@ const api: CanopusApi = {
     onEvents: (listener) => on('ratting:events', listener),
     onReset: (listener) => on('ratting:reset', listener)
   },
+  update: {
+    status: () => invoke('update:status'),
+    check: () => invoke('update:check'),
+    download: () => invoke('update:download'),
+    installAndRestart: () => invoke('update:install'),
+    onStatus: (listener) => on('update:status', listener)
+  },
   notify: {
     history: () => invoke('notify:history'),
     checkNow: () => invoke('notify:checkNow')

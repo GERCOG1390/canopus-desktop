@@ -2797,3 +2797,28 @@ html.overlay-mode body {
   color: inherit;
   font-size: 12px;
 }
+
+/* ---------- updates ---------- */
+
+.update-banner {
+  border-color: rgba(76, 159, 224, 0.55);
+}
+.release-notes {
+  max-height: 260px;
+  overflow: auto;
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: var(--panel-2);
+  border-radius: 6px;
+}
+.release-notes h4 {
+  margin: 8px 0 4px;
+  font-size: 13px;
+}
+.release-notes p {
+  margin: 4px 0;
+}
+.release-item {
+  padding-left: 12px;
+  text-indent: -10px;
+}

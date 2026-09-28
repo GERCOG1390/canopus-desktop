@@ -5,6 +5,7 @@ import { imageUrl } from '../lib/esi'
 import { locale } from '../i18n'
 import { fmtDate } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
+import { useUpdate } from '../lib/update'
 import type { NotifyEvent, NotifySettings } from '../../../shared/notify'
 
 export default function SettingsPage() {
@@ -124,12 +125,82 @@ export default function SettingsPage() {
 
       <NotifyCard />
 
+      <UpdateCard />
+
       <Card title="Источники данных">
         <p className="muted small">
           ESI (CCP Games), zKillboard, EVE-Scout, Fuzzwork Market &amp; SDE. EVE Online и все связанные материалы — собственность CCP hf. Canopus не аффилирован с CCP.
         </p>
       </Card>
     </div>
+  )
+}
+
+/** Release notes as GitHub Markdown: headings, bullet lists and **bold** are enough for ours. */
+function ReleaseNotes({ text }: { text: string }) {
+  const inline = (line: string) => line.split(/\*\*(.+?)\*\*/g).map((part, i) => (i % 2 ? <b key={i}>{part}</b> : part))
+  return (
+    <div className="release-notes small" translate="no">
+      {text.split(/\r?\n/).map((line, i) => {
+        const heading = line.match(/^#+\s+(.*)/)
+        if (heading) return <h4 key={i}>{inline(heading[1])}</h4>
+        const item = line.match(/^\s*[-*]\s+(.*)/)
+        if (item) return <div key={i} className="release-item">• {inline(item[1])}</div>
+        return line.trim() ? <p key={i}>{inline(line)}</p> : null
+      })}
+    </div>
+  )
+}
+
+function UpdateCard() {
+  const { settings, updateSettings } = useApp()
+  const u = useUpdate()
+  if (!settings || !u) return null
+  const busy = u.state === 'checking' || u.state === 'downloading'
+  return (
+    <Card title="Обновления">
+      <p>
+        Установлена версия <b>{u.current}</b>
+        {u.kind === 'portable' ? ' (portable)' : ''}.{' '}
+        {u.state === 'checking'
+          ? 'Проверяю…'
+          : u.state === 'latest'
+            ? 'Это последняя версия.'
+            : u.state === 'error'
+              ? `Не удалось проверить: ${u.message}`
+              : u.version
+                ? u.state === 'ready'
+                  ? `Версия ${u.version} загружена и проверена.`
+                  : u.state === 'downloading'
+                    ? `Загружаю ${u.version}… ${Math.round((u.progress ?? 0) * 100)}%`
+                    : `Доступна версия ${u.version}.`
+                : ''}
+        {u.checkedAt && <span className="muted small"> {`Проверено ${fmtDate(u.checkedAt)}.`}</span>}
+      </p>
+      <label className="check">
+        <input type="checkbox" checked={settings.autoUpdate} onChange={(e) => updateSettings({ autoUpdate: e.target.checked })} />
+        Автоматически обновлять: проверять GitHub при запуске и каждые 6 часов, скачивать в фоне и устанавливать при перезапуске
+      </label>
+      <div className="row">
+        <button className="ghost" disabled={busy} onClick={() => void window.api.update.check()}>
+          Проверить обновления
+        </button>
+        {u.state === 'available' && u.kind !== 'manual' && <button onClick={() => void window.api.update.download()}>Скачать {u.version}</button>}
+        {u.state === 'ready' && <button onClick={() => void window.api.update.installAndRestart()}>Перезапустить и обновить</button>}
+        {u.page && (
+          <button className="ghost" onClick={() => void window.api.openExternal(u.page!)}>
+            Страница релиза
+          </button>
+        )}
+      </div>
+      {u.kind === 'manual' && <p className="muted small">Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.</p>}
+      {u.notes && u.version && (
+        <details open>
+          <summary className="muted">{`Что нового в ${u.version}`}</summary>
+          <ReleaseNotes text={u.notes} />
+        </details>
+      )}
+    </Card>
   )
 }
 

@@ -8,6 +8,7 @@ import { SearchBox } from './components/ui'
 import { imageUrl } from './lib/esi'
 import { searchTypesSde } from './lib/sde'
 import { FittingProvider } from './lib/fitting'
+import { useUpdate } from './lib/update'
 import CharacterPage from './pages/character'
 import FittingPage from './pages/FittingPage'
 import IntelPage from './pages/IntelPage'
@@ -52,6 +53,37 @@ function SdeBanner() {
       {(sde.state === 'downloading' || sde.state === 'building') && (
         <div className="progress">
           <div style={{ width: `${(sde.progress ?? 0) * 100}%` }} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** A newer version: downloading, ready to install, or (for builds that can't update themselves) a link. */
+function UpdateBanner() {
+  const u = useUpdate()
+  const { navigate } = useApp()
+  if (!u || !u.version || (u.state !== 'available' && u.state !== 'downloading' && u.state !== 'ready')) return null
+  return (
+    <div className="sde-banner update-banner">
+      <div className="row">
+        <span className="grow">
+          {u.state === 'ready'
+            ? `Canopus ${u.version} загружен — установится при перезапуске.`
+            : u.state === 'downloading'
+              ? `Загружаю Canopus ${u.version}… ${Math.round((u.progress ?? 0) * 100)}%`
+              : `Вышла новая версия Canopus ${u.version}.`}
+        </span>
+        {u.state === 'ready' && <button onClick={() => void window.api.update.installAndRestart()}>Перезапустить и обновить</button>}
+        {u.state === 'available' && u.kind !== 'manual' && <button onClick={() => void window.api.update.download()}>Скачать</button>}
+        {u.state === 'available' && u.kind === 'manual' && u.page && <button onClick={() => void window.api.openExternal(u.page!)}>Открыть страницу загрузки</button>}
+        <button className="ghost" onClick={() => navigate('settings')}>
+          Что нового
+        </button>
+      </div>
+      {u.state === 'downloading' && (
+        <div className="progress">
+          <div style={{ width: `${(u.progress ?? 0) * 100}%` }} />
         </div>
       )}
     </div>
@@ -118,6 +150,7 @@ function Shell() {
       </nav>
       <main className="content">
         <SdeBanner />
+        <UpdateBanner />
         <div className="page-head">
           <h1>{current.label}</h1>
           <GlobalSearch />

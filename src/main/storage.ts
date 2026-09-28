@@ -14,7 +14,7 @@ const tokensPath = (): string => join(app.getPath('userData'), 'tokens.bin')
  */
 export const DEFAULT_CLIENT_ID = 'a3159d301b8d450a86f4a95f26e55fd9'
 
-const DEFAULT_SETTINGS: Settings = { clientId: DEFAULT_CLIENT_ID, activeCharacterId: null, alwaysOnTop: false, lang: 'ru', intel: DEFAULT_INTEL, notify: DEFAULT_NOTIFY }
+const DEFAULT_SETTINGS: Settings = { clientId: DEFAULT_CLIENT_ID, activeCharacterId: null, alwaysOnTop: false, lang: 'ru', intel: DEFAULT_INTEL, notify: DEFAULT_NOTIFY, autoUpdate: true }
 
 export function loadSettings(): Settings {
   try {

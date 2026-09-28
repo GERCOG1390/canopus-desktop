@@ -4,6 +4,7 @@ import type { CombatPilot, CombatResult, CombatScenario } from './combat'
 import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
 import type { NotifyEvent, NotifySettings } from './notify'
 import type { CombatLogEvent } from './ratting'
+import type { UpdateStatus } from './update'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
 import type { JumpHop, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
@@ -33,6 +34,8 @@ export interface Settings {
   lang: 'ru' | 'en'
   intel: IntelSettings
   notify: NotifySettings
+  /** Check GitHub for new versions, download them in the background and install on restart. */
+  autoUpdate: boolean
 }
 
 export interface CanopusApi {
@@ -96,6 +99,13 @@ export interface CanopusApi {
     onEvents(listener: (e: CombatLogEvent[]) => void): () => void
     /** A new game log started (relog): previous events are gone. */
     onReset(listener: (e: { file: string }) => void): () => void
+  }
+  update: {
+    status(): Promise<UpdateStatus>
+    check(): Promise<UpdateStatus>
+    download(): Promise<UpdateStatus>
+    installAndRestart(): Promise<void>
+    onStatus(listener: (status: UpdateStatus) => void): () => void
   }
   notify: {
     /** Notifications shown since Canopus started, newest first. */
