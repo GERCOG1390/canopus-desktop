@@ -19,10 +19,17 @@
 
 ## Features
 
+### A calm, fast interface
+- A neutral graphite theme that is easy on the eyes during long sessions; one accent colour marks everything you can click. Pick the accent — Canopus, Photon, Amarr, Caldari, Gallente or Minmatar — and a comfortable or compact density.
+- **Ctrl+K** from anywhere: jump to a section, open Show Info for any item, switch the overlay, language or theme.
+- Live Tranquility player count and EVE time in the top bar.
+
 ### Fitting tool
 - Dogma engine driven by CCP's Static Data Export: skills, hull and role bonuses, subsystems, modules (offline / online / active / overheated), charges, drones, implants and stacking penalties.
 - Ship browser grouped by class and race, and a module browser grouped like the in-game market (shield, armor, propulsion, turrets by type…) with T1 / T2 / faction / deadspace / officer badges. Only modules that actually fit the ship are offered; turret and launcher hardpoints are enforced.
+- The numbers you check first — DPS, volley, EHP, CPU and powergrid — are always on top; a nearly full powergrid turns amber.
 - **Live preview**: hover a module in the list and every stat updates in place with the difference highlighted — compare without fitting.
+- Identical modules collapse into one row ("6× Heavy Assault Missile Launcher II"): change state or ammo for all at once.
 - Ammo picker grouped by tech level with damage-type icons.
 - Firepower with damage profile; hover the DPS to see DPS with reload and the split between weapons and drones. EHP and resistances per layer, active tank, capacitor stability, navigation and targeting.
 - Calculate with **all skills V** or with **your character's skills**: what to train and how long it takes.
@@ -42,14 +49,14 @@ damage per tank layer against local repairs, and who dies first.
 ![Combat simulator](docs/screenshots/combat.png)
 
 ### Intel
-- **Local scan** — press **Ctrl+A, Ctrl+C** in the Local window: every pilot is checked for corporation, alliance, age, kills and losses, danger ratio and favourite ships. New arrivals are highlighted and a Windows notification fires when a dangerous pilot enters.
+- **Local scan** — press **Ctrl+A, Ctrl+C** in the Local window: every pilot is checked for corporation, alliance, age, kills and losses, danger ratio and favourite ships. Threat is shown as a meter with a word, not colour alone. New arrivals are highlighted, and when a dangerous pilot enters you get an alert in the app and a Windows notification.
 - **Intel channels** — Canopus follows your alliance's intel chat logs, recognises systems (including shorthand like "1DQ") and ships in every report and shows how many jumps away they are; reports within your range raise an alert, "clr" / "nv" mean all clear.
 - **D-scan and fleet window** analysis with warnings for interdictors, bombers, recons, logistics and capitals.
 - An always-on-top **overlay** for windowed / borderless mode (**Ctrl+Shift+L** show / hide, **Ctrl+Shift+K** click-through).
 
-| Intel channels | Local scan | Overlay |
+| Local scan | Intel channels | Overlay |
 |---|---|---|
-| ![Intel channels](docs/screenshots/intel-channels.png) | ![Local](docs/screenshots/intel-local.png) | ![Overlay](docs/screenshots/overlay.png) |
+| ![Local](docs/screenshots/intel-local.png) | ![Intel channels](docs/screenshots/intel-channels.png) | ![Overlay](docs/screenshots/overlay.png) |
 
 ### Map and travel
 - **Route safety** — every system on the route with security, ship / pod kills in the last hour and gate camps from zKillboard; set the destination in the game with one click.
