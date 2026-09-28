@@ -2757,3 +2757,43 @@ html.overlay-mode body {
   align-items: center;
   gap: 6px;
 }
+
+/* DPS tooltip */
+.dps-tip {
+  position: relative;
+  cursor: help;
+}
+.dps-tip .tip {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  min-width: 230px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+}
+.dps-tip:hover .tip {
+  display: block;
+}
+.dps-tip .tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 2px 0;
+}
+.dps-tip .tip-row b {
+  font-size: 13px;
+}
+.dps-tip .tip-sep {
+  border-top: 1px solid var(--border);
+  margin: 4px 0;
+}
+.big-stats .dps-tip .tip span {
+  color: inherit;
+  font-size: 12px;
+}

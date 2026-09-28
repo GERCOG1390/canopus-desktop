@@ -57,6 +57,8 @@ const A = {
   rigSize: 1547,
   maxGroupActive: 763,
   aoeDamageReductionFactor: 1353,
+  reloadTime: 1795,
+  crystalsGetDamaged: 786,
   capacitorBonus: 67
 }
 
@@ -226,6 +228,19 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   // ---------- Offense ----------
   const weapons: WeaponStats[] = []
   const dmgAttrs = [A.emDamage, A.thermalDamage, A.kineticDamage, A.explosiveDamage]
+  /**
+   * DPS with reloads: the weapon fires a full load (module capacity / charge volume), then reloads.
+   * Frequency crystals are not used up, so lasers never stop to reload.
+   */
+  const withReload = (m: Item, charge: Item, volley: number, cycle: number): number => {
+    const cap = db.types[m.typeId]?.cap ?? 0
+    const vol = db.types[charge.typeId]?.vol ?? 0
+    const crystal = db.dogma[charge.typeId]?.a[A.crystalsGetDamaged] !== undefined
+    const shots = vol > 0 ? Math.floor(cap / vol + 1e-9) : 0
+    const reload = a(m, A.reloadTime) / 1000
+    if (crystal || shots <= 0 || !reload) return volley / cycle
+    return (volley * shots) / (shots * cycle + reload)
+  }
   for (const m of dogma.modules.filter(activeState)) {
     const charge = m.other
     const isTurret = hasEffect(m, EFFECT.targetAttack) || hasEffect(m, EFFECT.projectileFired)
@@ -245,6 +260,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
         count: 1,
         volley,
         dps: volley / cycle,
+        dpsReload: withReload(m, charge, volley, cycle),
         damage,
         cycle,
         optimal: a(m, A.maxRange),
@@ -263,6 +279,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
         count: 1,
         volley,
         dps: volley / cycle,
+        dpsReload: withReload(m, charge, volley, cycle),
         damage,
         cycle,
         optimal: (a(charge, A.maxVelocity) * a(charge, A.explosionDelay)) / 1000,
@@ -287,6 +304,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       count: d.active ?? 0,
       volley,
       dps: volley / cycle,
+      dpsReload: volley / cycle,
       damage,
       cycle,
       optimal: a(d, A.maxRange),
@@ -324,6 +342,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
     offense: {
       weapons,
       totalDps: weapons.reduce((s, w) => s + w.dps, 0),
+      totalDpsReload: weapons.reduce((s, w) => s + w.dpsReload, 0),
       totalVolley: weapons.reduce((s, w) => s + w.volley, 0),
       turretDps: sumDps('turret'),
       missileDps: sumDps('missile'),

@@ -49,6 +49,8 @@ export interface WeaponStats {
   count: number
   volley: number
   dps: number
+  /** DPS counting the reload after each full load of charges (equal to dps when there is none) */
+  dpsReload: number
   /** em, thermal, kinetic, explosive volley */
   damage: [number, number, number, number]
   cycle: number
@@ -119,6 +121,8 @@ export interface FitStats {
   offense: {
     weapons: WeaponStats[]
     totalDps: number
+    /** With reloads (turrets and launchers; drones don't reload) */
+    totalDpsReload: number
     totalVolley: number
     turretDps: number
     missileDps: number

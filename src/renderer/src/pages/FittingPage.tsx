@@ -761,6 +761,41 @@ const n1 = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: 1 
 const n2 = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: 2 })
 const km = (m: number) => (m >= 1000 ? `${n1(m / 1000)} км` : `${fmtNum(m)} м`)
 
+/** Shown on hover over the DPS: with reloads, and weapons vs drones. */
+function DpsTooltip({ s }: { s: FitStats }) {
+  const weapons = s.offense.weapons.filter((w) => w.kind !== 'drone')
+  const weaponDps = weapons.reduce((a, w) => a + w.dps, 0)
+  const weaponReload = weapons.reduce((a, w) => a + w.dpsReload, 0)
+  const drones = s.offense.droneDps
+  return (
+    <div className="tip">
+      <div className="tip-row">
+        <span>Без перезарядки</span>
+        <b>{n1(s.offense.totalDps)}</b>
+      </div>
+      <div className="tip-row">
+        <span>С перезарядкой</span>
+        <b>{n1(s.offense.totalDpsReload)}</b>
+      </div>
+      <div className="tip-sep" />
+      <div className="tip-row">
+        <span>Основное оружие</span>
+        <b>{n1(weaponDps)}</b>
+      </div>
+      {weaponReload < weaponDps - 0.05 && (
+        <div className="tip-row muted">
+          <span>с перезарядкой</span>
+          <span>{n1(weaponReload)}</span>
+        </div>
+      )}
+      <div className="tip-row">
+        <span>Дроны</span>
+        <b>{n1(drones)}</b>
+      </div>
+    </div>
+  )
+}
+
 /** Change against the fit without the previewed item: green when better, red when worse. */
 function Delta({ v, b, digits = 1, better = 'up', unit = '' }: { v: number; b?: number; digits?: number; better?: 'up' | 'down' | 'none'; unit?: string }) {
   if (b === undefined || !Number.isFinite(v) || !Number.isFinite(b)) return null
@@ -838,11 +873,12 @@ function StatsPanel({
       <section>
         <h4>Огневая мощь</h4>
         <div className="big-stats">
-          <div>
+          <div className="dps-tip">
             <AttrIcon attr={ICON.rof} size={24} />
             <b>{n1(s.offense.totalDps)}</b>
             <span>DPS</span>
             <Delta v={s.offense.totalDps} b={b?.offense.totalDps} />
+            <DpsTooltip s={s} />
           </div>
           <div>
             <b>{fmtNum(s.offense.totalVolley)}</b>
