@@ -2,8 +2,11 @@
 
 export const RELEASES_REPO = 'GERCOG1390/canopus-desktop'
 
-/** How this copy was started: an installed app, the portable exe, or a dev / unpacked build (check only). */
-export type UpdateKind = 'installer' | 'portable' | 'manual'
+/**
+ * How this copy was started: an installed app, the portable exe, a macOS app in a writable folder,
+ * or a dev / unpacked build or a Mac app run from the dmg (check only).
+ */
+export type UpdateKind = 'installer' | 'portable' | 'mac' | 'manual'
 
 export interface UpdateStatus {
   state: 'idle' | 'checking' | 'latest' | 'available' | 'downloading' | 'ready' | 'error'

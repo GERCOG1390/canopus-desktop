@@ -58,12 +58,19 @@
           "arch": [
             "universal"
           ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
         }
       ],
       "icon": "build/icon.png",
       "category": "public.app-category.games",
       "hardenedRuntime": true,
-      "notarize": true
+      "notarize": true,
+      "artifactName": "Canopus-${version}-mac.${ext}"
     },
     "dmg": {
       "artifactName": "Canopus-${version}-mac.dmg",

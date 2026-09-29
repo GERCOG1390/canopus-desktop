@@ -777,7 +777,7 @@ export const EXACT: Record<string, string> = {
   'Скачать': 'Download',
   'Что нового': 'What\'s new',
   'Открыть страницу загрузки': 'Open the download page',
-  'На Mac новую версию скачайте со страницы релиза (файл .dmg).': 'On a Mac, download the new version from the release page (the .dmg file).',
+  'Чтобы Canopus обновлялся сам, перенесите его из окна .dmg в папку «Программы» и запускайте оттуда.': 'To let Canopus update itself, drag it from the .dmg window to Applications and start it from there.',
   'Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.': 'This copy wasn\'t started from the installer or the portable exe — download the new version from the release page.',
   'Топливо': 'Fuel',
   ': кемп на воротах в': ': camp at the gate to',

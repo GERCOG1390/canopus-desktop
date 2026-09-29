@@ -1,11 +1,11 @@
 // Updates from GitHub Releases: finds a newer release, downloads the build that matches this copy
-// (installer or portable) in the background, checks its sha256 against the digest GitHub publishes
-// and swaps it in on restart or quit.
+// (installer, portable or the macOS zip) in the background, checks its sha256 against the digest
+// GitHub publishes and swaps it in on restart or quit.
 
 import { app, Notification } from 'electron'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { createReadStream, createWriteStream, existsSync, writeFileSync } from 'node:fs'
+import { accessSync, constants, createReadStream, createWriteStream, existsSync, writeFileSync } from 'node:fs'
 import { mkdir, rm, stat } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -32,7 +32,22 @@ interface Release {
   assets: Asset[]
 }
 
+/** Canopus.app, from …/Canopus.app/Contents/MacOS/Canopus. */
+const macBundle = (): string => dirname(dirname(dirname(process.execPath)))
+
 function detectKind(): UpdateKind {
+  if (process.platform === 'darwin') {
+    if (!app.isPackaged) return 'manual'
+    // Run from the mounted dmg, or translocated by Gatekeeper (not moved out of Downloads): nothing to replace.
+    const bundle = macBundle()
+    if (!bundle.endsWith('.app') || bundle.startsWith('/Volumes/') || bundle.includes('/AppTranslocation/')) return 'manual'
+    try {
+      accessSync(dirname(bundle), constants.W_OK)
+      return 'mac'
+    } catch {
+      return 'manual'
+    }
+  }
   if (process.env.PORTABLE_EXECUTABLE_FILE) return 'portable'
   // The NSIS installer puts its uninstaller next to the exe; an unpacked or dev build has none.
   if (app.isPackaged && existsSync(join(dirname(process.execPath), 'Uninstall Canopus.exe'))) return 'installer'
@@ -60,7 +75,12 @@ export function updateStatus(): UpdateStatus {
 
 function pickAsset(r: Release): Asset | null {
   const version = r.tag_name.replace(/^v/, '')
-  const name = status.kind === 'portable' ? `Canopus-${version}-portable.exe` : `Canopus-Setup-${version}.exe`
+  const name =
+    status.kind === 'mac'
+      ? `Canopus-${version}-mac.zip`
+      : status.kind === 'portable'
+        ? `Canopus-${version}-portable.exe`
+        : `Canopus-Setup-${version}.exe`
   return r.assets.find((a) => a.name === name) ?? null
 }
 
@@ -172,6 +192,10 @@ function spawnInstaller(relaunch: boolean): boolean {
   applied = true
   const env = { ...process.env }
   delete env.ELECTRON_RUN_AS_NODE
+  if (status.kind === 'mac') {
+    spawnMacSwap(relaunch, env)
+    return true
+  }
   if (status.kind === 'installer') {
     const args = ['--updated', '/S', ...(relaunch ? ['--force-run'] : [])]
     spawn(downloaded, args, { detached: true, stdio: 'ignore', env }).unref()
@@ -199,6 +223,36 @@ function spawnInstaller(relaunch: boolean): boolean {
   writeFileSync(vbsPath, Buffer.from('﻿' + vbs, 'utf16le'))
   spawn('wscript.exe', [vbsPath], { detached: true, stdio: 'ignore', windowsHide: true, env }).unref()
   return true
+}
+
+/**
+ * macOS: a detached shell script waits for Canopus to exit, unpacks the zip next to the app, checks
+ * that the new app is signed by the same developer (the old app's designated requirement), swaps
+ * the bundles and optionally starts Canopus again. Any failure leaves the old app in place.
+ */
+function spawnMacSwap(relaunch: boolean, env: NodeJS.ProcessEnv): void {
+  const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`
+  const bundle = macBundle()
+  const dir = dirname(downloaded!)
+  const script = [
+    '#!/bin/bash',
+    `zip=${q(downloaded!)}; app=${q(bundle)}; log=${q(join(dir, 'apply-update.log'))}; pid=${process.pid}`,
+    'exec >"$log" 2>&1; echo "$(date) start"',
+    'for i in $(seq 1 240); do kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done',
+    'new=$(mktemp -d "$(dirname "$app")/.canopus-update.XXXXXX") || exit 1',
+    'cleanup() { rm -rf "$new"; }',
+    'ditto -x -k "$zip" "$new" || { echo unzip failed; cleanup; exit 1; }',
+    'src=$(find "$new" -maxdepth 1 -name "*.app" | head -1)',
+    'req=$(codesign -d -r- "$app" 2>&1 | sed -n "s/^designated => //p")',
+    'if [ -z "$src" ] || ! codesign --verify --deep --strict ${req:+-R="$req"} "$src"; then echo "signature check failed"; cleanup; exit 1; fi',
+    'old="$app.old-$$"',
+    'mv "$app" "$old" && mv "$src" "$app" || { echo swap failed; [ -d "$old" ] && [ ! -d "$app" ] && mv "$old" "$app"; cleanup; exit 1; }',
+    'rm -rf "$old" "$zip"; cleanup; echo "$(date) done"',
+    relaunch ? 'open "$app"' : ''
+  ].join('\n')
+  const scriptPath = join(dir, 'apply-update.sh')
+  writeFileSync(scriptPath, script, { mode: 0o755 })
+  spawn('/bin/bash', [scriptPath], { detached: true, stdio: 'ignore', env }).unref()
 }
 
 /** Installs the downloaded update and restarts Canopus. */
