@@ -9,6 +9,10 @@ let current: UiLang = 'ru'
 const cache = new Map<string, string>()
 const CYRILLIC = /[А-Яа-яЁё]/
 
+/** On macOS the game and Canopus' shortcuts use Cmd where Windows uses Ctrl. */
+export const IS_MAC = /Mac/.test(navigator.platform)
+const platformKeys = (text: string): string => (IS_MAC && text.includes('Ctrl') ? text.replace(/\bCtrl\b/g, 'Cmd') : text)
+
 export function setUiLang(lang: UiLang): void {
   if (lang !== current) cache.clear()
   current = lang
@@ -31,8 +35,15 @@ function translateCore(text: string): string {
   return out
 }
 
-/** Translates a UI string (Russian → English) when the UI language is English. Keeps surrounding whitespace. */
+/**
+ * Translates a UI string (Russian → English) when the UI language is English. Keeps surrounding whitespace.
+ * On macOS also shows Cmd for Ctrl in shortcut hints.
+ */
 export function translate(text: string): string {
+  return platformKeys(translateText(text))
+}
+
+function translateText(text: string): string {
   if (current === 'ru' || !CYRILLIC.test(text)) return text
   const hit = cache.get(text)
   if (hit !== undefined) return hit

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useApp } from '../AppContext'
 import { Card, ErrorBox } from '../components/ui'
 import { imageUrl } from '../lib/esi'
-import { locale } from '../i18n'
+import { IS_MAC, locale } from '../i18n'
 import { fmtDate } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 import { useUpdate } from '../lib/update'
@@ -230,7 +230,13 @@ function UpdateCard() {
           </button>
         )}
       </div>
-      {u.kind === 'manual' && <p className="muted small">Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.</p>}
+      {u.kind === 'manual' && (
+        <p className="muted small">
+          {IS_MAC
+            ? 'На Mac новую версию скачайте со страницы релиза (файл .dmg).'
+            : 'Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.'}
+        </p>
+      )}
       {u.notes && u.version && (
         <details open>
           <summary className="muted">{`Что нового в ${u.version}`}</summary>

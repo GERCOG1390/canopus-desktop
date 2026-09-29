@@ -80,7 +80,9 @@ function showMain(): void {
 }
 
 function createTray(): void {
-  const icon = nativeImage.createFromPath(appIconPath).resize({ width: 16, height: 16 })
+  // The macOS menu bar is taller than the Windows tray.
+  const size = process.platform === 'darwin' ? 18 : 16
+  const icon = nativeImage.createFromPath(appIconPath).resize({ width: size, height: size })
   tray = new Tray(icon)
   tray.setToolTip('Canopus')
   const en = () => loadSettings().lang === 'en'
@@ -282,6 +284,12 @@ if (!primaryInstance) {
     if (url) auth.handleCallbackUrl(url)
     showMain()
   })
+
+  // On macOS the callback link comes to the running app as an open-url event instead.
+  app.on('open-url', (e, url) => {
+    e.preventDefault()
+    if (auth.handleCallbackUrl(url) && app.isReady()) showMain()
+  })
 }
 
 registerIconScheme()
@@ -300,9 +308,8 @@ app.whenReady().then(() => {
   notifier.initNotifier(showMain)
   combatlog.initCombatLog(sendToMain)
   updater.initUpdater((status) => sendToMain('update:status', status))
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
+  // macOS: clicking the Dock icon brings back a window hidden to the tray (menu bar).
+  app.on('activate', showMain)
 })
 
 app.on('before-quit', () => (quitting = true))

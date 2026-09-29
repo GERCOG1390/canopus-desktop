@@ -6,11 +6,11 @@
 
 <p align="center">
   A free desktop companion for <b>EVE Online</b>: a fitting tool with its own dogma engine and a combat simulator,
-  Local and intel-channel monitoring, route safety, wormholes, market arbitrage, industry and your whole character — in one Windows app.
+  Local and intel-channel monitoring, route safety, wormholes, market arbitrage, industry and your whole character — in one app for Windows and macOS.
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>⬇ Download for Windows</b></a> ·
+  <a href="../../releases/latest"><b>⬇ Download for Windows / macOS</b></a> ·
   English / Русский interface ·
   <a href="LICENSE">MIT</a>
 </p>
@@ -101,16 +101,19 @@ Download from [Releases](../../releases/latest):
 
 - **Canopus-Setup-x.y.z.exe** — installer (Start menu and desktop shortcuts).
 - **Canopus-x.y.z-portable.exe** — single file, no installation.
+- **Canopus-x.y.z-mac.dmg** — macOS 12+ (Apple Silicon and Intel): open it and drag Canopus to Applications.
 
-Both update themselves: Canopus checks GitHub for new versions, downloads them in the background (verified by SHA-256) and installs on restart. This can be turned off in **Settings → Updates**.
+The Windows builds update themselves: Canopus checks GitHub for new versions, downloads them in the background (verified by SHA-256) and installs on restart. This can be turned off in **Settings → Updates**.
 
 The builds are not code-signed yet, so Windows SmartScreen may warn on first launch: click **More info → Run anyway**.
+
+On macOS the app is not notarized by Apple: on first launch open **System Settings → Privacy & Security** and click **Open Anyway** (or run `xattr -cr /Applications/Canopus.app`). The Mac version checks for updates and links to the release page; shortcuts use **Cmd** instead of **Ctrl**.
 
 On first start Canopus downloads CCP's Static Data Export (~95 MB) and builds a local database; it updates itself when CCP publishes a new build. Game icons are fetched from CCP's image server on demand and cached.
 
 ## Getting started
 
-1. **Log in with EVE SSO** (bottom left) — CCP's login page opens inside the app. Canopus uses EVE SSO with PKCE; tokens are stored encrypted with Windows DPAPI and never leave your PC.
+1. **Log in with EVE SSO** (bottom left) — CCP's login page opens inside the app. Canopus uses EVE SSO with PKCE; tokens are stored encrypted (Windows DPAPI / macOS Keychain) and never leave your computer.
 2. **Settings → Language** switches the interface and item names between English and Russian.
 3. For intel, run EVE windowed or borderless, copy Local with **Ctrl+A, Ctrl+C** and choose your intel channels.
 

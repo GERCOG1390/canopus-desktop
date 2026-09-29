@@ -399,6 +399,8 @@ function createOverlay(load: (w: BrowserWindow, hash: string) => void, preload: 
     webPreferences: { preload, contextIsolation: true, sandbox: true, backgroundThrottling: false }
   })
   overlay.setAlwaysOnTop(true, 'screen-saver')
+  // macOS: stay over EVE in its own full-screen Space too.
+  if (process.platform === 'darwin') overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   overlay.setOpacity(cfg.opacity)
   overlay.setIgnoreMouseEvents(cfg.clickThrough, { forward: true })
   const saveBounds = () => {

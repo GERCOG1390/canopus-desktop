@@ -2,7 +2,7 @@
 // Wired in via `jsxImportSource: '@i18n'` (see electron.vite.config.ts and tsconfig.web.json).
 
 import * as runtime from 'react/jsx-runtime'
-import { translate, uiLang } from './index'
+import { IS_MAC, translate, uiLang } from './index'
 
 export * from 'react/jsx-runtime'
 
@@ -11,7 +11,7 @@ const TEXT_PROPS = ['title', 'placeholder', 'alt', 'aria-label'] as const
 type Props = Record<string, unknown> & { children?: unknown }
 
 export function translateProps(type: unknown, props: Props): Props {
-  if (uiLang() === 'ru' || !props) return props
+  if ((uiLang() === 'ru' && !IS_MAC) || !props) return props
   // Player-written text (chat messages, names) opts out with the standard HTML attribute.
   if (props.translate === 'no') return props
   let out = props
