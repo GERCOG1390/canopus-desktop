@@ -62,8 +62,8 @@
       ],
       "icon": "build/icon.png",
       "category": "public.app-category.games",
-      "identity": "-",
-      "hardenedRuntime": false
+      "hardenedRuntime": true,
+      "notarize": true
     },
     "dmg": {
       "artifactName": "Canopus-${version}-mac.dmg",

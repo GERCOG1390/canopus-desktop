@@ -107,7 +107,7 @@ The Windows builds update themselves: Canopus checks GitHub for new versions, do
 
 The builds are not code-signed yet, so Windows SmartScreen may warn on first launch: click **More info → Run anyway**.
 
-On macOS the app is not notarized by Apple: on first launch open **System Settings → Privacy & Security** and click **Open Anyway** (or run `xattr -cr /Applications/Canopus.app`). The Mac version checks for updates and links to the release page; shortcuts use **Cmd** instead of **Ctrl**.
+The macOS build is signed with a Developer ID and notarized by Apple, so it opens without warnings. It checks for updates and links to the release page; shortcuts use **Cmd** instead of **Ctrl**.
 
 On first start Canopus downloads CCP's Static Data Export (~95 MB) and builds a local database; it updates itself when CCP publishes a new build. Game icons are fetched from CCP's image server on demand and cached.
 
