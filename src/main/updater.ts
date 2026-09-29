@@ -90,15 +90,22 @@ export async function checkForUpdate(manual = false): Promise<UpdateStatus> {
   busy = true
   set({ state: 'checking', message: undefined })
   try {
-    const res = await fetch(`https://api.github.com/repos/${RELEASES_REPO}/releases/latest`, {
+    // The newest release that has a build for this platform: a release made for the other platform
+    // only (e.g. a macOS-only fix) is skipped, so it neither hides nor fakes an update for this copy.
+    const res = await fetch(`https://api.github.com/repos/${RELEASES_REPO}/releases?per_page=20`, {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': `Canopus/${status.current}` }
     })
     if (!res.ok) throw new Error(`GitHub: ${res.status}`)
-    const r = (await res.json()) as Release
+    const platformBuild = process.platform === 'darwin' ? /-mac\.(dmg|zip)$/ : /\.exe$/
+    const hasBuild = (x: Release) => (status.kind === 'manual' ? x.assets.some((a) => platformBuild.test(a.name)) : !!pickAsset(x))
+    const releases = ((await res.json()) as Release[])
+      .filter((x) => !x.draft && !x.prerelease && hasBuild(x))
+      .sort((x, y) => compareVersions(y.tag_name, x.tag_name))
+    const r = releases[0]
     const checkedAt = new Date().toISOString()
-    const version = r.tag_name.replace(/^v/, '')
-    if (r.draft || r.prerelease || compareVersions(version, status.current) <= 0) {
-      set({ state: 'latest', checkedAt, version: undefined, notes: undefined, page: r.html_url })
+    const version = r?.tag_name.replace(/^v/, '')
+    if (!r || compareVersions(version, status.current) <= 0) {
+      set({ state: 'latest', checkedAt, version: undefined, notes: undefined, page: r?.html_url })
       return status
     }
     release = r
