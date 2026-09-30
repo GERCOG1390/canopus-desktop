@@ -1,6 +1,6 @@
 // 3D map of known space from the SDE's real coordinates: systems coloured by security, stargate
-// links, region and system labels, fresh intel reports and your current system. three.js / WebGL;
-// labels are HTML placed over the canvas every frame.
+// links, region and system labels, kills in the last hour, a route, fresh intel reports and your
+// current system. three.js / WebGL; labels are HTML placed over the canvas every frame.
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import * as THREE from 'three'
@@ -12,12 +12,26 @@ import { ErrorBox, Loading, SearchBox, Sec } from './ui'
 import { searchSystemsSde, tn } from '../lib/sde'
 import { secColor } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
+import { esi } from '../lib/esi'
+import { translate } from '../i18n'
+import { GameButton } from './GameButton'
+import { SCOPE, setDestinationInGame } from '../lib/gameActions'
 
 /** How many system names to show when zoomed in, nearest to the centre of the view first. */
 const SYSTEM_LABELS = 40
 /** Camera distance (ly) below which system names appear. */
 const SYSTEM_LABEL_DIST = 28
 const PICK_PX = 10
+/** ESI refreshes system kills hourly; checking more often only catches the update sooner. */
+const KILLS_REFRESH_MS = 10 * 60_000
+
+type Flag = 'secure' | 'shortest' | 'insecure'
+interface Kills {
+  ship: number
+  pod: number
+  npc: number
+}
+const pvp = (k: Kills | undefined) => (k ? k.ship + k.pod : 0)
 
 interface Selected {
   i: number
@@ -33,7 +47,11 @@ interface Scene {
   controls: OrbitControls
   points: Float32Array
   highlight: THREE.Points
+  kills: THREE.Group
+  route: THREE.Group
+  dot: THREE.Texture
   flyTo: (i: number) => void
+  fitTo: (indices: number[]) => void
   view: (mode: 'top' | 'side' | 'reset') => void
 }
 
@@ -70,6 +88,16 @@ function ringTexture(): THREE.Texture {
   return t
 }
 
+/** Removes and frees everything in a layer group. */
+function clearGroup(g: THREE.Group): void {
+  for (const o of [...g.children]) {
+    g.remove(o)
+    const m = o as THREE.Mesh
+    m.geometry?.dispose()
+    ;(m.material as THREE.Material | undefined)?.dispose()
+  }
+}
+
 const cssVar = (name: string, fallback: string): string =>
   getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
 
@@ -85,6 +113,29 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   const [showGates, setShowGates] = useState(true)
   const gatesRef = useRef<THREE.LineSegments | null>(null)
   const selectRef = useRef<(i: number | null) => void>(() => {})
+  const [showKills, setShowKills] = useState(true)
+  const [routeFrom, setRouteFrom] = useState<number | null>(null)
+  const [routeTo, setRouteTo] = useState<number | null>(null)
+  const [flag, setFlag] = useState<Flag>('secure')
+
+  // Kills in the last hour (ESI), refreshed while the map is open.
+  const kills = useAsync(async () => {
+    const rows = await esi<{ system_id: number; ship_kills: number; pod_kills: number; npc_kills: number }[]>('/universe/system_kills/')
+    return new Map<number, Kills>(rows.map((r) => [r.system_id, { ship: r.ship_kills, pod: r.pod_kills, npc: r.npc_kills }]))
+  }, [])
+  const killsRef = useRef<Map<number, Kills>>(new Map())
+  killsRef.current = kills.data ?? new Map()
+  const reloadKills = kills.reload
+  useEffect(() => {
+    const t = setInterval(reloadKills, KILLS_REFRESH_MS)
+    return () => clearInterval(t)
+  }, [reloadKills])
+
+  const origin = routeFrom ?? currentId ?? null
+  const route = useAsync(
+    async () => (origin && routeTo && origin !== routeTo ? esi<number[]>(`/route/${origin}/${routeTo}/?flag=${flag}`) : null),
+    [origin, routeTo, flag]
+  )
 
   const data = galaxy.data
   const indexOf = useRef(new Map<number, number>())
@@ -167,6 +218,14 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     highlight.frustumCulled = false
     scene.add(highlight)
 
+    // Layers filled from React state: kills in the last hour (under the stars) and the route.
+    const killsGroup = new THREE.Group()
+    killsGroup.renderOrder = -1
+    scene.add(killsGroup)
+    const routeGroup = new THREE.Group()
+    routeGroup.renderOrder = 1
+    scene.add(routeGroup)
+
     // Region labels at the centre of each region's systems.
     const regionSums = new Map<number, { v: THREE.Vector3; n: number }>()
     for (let i = 0; i < n; i++) {
@@ -207,6 +266,16 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
       const to = new THREE.Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2])
       const dir = camera.position.clone().sub(controls.target).normalize()
       flight = { from: controls.target.clone(), to, camFrom: camera.position.clone(), camTo: to.clone().add(dir.multiplyScalar(14)), t0: performance.now() }
+    }
+    /** Frames a set of systems (a route), keeping the current viewing angle. */
+    const fitTo = (indices: number[]) => {
+      if (!indices.length) return
+      const b = new THREE.Box3()
+      for (const i of indices) b.expandByPoint(new THREE.Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]))
+      const c = b.getCenter(new THREE.Vector3())
+      const r = Math.max(4, b.getBoundingSphere(new THREE.Sphere()).radius)
+      const dir = camera.position.clone().sub(controls.target).normalize()
+      flight = { from: controls.target.clone(), to: c, camFrom: camera.position.clone(), camTo: c.clone().add(dir.multiplyScalar(r * 2.6)), t0: performance.now() }
     }
     const view = (mode: 'top' | 'side' | 'reset') => {
       if (mode === 'reset') {
@@ -258,6 +327,13 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
       s.textContent = ` ${(Math.round(data.sec[i] * 10) / 10).toFixed(1)} · ${tn(data.regions[data.region[i]], lang)}`
       s.style.color = secColor(data.sec[i])
       t.append(b, s)
+      const k = pvp(killsRef.current.get(data.ids[i]))
+      if (k) {
+        const kl = document.createElement('div')
+        kl.className = 'bad'
+        kl.textContent = translate(`Убийств за час: ${k}`)
+        t.append(kl)
+      }
       el.style.cursor = 'pointer'
     }
     const onDown = (e: PointerEvent) => (down = { x: e.clientX, y: e.clientY })
@@ -363,7 +439,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     }
     frame()
 
-    sceneRef.current = { data, camera, controls, points: positions, highlight, flyTo, view }
+    sceneRef.current = { data, camera, controls, points: positions, highlight, kills: killsGroup, route: routeGroup, dot, flyTo, fitTo, view }
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
@@ -372,6 +448,8 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
       geo.dispose()
       lineGeo.dispose()
       hlGeo.dispose()
+      clearGroup(killsGroup)
+      clearGroup(routeGroup)
       dot.dispose()
       ring.dispose()
       renderer.domElement.remove()
@@ -384,6 +462,79 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   useEffect(() => {
     if (gatesRef.current) gatesRef.current.visible = showGates
   }, [showGates, data])
+
+  // ---- Kills in the last hour: a red glow, bigger for busier systems ----
+  useEffect(() => {
+    const s = sceneRef.current
+    if (!s) return
+    clearGroup(s.kills)
+    if (!showKills || !kills.data) return
+    // Three sizes: a lone kill, a fight, a big fight.
+    const buckets: [number, number, number[]][] = [
+      [1, 10, []],
+      [3, 16, []],
+      [10, 26, []]
+    ]
+    for (const [id, k] of kills.data) {
+      const i = indexOf.current.get(id)
+      const n = pvp(k)
+      if (i === undefined || !n) continue
+      const b = [...buckets].reverse().find(([min]) => n >= min)!
+      b[2].push(s.points[i * 3], s.points[i * 3 + 1], s.points[i * 3 + 2])
+    }
+    for (const [, size, pos] of buckets) {
+      if (!pos.length) continue
+      const g = new THREE.BufferGeometry()
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3))
+      const m = new THREE.PointsMaterial({
+        size,
+        sizeAttenuation: false,
+        color: 0xff4a2e,
+        map: s.dot,
+        transparent: true,
+        opacity: 0.38,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      })
+      const pts = new THREE.Points(g, m)
+      pts.frustumCulled = false
+      s.kills.add(pts)
+    }
+  }, [kills.data, showKills, data])
+
+  // ---- Route: a bright line through the systems, with a dot on each ----
+  const routeIds = route.data ?? null
+  const routeKey = routeIds?.join(',') ?? ''
+  useEffect(() => {
+    const s = sceneRef.current
+    if (!s) return
+    clearGroup(s.route)
+    if (!routeIds) return
+    const pos: number[] = []
+    const onRoute: number[] = []
+    for (const id of routeIds) {
+      const i = indexOf.current.get(id)
+      if (i === undefined) continue
+      onRoute.push(i)
+      pos.push(s.points[i * 3], s.points[i * 3 + 1], s.points[i * 3 + 2])
+    }
+    s.fitTo(onRoute)
+    const accent = new THREE.Color(cssVar('--accent', '#3dbf9c'))
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3))
+    // White line, accent dots: the line mustn't read as one more highsec colour.
+    const line = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false, depthWrite: false }))
+    const dots = new THREE.Points(
+      g.clone(),
+      new THREE.PointsMaterial({ size: 9, sizeAttenuation: false, color: accent, map: s.dot, transparent: true, depthTest: false, depthWrite: false })
+    )
+    for (const o of [line, dots]) {
+      o.frustumCulled = false
+      o.renderOrder = 1
+      s.route.add(o)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey, data])
 
   // ---- Highlights: fresh intel reports, current system, selection ----
   const now = Date.now()
@@ -448,6 +599,10 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
           <input type="checkbox" checked={showGates} onChange={(e) => setShowGates(e.target.checked)} />
           Звёздные врата
         </label>
+        <label className="check" title={kills.error ?? undefined}>
+          <input type="checkbox" checked={showKills} onChange={(e) => setShowKills(e.target.checked)} />
+          Убийства за час
+        </label>
       </div>
       <div className="gx-stage">
         <div ref={host} className="gx-canvas" />
@@ -464,6 +619,11 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
           <span>
             <i style={{ background: secColor(-0.5) }} /> нули
           </span>
+          {showKills && (
+            <span>
+              <i className="gx-glow" /> убийства за час
+            </span>
+          )}
           <span>
             <i className="gx-mark" style={{ '--mark': 'var(--bad)' } as CSSProperties} /> разведка, 15 мин
           </span>
@@ -482,11 +642,139 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
               </button>
             </div>
             <div className="muted">{selected.region}</div>
+            {pvp(kills.data?.get(selected.id)) > 0 && (
+              <div className="bad small">{`Убийств за час: ${pvp(kills.data?.get(selected.id))}`}</div>
+            )}
             {hostile.has(selected.id) && <div className="bad small">В интел-каналах за последние 15 минут</div>}
+            <div className="gx-card-actions">
+              <button
+                className="ghost small"
+                disabled={!origin || origin === selected.id}
+                title={!origin ? 'Сначала выберите начало маршрута: «Отсюда»' : undefined}
+                onClick={() => setRouteTo(selected.id)}
+              >
+                Маршрут сюда
+              </button>
+              <button className="ghost small" onClick={() => setRouteFrom(selected.id)}>
+                Отсюда
+              </button>
+            </div>
           </div>
+        )}
+        {routeTo && (
+          <RoutePanel
+            data={data}
+            indexOf={indexOf.current}
+            ids={routeIds}
+            loading={route.loading}
+            error={route.error}
+            from={origin}
+            to={routeTo}
+            flag={flag}
+            setFlag={setFlag}
+            kills={kills.data}
+            onSystem={fly}
+            onClear={() => {
+              setRouteTo(null)
+              setRouteFrom(null)
+            }}
+          />
         )}
       </div>
       <p className="muted small">Вращение — левая кнопка мыши, сдвиг — правая, масштаб — колесо. Координаты систем — из SDE, как в игровом клиенте.</p>
+    </div>
+  )
+}
+
+function RoutePanel({
+  data,
+  indexOf,
+  ids,
+  loading,
+  error,
+  from,
+  to,
+  flag,
+  setFlag,
+  kills,
+  onSystem,
+  onClear
+}: {
+  data: GalaxyData | undefined
+  indexOf: Map<number, number>
+  ids: number[] | null
+  loading: boolean
+  error: string | null
+  from: number | null
+  to: number
+  flag: Flag
+  setFlag: (f: Flag) => void
+  kills: Map<number, Kills> | undefined
+  onSystem: (id: number) => void
+  onClear: () => void
+}) {
+  const name = (id: number | null) => (id && data ? data.names[indexOf.get(id) ?? -1] ?? String(id) : '—')
+  const sec = (id: number) => (data ? data.sec[indexOf.get(id) ?? -1] ?? 0 : 0)
+  const list = ids ?? []
+  const count = { high: 0, low: 0, null: 0 }
+  for (const id of list.slice(1)) {
+    const r = Math.round(sec(id) * 10) / 10
+    if (r >= 0.5) count.high++
+    else if (r > 0) count.low++
+    else count.null++
+  }
+  const hot = list.map((id) => ({ id, n: pvp(kills?.get(id)) })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n)
+  return (
+    <div className="gx-route">
+      <div className="gx-card-head">
+        <b>
+          {name(from)} → {name(to)}
+        </b>
+        <button className="ghost gx-close" onClick={onClear} aria-label="Закрыть">
+          ×
+        </button>
+      </div>
+      <select value={flag} onChange={(e) => setFlag(e.target.value as Flag)}>
+        <option value="secure">Безопасный</option>
+        <option value="shortest">Кратчайший</option>
+        <option value="insecure">Через low/null</option>
+      </select>
+      {loading && !ids ? (
+        <div className="muted">Прокладываю…</div>
+      ) : error ? (
+        <div className="bad small">{error}</div>
+      ) : ids ? (
+        <>
+          <div>
+            <b>{`${list.length - 1} прыжков`}</b>
+            <span className="muted">
+              {' · '}
+              <span style={{ color: secColor(1) }}>{count.high}</span> / <span style={{ color: secColor(0.3) }}>{count.low}</span> /{' '}
+              <span style={{ color: secColor(-0.5) }}>{count.null}</span>
+            </span>
+          </div>
+          {hot.length > 0 ? (
+            <div className="small">
+              <span className="bad">{`Убийства за час на маршруте: ${hot.reduce((a, x) => a + x.n, 0)}`}</span>
+              <ul className="gx-hot">
+                {hot.slice(0, 5).map((x) => (
+                  <li key={x.id}>
+                    <button className="gx-link" onClick={() => onSystem(x.id)}>
+                      {name(x.id)}
+                    </button>{' '}
+                    <span className="muted">{x.n}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="muted small">На маршруте не было убийств за последний час</div>
+          )}
+          <GameButton scope={SCOPE.waypoint} className="ghost small" action={(who) => setDestinationInGame(who, to)} title="Установить пункт назначения в клиенте игры">
+            Проложить в игре
+          </GameButton>
+        </>
+      ) : null}
     </div>
   )
 }

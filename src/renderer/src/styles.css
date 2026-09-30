@@ -3620,3 +3620,43 @@ button.danger-fill:hover:not(:disabled) {
   padding: 0 6px;
   line-height: 1.2;
 }
+.gx-legend i.gx-glow {
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle, rgba(255, 74, 46, 0.9), rgba(255, 74, 46, 0) 70%);
+}
+.gx-card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+.gx-route {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 260px;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 2;
+}
+.gx-hot {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.gx-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  border-bottom: 1px dotted var(--accent-line);
+}
+.gx-link:hover {
+  color: var(--accent-text);
+}

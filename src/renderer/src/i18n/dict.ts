@@ -793,6 +793,14 @@ export const EXACT: Record<string, string> = {
   'Вращение — левая кнопка мыши, сдвиг — правая, масштаб — колесо. Координаты систем — из SDE, как в игровом клиенте.': 'Rotate with the left mouse button, pan with the right, zoom with the wheel. System coordinates come from the SDE, as in the game client.',
   'Загружаю данные SDE…': 'Loading SDE data…',
   'Строю карту…': 'Building the map…',
+  'Убийства за час': 'Kills in the last hour',
+  'убийства за час': 'kills in the last hour',
+  'Маршрут сюда': 'Route here',
+  'Отсюда': 'From here',
+  'Сначала выберите начало маршрута: «Отсюда»': 'Pick a start first: “From here”',
+  'Прокладываю…': 'Plotting…',
+  'На маршруте не было убийств за последний час': 'No kills on the route in the last hour',
+  'Установить пункт назначения в клиенте игры': 'Set the destination in the game client',
   'Чтобы Canopus обновлялся сам, перенесите его из окна .dmg в папку «Программы» и запускайте оттуда.': 'To let Canopus update itself, drag it from the .dmg window to Applications and start it from there.',
   'Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.': 'This copy wasn\'t started from the installer or the portable exe — download the new version from the release page.',
   'Топливо': 'Fuel',
@@ -1279,6 +1287,9 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^Убийств за час: (\d+)$/, 'Kills in the last hour: $1'],
+  [/^Убийства за час на маршруте: (\d+)$/, 'Kills on the route in the last hour: $1'],
+  [/^(\d+) прыжков$/, '$1 jumps'],
   [/^Опасные пилоты в локале: (\d+)$/, 'Dangerous pilots in Local: $1'],
   [/^с перезарядкой (\S+)$/, 'with reload $1'],
   [/^было (\S+)$/, 'was $1'],
