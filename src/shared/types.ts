@@ -6,7 +6,7 @@ import type { NotifyEvent, NotifySettings } from './notify'
 import type { CombatLogEvent } from './ratting'
 import type { UpdateStatus } from './update'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
-import type { JumpHop, WormholeType } from './sde'
+import type { GalaxyData, JumpHop, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
@@ -86,6 +86,7 @@ export interface CanopusApi {
     /** Fewest-jumps capital route within a jump range (null when unreachable). */
     jumpRoute(from: number, to: number, rangeLy: number): Promise<JumpHop[] | null>
     lightYears(from: number, to: number): Promise<number | null>
+    galaxy(): Promise<GalaxyData>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
     /** Skill levels needed for the goals, prerequisites first, one step per level. */
     skillPlan(goals: { typeId: number; level?: number }[]): Promise<{ skill: number; level: number; rank: number; primary: number; secondary: number }[]>

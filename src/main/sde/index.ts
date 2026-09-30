@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import type {
   BlueprintActivity,
   DogmaEffect,
+  GalaxyData,
   InfoModifier,
   InfoAttribute,
   InfoBundle,
@@ -1044,6 +1045,41 @@ function jumpTarget(id: number, s: SdeDb['systems'][number]): boolean {
 }
 
 const lyBetween = (a: [number, number, number], b: [number, number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2])
+
+let galaxyCache: { db: SdeDb; data: GalaxyData } | null = null
+
+/**
+ * Known space (including Pochven) for the 3D map. Wormhole, Abyssal and other special systems have
+ * no stargates and sit in their own part of space, so they are left out.
+ */
+export function galaxy(): GalaxyData {
+  const d = need()
+  if (galaxyCache?.db === d) return galaxyCache.data
+  const data: GalaxyData = { ids: [], names: [], sec: [], region: [], pos: [], edges: [], regions: {} }
+  const index = new Map<number, number>()
+  for (const [k, s] of Object.entries(d.systems)) {
+    const id = Number(k)
+    if (id >= 31_000_000 || !s.p) continue
+    index.set(id, data.ids.length)
+    data.ids.push(id)
+    data.names.push(s.n)
+    data.sec.push(s.sec)
+    data.region.push(s.r)
+    data.pos.push(...s.p)
+    data.regions[s.r] ??= d.regions[s.r]
+  }
+  for (const [k, list] of Object.entries(d.jumps)) {
+    const a = index.get(Number(k))
+    if (a === undefined) continue
+    for (const to of list) {
+      const b = index.get(to)
+      // Each gate pair is listed from both ends: keep one.
+      if (b !== undefined && a < b) data.edges.push(a, b)
+    }
+  }
+  galaxyCache = { db: d, data }
+  return data
+}
 
 /** Straight-line distance between two systems, light years. */
 export function lightYears(from: number, to: number): number | null {

@@ -225,6 +225,7 @@ function registerIpc(): void {
   ipcMain.handle('sde:wormholeTypes', () => sde.wormholeTypes())
   ipcMain.handle('sde:jumpRoute', (_e, from: number, to: number, range: number) => sde.jumpRoute(from, to, range))
   ipcMain.handle('sde:lightYears', (_e, from: number, to: number) => sde.lightYears(from, to))
+  ipcMain.handle('sde:galaxy', () => sde.galaxy())
   ipcMain.handle('sde:info', (_e, id: number) => sde.info(id))
   ipcMain.handle('sde:skillCatalog', () => sde.skillCatalog())
   ipcMain.handle('sde:attributeIcons', () => sde.attributeIcons())

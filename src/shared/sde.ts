@@ -216,6 +216,19 @@ export interface SdeStatus {
   message?: string
 }
 
+/** Known space for the 3D map: parallel arrays indexed by system, positions in light years. */
+export interface GalaxyData {
+  ids: number[]
+  names: string[]
+  sec: number[]
+  region: number[]
+  /** x, y, z per system (SDE coordinates, light years) */
+  pos: number[]
+  /** Stargate connections as pairs of indices into the arrays above */
+  edges: number[]
+  regions: Record<number, L10n>
+}
+
 export interface SystemBasic {
   id: number
   n: string

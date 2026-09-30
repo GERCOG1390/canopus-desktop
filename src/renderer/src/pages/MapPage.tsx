@@ -5,12 +5,14 @@ import { esi, systemInfo, systemRegion } from '../lib/esi'
 import { routeDanger, type SystemDanger } from '../lib/routeSafety'
 import Wormholes from './Wormholes'
 import JumpPlanner from './JumpPlanner'
+import { GalaxyMap } from '../components/GalaxyMap'
+import { useIntel } from '../IntelContext'
 import { TypeLink } from '../components/TypeLink'
 import { searchSystemsSde } from '../lib/sde'
 import { fmtIsk, fmtNum, roundSec } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 
-type Tab = 'route' | 'jump' | 'thera' | 'wormholes'
+type Tab = 'galaxy' | 'route' | 'jump' | 'thera' | 'wormholes'
 type Flag = 'shortest' | 'secure' | 'insecure'
 interface Sys {
   id: number
@@ -18,11 +20,14 @@ interface Sys {
 }
 
 export default function MapPage() {
-  const [tab, setTab] = useState<Tab>('route')
+  const [tab, setTab] = useState<Tab>('galaxy')
+  const current = useCurrentSystem()
+  const intel = useIntel()
   return (
     <div className="page">
       <Tabs
         tabs={[
+          { id: 'galaxy', label: 'Галактика' },
           { id: 'route', label: 'Маршрут' },
           { id: 'jump', label: 'Прыжки капиталов' },
           { id: 'thera', label: 'Thera / Turnur' },
@@ -31,6 +36,7 @@ export default function MapPage() {
         value={tab}
         onChange={setTab}
       />
+      {tab === 'galaxy' && <GalaxyMap currentId={intel.system?.id ?? current?.id} />}
       {tab === 'route' && <RoutePlanner />}
       {tab === 'jump' && <JumpPlanner />}
       {tab === 'thera' && <WormholeConnections />}
