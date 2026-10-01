@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../AppContext'
 import { GameButton } from '../components/GameButton'
 import { TypeLink } from '../components/TypeLink'
-import { Card, Empty, ErrorBox, Loading, RequireLogin, Stat } from '../components/ui'
+import { Card, Empty, ErrorBox, Loading, RequireLogin, Stat, Tabs } from '../components/ui'
+import Doctrines from './Doctrines'
 import { esi, imageUrl, resolveIds, resolveNames } from '../lib/esi'
 import { hasScope, SCOPE } from '../lib/gameActions'
 import { useTypeBasics } from '../lib/sde'
@@ -48,14 +49,26 @@ const ROLE_LABEL: Record<Member['role'], string> = {
 }
 
 export default function FleetPage() {
+  const [tab, setTab] = useState<'fleet' | 'doctrines'>('fleet')
+  return (
+    <div className="page">
+      <Tabs
+        tabs={[
+          { id: 'fleet', label: 'Флот' },
+          { id: 'doctrines', label: 'Доктрины' }
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+      {tab === 'fleet' ? <FleetTab /> : <Doctrines />}
+    </div>
+  )
+}
+
+function FleetTab() {
   const { active } = useApp()
   if (!active) return <RequireLogin what="флот" />
-  if (!hasScope(active, SCOPE.readFleet))
-    return (
-      <div className="page">
-        <Empty>Чтобы видеть и вести флот, нажмите «Настройки → Разрешить действия в игре» и войдите заново.</Empty>
-      </div>
-    )
+  if (!hasScope(active, SCOPE.readFleet)) return <Empty>Чтобы видеть и вести флот, нажмите «Настройки → Разрешить действия в игре» и войдите заново.</Empty>
   return <Fleet who={active} />
 }
 
