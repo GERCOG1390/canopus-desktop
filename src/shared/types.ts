@@ -87,6 +87,7 @@ export interface CanopusApi {
     jumpRoute(from: number, to: number, rangeLy: number): Promise<JumpHop[] | null>
     lightYears(from: number, to: number): Promise<number | null>
     galaxy(): Promise<GalaxyData>
+    blueprintProducts(ids: number[]): Promise<Record<number, number>>
     parseBridges(text: string): Promise<{ bridges: [number, number][]; unknown: string[] }>
     routeLocal(from: number, to: number, flag: 'secure' | 'shortest' | 'insecure', bridges: [number, number][], avoid?: number[]): Promise<{ ids: number[]; bridgeHops: number } | null>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>

@@ -227,6 +227,7 @@ function registerIpc(): void {
   ipcMain.handle('sde:jumpRoute', (_e, from: number, to: number, range: number) => sde.jumpRoute(from, to, range))
   ipcMain.handle('sde:lightYears', (_e, from: number, to: number) => sde.lightYears(from, to))
   ipcMain.handle('sde:galaxy', () => sde.galaxy())
+  ipcMain.handle('sde:blueprintProducts', (_e, ids: number[]) => sde.blueprintProducts(ids))
   ipcMain.handle('sde:parseBridges', (_e, text: string) => sde.parseBridges(text))
   ipcMain.handle('sde:routeLocal', (_e, from: number, to: number, flag: 'secure' | 'shortest' | 'insecure', bridges: [number, number][], avoid?: number[]) =>
     sde.routeLocal(from, to, flag, bridges, avoid)

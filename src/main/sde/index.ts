@@ -358,6 +358,18 @@ export function blueprintForProduct(productId: number): InfoBundle['producedBy']
   return { bp: hit.bp, activity: hit.activity, data: bp.act[hit.activity], maxRuns: bp.max }
 }
 
+/** What each blueprint makes (manufacturing, or the reaction for reaction formulas). */
+export function blueprintProducts(ids: number[]): Record<number, number> {
+  const d = need()
+  const out: Record<number, number> = {}
+  for (const id of ids) {
+    const act = d.blueprints[id]?.act
+    const product = act?.manufacturing?.prod?.[0]?.[0] ?? act?.reaction?.prod?.[0]?.[0]
+    if (product) out[id] = product
+  }
+  return out
+}
+
 export function skillCatalog(): SkillCatalogGroup[] {
   const d = need()
   const byGroup = getTypesByGroup()
