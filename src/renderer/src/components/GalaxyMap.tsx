@@ -35,6 +35,13 @@ const pvp = (k: Kills | undefined) => (k ? k.ship + k.pod : 0)
 
 const BRIDGES_KEY = 'galaxy-bridges'
 /** The player's Ansiblex network: the pasted text, the parsed pairs and the alliance capital. */
+const SYSTEMS_KEY = 'galaxy-systems'
+/** The player's own marks on systems: avoided by routes, and free-text notes. */
+interface SystemMarks {
+  avoid: number[]
+  notes: Record<number, string>
+}
+
 interface BridgeStore {
   text: string
   list: [number, number][]
@@ -137,6 +144,24 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     setBridges(b)
     void window.api.store.set(BRIDGES_KEY, b)
   }
+  const [marks, setMarks] = useState<SystemMarks>({ avoid: [], notes: {} })
+  useEffect(() => {
+    void window.api.store.get<SystemMarks>(SYSTEMS_KEY).then((m) => m && setMarks({ avoid: m.avoid ?? [], notes: m.notes ?? {} }))
+  }, [])
+  const saveMarks = (m: SystemMarks) => {
+    setMarks(m)
+    void window.api.store.set(SYSTEMS_KEY, m)
+  }
+  const toggleAvoid = (id: number) =>
+    saveMarks({ ...marks, avoid: marks.avoid.includes(id) ? marks.avoid.filter((x) => x !== id) : [...marks.avoid, id] })
+  const setNote = (id: number, text: string) => {
+    const notes = { ...marks.notes }
+    if (text.trim()) notes[id] = text.trim()
+    else delete notes[id]
+    saveMarks({ ...marks, notes })
+  }
+  const marksRef = useRef(marks)
+  marksRef.current = marks
 
   // Kills in the last hour (ESI), refreshed while the map is open.
   const kills = useAsync(async () => {
@@ -155,14 +180,17 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   // ESI routes over stargates only. With jump bridges the route is worked out locally, and used
   // only when it actually takes a bridge: otherwise ESI's route is exactly the game's.
   const useBridgeRoute = viaBridges && bridges.list.length > 0
+  // Avoided systems: ESI refuses the start or the end in the list, so those are left out.
+  const avoid = marks.avoid.filter((id) => id !== origin && id !== routeTo)
   const route = useAsync(async (): Promise<{ ids: number[]; bridgeHops: number; local: boolean } | null> => {
     if (!origin || !routeTo || origin === routeTo) return null
     if (useBridgeRoute) {
-      const local = await window.api.sde.routeLocal(origin, routeTo, flag, bridges.list)
+      const local = await window.api.sde.routeLocal(origin, routeTo, flag, bridges.list, avoid)
       if (local?.bridgeHops) return { ...local, local: true }
     }
-    return { ids: await esi<number[]>(`/route/${origin}/${routeTo}/?flag=${flag}`), bridgeHops: 0, local: false }
-  }, [origin, routeTo, flag, useBridgeRoute, bridges.list.length && JSON.stringify(bridges.list)])
+    const avoidQuery = avoid.length ? `&avoid=${avoid.join(',')}` : ''
+    return { ids: await esi<number[]>(`/route/${origin}/${routeTo}/?flag=${flag}${avoidQuery}`), bridgeHops: 0, local: false }
+  }, [origin, routeTo, flag, useBridgeRoute, bridges.list.length && JSON.stringify(bridges.list), avoid.join(',')])
 
   const data = galaxy.data
   const indexOf = useRef(new Map<number, number>())
@@ -363,6 +391,13 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
         kl.textContent = translate(`Убийств за час: ${k}`)
         t.append(kl)
       }
+      const note = marksRef.current.notes[data.ids[i]]
+      if (note) {
+        const nl = document.createElement('div')
+        nl.className = 'gx-tip-note'
+        nl.textContent = `✎ ${note.split('\n')[0].slice(0, 80)}`
+        t.append(nl)
+      }
       el.style.cursor = 'pointer'
     }
     const onDown = (e: PointerEvent) => (down = { x: e.clientX, y: e.clientY })
@@ -402,6 +437,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     }
     const taken: [number, number, number, number][] = []
     const near: { i: number; d: number }[] = []
+    const noteMarks: HTMLDivElement[] = []
     const labelPos = new THREE.Vector3()
     let raf = 0
     const frame = () => {
@@ -464,6 +500,25 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
         }
         if (!shown) div.style.opacity = '0'
       }
+      // ✎ next to systems with a note.
+      const noted = Object.keys(marksRef.current.notes)
+      while (noteMarks.length < noted.length) {
+        const div = document.createElement('div')
+        div.className = 'gx-note'
+        div.textContent = '✎'
+        labelLayer.appendChild(div)
+        noteMarks.push(div)
+      }
+      noteMarks.forEach((div, k) => {
+        const i = k < noted.length ? indexOf.current.get(Number(noted[k])) : undefined
+        const at = i === undefined ? null : screen(labelPos.set(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]), w, h)
+        if (!at) {
+          div.style.opacity = '0'
+          return
+        }
+        div.style.transform = `translate(${at[0] + 7}px, ${at[1] - 16}px)`
+        div.style.opacity = '1'
+      })
       renderer.render(scene, camera)
     }
     frame()
@@ -611,6 +666,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     }
     hostile.forEach((id) => add(id, cssVar('--bad', '#f07a66')))
     add(currentId, cssVar('--accent', '#3dbf9c'))
+    marksRef.current.avoid.forEach((id) => add(id, cssVar('--muted', '#9d9e99')))
     if (selected) add(selected.id, '#ffffff')
     const pos = new Float32Array(marks.length * 3)
     const col = new Float32Array(marks.length * 3)
@@ -623,7 +679,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     s.highlight.geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3))
     s.highlight.geometry.setAttribute('color', new THREE.BufferAttribute(col, 3))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hostileKey, currentId, selected?.id, data])
+  }, [hostileKey, currentId, selected?.id, data, marks.avoid.join(',')])
 
   const fly = (id: number | null | undefined) => {
     const i = id ? indexOf.current.get(id) : undefined
@@ -706,6 +762,12 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
               <i className="gx-mark" style={{ '--mark': 'var(--accent)' } as CSSProperties} /> вы здесь
             </span>
           )}
+          {marks.avoid.length > 0 && (
+            <span>
+              <i className="gx-mark" style={{ '--mark': 'var(--muted)' } as CSSProperties} /> избегать
+            </span>
+          )}
+          {Object.keys(marks.notes).length > 0 && <span>✎ заметка</span>}
         </div>
         {selected && (
           <div className="gx-card">
@@ -732,7 +794,11 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
               <button className="ghost small" onClick={() => setRouteFrom(selected.id)}>
                 Отсюда
               </button>
+              <button className={marks.avoid.includes(selected.id) ? 'small' : 'ghost small'} onClick={() => toggleAvoid(selected.id)} title="Маршруты будут обходить эту систему">
+                {marks.avoid.includes(selected.id) ? 'Избегается' : 'Избегать'}
+              </button>
             </div>
+            <NoteField key={selected.id} value={marks.notes[selected.id] ?? ''} onSave={(t) => setNote(selected.id, t)} />
           </div>
         )}
         {routeTo && (
@@ -742,6 +808,8 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
             ids={routeIds}
             bridgeHops={route.data?.bridgeHops ?? 0}
             hasBridges={bridges.list.length > 0}
+            avoided={avoid.length}
+            onClearAvoid={() => saveMarks({ ...marks, avoid: [] })}
             viaBridges={viaBridges}
             setViaBridges={setViaBridges}
             loading={route.loading}
@@ -771,6 +839,8 @@ function RoutePanel({
   ids,
   bridgeHops,
   hasBridges,
+  avoided,
+  onClearAvoid,
   viaBridges,
   setViaBridges,
   loading,
@@ -788,6 +858,8 @@ function RoutePanel({
   ids: number[] | null
   bridgeHops: number
   hasBridges: boolean
+  avoided: number
+  onClearAvoid: () => void
   viaBridges: boolean
   setViaBridges: (v: boolean) => void
   loading: boolean
@@ -826,6 +898,14 @@ function RoutePanel({
         <option value="shortest">Кратчайший</option>
         <option value="insecure">Через low/null</option>
       </select>
+      {avoided > 0 && (
+        <div className="small">
+          <span className="muted">{`Обходит систем: ${avoided}`}</span>{' '}
+          <button className="gx-link" onClick={onClearAvoid}>
+            сбросить
+          </button>
+        </div>
+      )}
       {hasBridges && (
         <label className="check small">
           <input type="checkbox" checked={viaBridges} onChange={(e) => setViaBridges(e.target.checked)} />
@@ -995,5 +1075,20 @@ function BridgesCard({
         </div>
       )}
     </Card>
+  )
+}
+
+/** A note on a system, saved when the field loses focus. */
+function NoteField({ value, onSave }: { value: string; onSave: (text: string) => void }) {
+  const [text, setText] = useState(value)
+  return (
+    <textarea
+      className="gx-note-field"
+      rows={text ? 3 : 1}
+      value={text}
+      placeholder="Заметка: станции, кто живёт, ссылки…"
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => text !== value && onSave(text)}
+    />
   )
 }

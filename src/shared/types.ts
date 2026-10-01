@@ -88,7 +88,7 @@ export interface CanopusApi {
     lightYears(from: number, to: number): Promise<number | null>
     galaxy(): Promise<GalaxyData>
     parseBridges(text: string): Promise<{ bridges: [number, number][]; unknown: string[] }>
-    routeLocal(from: number, to: number, flag: 'secure' | 'shortest' | 'insecure', bridges: [number, number][]): Promise<{ ids: number[]; bridgeHops: number } | null>
+    routeLocal(from: number, to: number, flag: 'secure' | 'shortest' | 'insecure', bridges: [number, number][], avoid?: number[]): Promise<{ ids: number[]; bridgeHops: number } | null>
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
     /** Skill levels needed for the goals, prerequisites first, one step per level. */
     skillPlan(goals: { typeId: number; level?: number }[]): Promise<{ skill: number; level: number; rank: number; primary: number; secondary: number }[]>

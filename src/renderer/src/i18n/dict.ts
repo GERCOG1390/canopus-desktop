@@ -813,6 +813,13 @@ export const EXACT: Record<string, string> = {
   'От столицы, ly': 'From capital, ly',
   'Вставьте список мостов, по одному на строку: «1DQ1-A » 8WA-Z6», формат Dotlan («1DQ1-A @ 3-4 » 8WA-Z6 @ 1-1») или названия структур. После Cradle of War мосты доступны только субкапиталам, а цена прыжка растёт с расстоянием от столицы альянса.': 'Paste the bridges, one per line: “1DQ1-A » 8WA-Z6”, the Dotlan format (“1DQ1-A @ 3-4 » 8WA-Z6 @ 1-1”) or structure names. Since Cradle of War bridges take subcapitals only, and a jump costs more the farther it is from the alliance capital.',
   'Маршрут с мостами считает Canopus: безопасный вариант может отличаться от игрового на пару прыжков.': 'Routes with bridges are worked out by Canopus: the secure option can differ from the game by a jump or two.',
+  'Избегать': 'Avoid',
+  'Избегается': 'Avoided',
+  'Маршруты будут обходить эту систему': 'Routes will go around this system',
+  'избегать': 'avoided',
+  '✎ заметка': '✎ note',
+  'сбросить': 'clear',
+  'Заметка: станции, кто живёт, ссылки…': 'Note: stations, who lives here, links…',
   'Чтобы Canopus обновлялся сам, перенесите его из окна .dmg в папку «Программы» и запускайте оттуда.': 'To let Canopus update itself, drag it from the .dmg window to Applications and start it from there.',
   'Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.': 'This copy wasn\'t started from the installer or the portable exe — download the new version from the release page.',
   'Топливо': 'Fuel',
@@ -1299,6 +1306,7 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^Обходит систем: (\d+)$/, 'Avoiding systems: $1'],
   [/^Мосты: (\d+)$/, 'Bridges: $1'],
   [/^По мостам: (\d+)$/, 'Via bridges: $1'],
   [/^Найдено мостов: (\d+)$/, 'Bridges found: $1'],

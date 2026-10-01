@@ -940,7 +940,13 @@ export function parseBridges(text: string): { bridges: [number, number][]; unkno
  * A route over stargates plus the player's jump bridges, for when ESI's router (gates only) won't
  * do. Same preferences as the game: "secure" avoids systems below 0.45, "insecure" avoids highsec.
  */
-export function routeLocal(from: number, to: number, flag: 'secure' | 'shortest' | 'insecure', bridges: [number, number][]): { ids: number[]; bridgeHops: number } | null {
+export function routeLocal(
+  from: number,
+  to: number,
+  flag: 'secure' | 'shortest' | 'insecure',
+  bridges: [number, number][],
+  avoid: number[] = []
+): { ids: number[]; bridgeHops: number } | null {
   const d = need()
   const extra = new Map<number, number[]>()
   for (const [a, b] of bridges) {
@@ -948,6 +954,8 @@ export function routeLocal(from: number, to: number, flag: 'secure' | 'shortest'
     ;(extra.get(b) ?? extra.set(b, []).get(b)!).push(a)
   }
   const AVOID = 1000
+  // Systems the player chose to avoid are never entered (the destination always can be).
+  const avoided = new Set(avoid.filter((id) => id !== to && id !== from))
   // "Shortest" matches ESI exactly; ESI's secure / insecure weights aren't published, so those
   // follow the displayed (rounded) security and can differ from the game by a few jumps.
   const cost = (id: number): number => {
@@ -992,6 +1000,7 @@ export function routeLocal(from: number, to: number, flag: 'secure' | 'shortest'
     if (id === to) break
     if (c > (dist.get(id) ?? Infinity)) continue
     const step = (n: number, bridge: boolean) => {
+      if (avoided.has(n)) return
       const nc = c + cost(n)
       if (nc < (dist.get(n) ?? Infinity)) {
         dist.set(n, nc)
