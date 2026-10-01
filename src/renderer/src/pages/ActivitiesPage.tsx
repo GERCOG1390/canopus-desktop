@@ -10,8 +10,9 @@ import { SearchBox } from '../components/ui'
 import { jitaPrices, parseItemList } from '../lib/market'
 import { CATEGORY, searchTypesSde, tn, useTypeBasic } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
+import Mining from './Mining'
 
-type Tab = 'sigs' | 'ratting' | 'abyss'
+type Tab = 'sigs' | 'ratting' | 'mining' | 'abyss'
 
 export default function ActivitiesPage() {
   const [tab, setTab] = useState<Tab>('sigs')
@@ -21,6 +22,7 @@ export default function ActivitiesPage() {
         tabs={[
           { id: 'sigs', label: 'Сигнатуры' },
           { id: 'ratting', label: 'Крабинг' },
+          { id: 'mining', label: 'Добыча' },
           { id: 'abyss', label: 'Абиссы' }
         ]}
         value={tab}
@@ -28,6 +30,7 @@ export default function ActivitiesPage() {
       />
       {tab === 'sigs' && <Signatures />}
       {tab === 'ratting' && <RattingTracker />}
+      {tab === 'mining' && <Mining />}
       {tab === 'abyss' && <AbyssTracker />}
     </div>
   )
