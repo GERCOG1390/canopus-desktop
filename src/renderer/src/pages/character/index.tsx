@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useApp } from '../../AppContext'
 import { RequireLogin, Tabs } from '../../components/ui'
+import AllCharacters from './AllCharacters'
 import Assets from './Assets'
 import Blueprints from './Blueprints'
 import Clones from './Clones'
@@ -14,9 +15,10 @@ import Skills from './Skills'
 import SkillPlanner from './SkillPlanner'
 import Wallet from './Wallet'
 
-type Tab = 'overview' | 'skills' | 'plan' | 'clones' | 'fits' | 'assets' | 'blueprints' | 'wallet' | 'contracts' | 'contacts' | 'calendar' | 'reputation'
+type Tab = 'all' | 'overview' | 'skills' | 'plan' | 'clones' | 'fits' | 'assets' | 'blueprints' | 'wallet' | 'contracts' | 'contacts' | 'calendar' | 'reputation'
 
 const TABS: { id: Tab; label: string }[] = [
+  { id: 'all', label: 'Все персонажи' },
   { id: 'overview', label: 'Обзор' },
   { id: 'skills', label: 'Навыки' },
   { id: 'plan', label: 'План навыков' },
@@ -32,7 +34,7 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 export default function CharacterPage() {
-  const { active } = useApp()
+  const { active, setActive } = useApp()
   const [tab, setTab] = useState<Tab>('overview')
   if (!active) return <RequireLogin what="данные персонажа" />
   const id = active.id
@@ -40,6 +42,14 @@ export default function CharacterPage() {
   return (
     <div className="page">
       <Tabs tabs={TABS} value={tab} onChange={setTab} />
+      {tab === 'all' && (
+        <AllCharacters
+          onOpen={(cid) => {
+            void setActive(cid)
+            setTab('overview')
+          }}
+        />
+      )}
       {tab === 'overview' && <Overview id={id} />}
       {tab === 'skills' && <Skills />}
       {tab === 'plan' && <SkillPlanner />}

@@ -3721,3 +3721,29 @@ button.danger-fill:hover:not(:disabled) {
   align-self: flex-start;
   margin-top: 4px;
 }
+/* ---------- All characters ---------- */
+.all-chars {
+  overflow-x: auto;
+}
+.all-chars .num {
+  text-align: right;
+  white-space: nowrap;
+}
+.all-chars-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 0;
+}
+.all-chars-name img {
+  border-radius: 2px;
+}
+.online-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.online-dot.on {
+  background: var(--good);
+}
