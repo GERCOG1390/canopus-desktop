@@ -20,7 +20,12 @@ export function loadSettings(): Settings {
   try {
     if (existsSync(settingsPath())) {
       const saved = JSON.parse(readFileSync(settingsPath(), 'utf8')) as Partial<Settings>
-      const intel = { ...DEFAULT_INTEL, ...saved.intel, overlay: { ...DEFAULT_INTEL.overlay, ...saved.intel?.overlay } }
+      const intel = {
+        ...DEFAULT_INTEL,
+        ...saved.intel,
+        discord: { ...DEFAULT_INTEL.discord, ...saved.intel?.discord },
+        overlay: { ...DEFAULT_INTEL.overlay, ...saved.intel?.overlay }
+      }
       return { ...DEFAULT_SETTINGS, ...saved, clientId: DEFAULT_CLIENT_ID, intel, notify: { ...DEFAULT_NOTIFY, ...saved.notify } }
     }
   } catch (err) {

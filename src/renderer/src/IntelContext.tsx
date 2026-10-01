@@ -108,7 +108,8 @@ export function IntelProvider({ children }: { children: ReactNode }) {
       bad
         .slice(0, 5)
         .map((p) => `${p.name}${p.allianceTicker ? ` <${p.allianceTicker}>` : p.corpTicker ? ` [${p.corpTicker}]` : ''} — ${translate(THREAT_LABEL[p.threat])}`)
-        .join('\n')
+        .join('\n'),
+      'local'
     )
     if (intel.sound) beep()
   }, [])
@@ -189,7 +190,8 @@ export function IntelProvider({ children }: { children: ReactNode }) {
     const j = dist[near[0]]
     void window.api.intel.notify(
       translate(j === 0 ? `Разведка: ${sys?.n ?? '?'} — в вашей системе` : `Разведка: ${sys?.n ?? '?'} — ${j} прыж.`),
-      `${r.speaker}: ${r.message}`.slice(0, 250)
+      `${r.speaker}: ${r.message}`.slice(0, 250),
+      'channel'
     )
     if (intel.sound) beep()
   }, [])

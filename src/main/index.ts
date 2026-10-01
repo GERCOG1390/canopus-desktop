@@ -188,7 +188,8 @@ function registerIpc(): void {
   ipcMain.handle('intel:restartLog', () => intel.restartLog())
   ipcMain.handle('intel:publish', (_e, summary: OverlaySummary) => intel.publish(summary))
   ipcMain.handle('intel:lastSummary', () => intel.getLastSummary())
-  ipcMain.handle('intel:notify', (_e, title: string, body: string) => intel.notify(title, body))
+  ipcMain.handle('intel:notify', (_e, title: string, body: string, kind?: 'local' | 'channel') => intel.notify(title, body, kind))
+  ipcMain.handle('intel:testDiscord', (_e, url: string) => intel.testDiscord(url))
   ipcMain.handle('intel:setOverlay', (_e, patch: Partial<IntelSettings['overlay']>) => {
     intel.setOverlay(patch, loadRenderer, PRELOAD)
     sendToMain('intel:settingsChanged', null)

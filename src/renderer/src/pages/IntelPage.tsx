@@ -671,6 +671,8 @@ function IntelSettingsTab() {
         </p>
       </Card>
 
+      <DiscordCard />
+
       <Card title="Оверлей поверх игры">
         <label className="check">
           <input type="checkbox" checked={intel.overlay.enabled} onChange={(e) => setOverlay({ enabled: e.target.checked })} />
@@ -696,5 +698,64 @@ function IntelSettingsTab() {
         </ul>
       </Card>
     </div>
+  )
+}
+
+/** The same alerts in a Discord channel, through a webhook the player creates in their server. */
+function DiscordCard() {
+  const { settings, updateSettings } = useApp()
+  const [url, setUrl] = useState(settings?.intel.discord.webhook ?? '')
+  const [test, setTest] = useState<{ busy?: boolean; ok?: boolean; error?: string }>({})
+  if (!settings) return null
+  const intel = settings.intel
+  const set = (patch: Partial<typeof intel.discord>) => updateSettings({ intel: { ...intel, discord: { ...intel.discord, ...patch } } })
+  async function check() {
+    setTest({ busy: true })
+    const error = await window.api.intel.testDiscord(url)
+    setTest(error ? { error } : { ok: true })
+    if (!error) set({ webhook: url.trim() })
+  }
+  return (
+    <Card title="Тревоги в Discord">
+      <p className="muted small">
+        В Discord: настройки канала → Интеграция → Вебхуки → Новый вебхук → «Копировать URL». Тревоги придут в канал, даже если Canopus свёрнут.
+      </p>
+      <div className="row">
+        <input
+          className="grow"
+          value={url}
+          placeholder="https://discord.com/api/webhooks/…"
+          spellCheck={false}
+          onChange={(e) => {
+            setUrl(e.target.value)
+            setTest({})
+          }}
+        />
+        <button disabled={!url.trim() || test.busy} onClick={() => void check()}>
+          Проверить и сохранить
+        </button>
+        {intel.discord.webhook && (
+          <button
+            className="ghost"
+            onClick={() => {
+              setUrl('')
+              set({ webhook: '' })
+            }}
+          >
+            Отключить
+          </button>
+        )}
+      </div>
+      {test.ok && <p className="good small">Тестовое сообщение отправлено — проверьте канал.</p>}
+      {test.error && <p className="bad small">{test.error}</p>}
+      <label className="check">
+        <input type="checkbox" checked={intel.discord.local} onChange={(e) => set({ local: e.target.checked })} />
+        Опасные пилоты в Local
+      </label>
+      <label className="check">
+        <input type="checkbox" checked={intel.discord.channels} onChange={(e) => set({ channels: e.target.checked })} />
+        Доклады интел-каналов в пределах дальности тревоги
+      </label>
+    </Card>
   )
 }

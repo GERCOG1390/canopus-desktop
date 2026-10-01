@@ -14,6 +14,14 @@ export interface IntelSettings {
   channels: string[]
   /** Alert when a report in an intel channel is this many jumps away or closer; -1 = off. */
   channelJumps: number
+  /** Send the same alerts to a Discord channel through a webhook. */
+  discord: {
+    webhook: string
+    /** Dangerous pilots entering Local */
+    local: boolean
+    /** Intel channel reports within range */
+    channels: boolean
+  }
   overlay: {
     enabled: boolean
     opacity: number
@@ -30,6 +38,7 @@ export const DEFAULT_INTEL: IntelSettings = {
   sound: true,
   channels: [],
   channelJumps: 3,
+  discord: { webhook: '', local: true, channels: true },
   overlay: { enabled: false, opacity: 0.85, clickThrough: false }
 }
 

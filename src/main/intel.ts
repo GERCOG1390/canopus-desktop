@@ -476,8 +476,10 @@ export function publish(summary: OverlaySummary): void {
 
 export const getLastSummary = (): OverlaySummary | null => lastSummary
 
-export function notify(title: string, body: string): void {
+export function notify(title: string, body: string, kind?: 'local' | 'channel'): void {
   if (Notification.isSupported()) new Notification({ title, body, silent: true }).show()
+  const d = loadSettings().intel.discord
+  if (kind && d.webhook && (kind === 'local' ? d.local : d.channels)) postDiscord(d.webhook, title, body, kind)
 }
 
 /** Ctrl+Shift+L — show/hide the overlay, Ctrl+Shift+K — toggle click-through. */
@@ -493,4 +495,53 @@ export function registerShortcuts(load: (w: BrowserWindow, hash: string) => void
     onChange()
   })
   app.on('will-quit', () => globalShortcut.unregisterAll())
+}
+
+// ---------------- Discord webhook ----------------
+
+const WEBHOOK_RE = /^https:\/\/(?:(?:ptb|canary)\.)?discord(?:app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/
+export const isWebhook = (url: string): boolean => WEBHOOK_RE.test(url.trim())
+
+/** Discord allows about 30 messages a minute per webhook: keep a short queue, drop the overflow. */
+const discordQueue: { url: string; payload: unknown }[] = []
+let discordBusy = false
+
+function postDiscord(url: string, title: string, body: string, kind: 'local' | 'channel' | 'test'): void {
+  if (!isWebhook(url) || discordQueue.length >= 5) return
+  const color = kind === 'local' ? 0xe5533d : kind === 'channel' ? 0xf0b44f : 0x3dbf9c
+  discordQueue.push({
+    url: url.trim(),
+    payload: { username: 'Canopus', embeds: [{ title: title.slice(0, 250), description: body.slice(0, 2000), color, timestamp: new Date().toISOString() }] }
+  })
+  void drainDiscord()
+}
+
+async function drainDiscord(): Promise<void> {
+  if (discordBusy) return
+  discordBusy = true
+  try {
+    while (discordQueue.length) {
+      const { url, payload } = discordQueue.shift()!
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).catch(() => null)
+      // Rate limited: wait as long as Discord asks, then carry on with the rest.
+      if (res?.status === 429) {
+        const wait = Number(res.headers.get('retry-after') ?? 2)
+        await new Promise((r) => setTimeout(r, Math.min(30, wait) * 1000))
+      } else await new Promise((r) => setTimeout(r, 2000))
+    }
+  } finally {
+    discordBusy = false
+  }
+}
+
+/** Sends a test message; returns an error text, or null when Discord accepted it. */
+export async function testDiscord(url: string): Promise<string | null> {
+  if (!isWebhook(url)) return 'Это не адрес вебхука Discord (https://discord.com/api/webhooks/…)'
+  const res = await fetch(url.trim(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'Canopus', embeds: [{ title: 'Canopus подключён', description: 'Сюда будут приходить тревоги разведки.', color: 0x3dbf9c }] })
+  }).catch((e: Error) => e)
+  if (res instanceof Error) return res.message
+  return res.ok ? null : `Discord: ${res.status}`
 }

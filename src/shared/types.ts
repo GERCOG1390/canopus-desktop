@@ -130,7 +130,8 @@ export interface CanopusApi {
     publish(summary: OverlaySummary): Promise<void>
     onSummary(listener: (s: OverlaySummary) => void): () => void
     lastSummary(): Promise<OverlaySummary | null>
-    notify(title: string, body: string): Promise<void>
+    notify(title: string, body: string, kind?: 'local' | 'channel'): Promise<void>
+    testDiscord(url: string): Promise<string | null>
     setOverlay(patch: Partial<IntelSettings['overlay']>): Promise<void>
     /** Exact (case-insensitive) type name → type ID, English or Russian. */
     resolveTypeNames(names: string[]): Promise<Record<string, number>>
