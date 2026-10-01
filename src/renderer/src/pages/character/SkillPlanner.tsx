@@ -1,5 +1,6 @@
 // Skill planner: pick goals (fits, ships, modules, skills) and get the queue in training order,
-// with the time for the character's attributes, the best remap and +5 implants.
+// with the time for the character's attributes, the best remap, two remaps split along the plan
+// and +5 implants.
 
 import { useEffect, useMemo, useState } from 'react'
 import type { SavedFit } from '../../../../shared/fit'
@@ -45,6 +46,45 @@ function remaps(): CharAttributes[] {
 
 const planMinutes = (steps: { sp: number; primary: number; secondary: number }[], attrs: CharAttributes) =>
   steps.reduce((t, s) => t + s.sp / ((attrs[s.primary] ?? 0) + (attrs[s.secondary] ?? 0) / 2 || 1), 0)
+
+const YEAR_MIN = 365 * 24 * 60
+const DAY_MIN = 24 * 60
+
+/**
+ * The best pair of remaps for a long plan: the first now, the second after `k` levels, no earlier
+ * than `waitMin` minutes in (when the next remap is available). Prefix sums per remap make every
+ * split point cheap to check.
+ */
+function twoRemaps(steps: { sp: number; primary: number; secondary: number }[], bonus: CharAttributes, waitMin: number) {
+  const all = remaps()
+  const n = steps.length
+  if (n < 2) return null
+  const prefix = all.map((r) => {
+    const a = withBonus(r, bonus)
+    const out = new Float64Array(n + 1)
+    for (let k = 0; k < n; k++) out[k + 1] = out[k] + steps[k].sp / ((a[steps[k].primary] ?? 0) + (a[steps[k].secondary] ?? 0) / 2 || 1)
+    return out
+  })
+  // Best remap for everything after step k.
+  const tail = Array.from({ length: n + 1 }, (_, k) => {
+    let best = { r: 0, min: Infinity }
+    prefix.forEach((p, r) => {
+      const m = p[n] - p[k]
+      if (m < best.min) best = { r, min: m }
+    })
+    return best
+  })
+  let best: { first: CharAttributes; second: CharAttributes; k: number; switchAt: number; min: number } | null = null
+  for (let r = 0; r < prefix.length; r++) {
+    const p = prefix[r]
+    for (let k = 1; k < n; k++) {
+      if (p[k] < waitMin) continue
+      const m = p[k] + tail[k].min
+      if (!best || m < best.min) best = { first: all[r], second: all[tail[k].r], k, switchAt: p[k], min: m }
+    }
+  }
+  return best
+}
 
 const withBonus = (base: CharAttributes, bonus: CharAttributes) => Object.fromEntries(ATTRS.map((a) => [a, (base[a] ?? 0) + (bonus[a] ?? 0)])) as CharAttributes
 
@@ -99,6 +139,14 @@ export default function SkillPlanner() {
   const implantBonus = char.attributes && char.baseAttributes ? (Object.fromEntries(ATTRS.map((a) => [a, (char.attributes![a] ?? 0) - (char.baseAttributes![a] ?? 0)])) as CharAttributes) : ({} as CharAttributes)
   const plus5 = Object.fromEntries(ATTRS.map((a) => [a, Math.max(implantBonus[a] ?? 0, 5)])) as CharAttributes
 
+  // Remaps available now: the yearly one (once its cooldown is over) plus bonus remaps. A second
+  // remap can follow at once when two are available, otherwise after the cooldown.
+  const remap = char.remap
+  const cooldownMin = remap?.accrued_remap_cooldown_date ? Math.max(0, (Date.parse(remap.accrued_remap_cooldown_date) - Date.now()) / 60_000) : 0
+  const bonusRemaps = remap?.bonus_remaps ?? 0
+  const remapsNow = (cooldownMin === 0 ? 1 : 0) + bonusRemaps
+  const secondWait = remapsNow >= 2 ? 0 : remapsNow === 1 ? (cooldownMin === 0 ? YEAR_MIN : cooldownMin) : cooldownMin + YEAR_MIN
+
   const times = useMemo(() => {
     if (!todo.length) return null
     const now = planMinutes(todo, withBonus(base, implantBonus))
@@ -107,9 +155,17 @@ export default function SkillPlanner() {
       const m = planMinutes(todo, withBonus(r, implantBonus))
       if (m < best.min) best = { attrs: r, min: m }
     }
-    return { now, best, implants: planMinutes(todo, withBonus(base, plus5)), both: planMinutes(todo, withBonus(best.attrs, plus5)) }
+    // Two remaps only when they save at least a day over the single best one.
+    const two = twoRemaps(todo, implantBonus, secondWait)
+    return {
+      now,
+      best,
+      two: two && two.min < best.min - DAY_MIN ? two : null,
+      implants: planMinutes(todo, withBonus(base, plus5)),
+      both: planMinutes(todo, withBonus(best.attrs, plus5))
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [todo, JSON.stringify(base), JSON.stringify(implantBonus)])
+  }, [todo, JSON.stringify(base), JSON.stringify(implantBonus), secondWait])
 
   const rate = (s: Step) => {
     const a = withBonus(base, implantBonus)
@@ -224,10 +280,23 @@ export default function SkillPlanner() {
                 value={fmtDuration(times.best.min * 60_000)}
                 sub={ATTRS.map((a) => `${attrShort(a)} ${times.best.attrs[a]}`).join(' · ')}
               />
+              {times.two && (
+                <Stat
+                  label="Два ремапа"
+                  value={fmtDuration(times.two.min * 60_000)}
+                  sub={`${ATTRS.map((a) => `${attrShort(a)} ${times.two!.first[a]}`).join(' · ')} → после ${times.two.k} уровней (${fmtDuration(times.two.switchAt * 60_000)}): ${ATTRS.map((a) => `${attrShort(a)} ${times.two!.second[a]}`).join(' · ')}`}
+                />
+              )}
               <Stat label="С имплантами +5" value={fmtDuration(times.implants * 60_000)} />
               <Stat label="Ремап + импланты +5" value={fmtDuration(times.both * 60_000)} />
             </div>
           ) : null}
+          {times && remap && (
+            <p className="muted small">
+              {cooldownMin === 0 ? 'Ремап доступен сейчас' : `Следующий ремап через ${fmtDuration(cooldownMin * 60_000)}`}
+              {bonusRemaps > 0 ? ` · бонусных ремапов: ${bonusRemaps}` : ''}
+            </p>
+          )}
           {todo.length > 0 && (
             <Card
               title="Очередь обучения"
