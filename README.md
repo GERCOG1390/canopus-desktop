@@ -6,11 +6,11 @@
 
 <p align="center">
   A free desktop companion for <b>EVE Online</b>: a fitting tool with its own dogma engine and a combat simulator,
-  Local and intel-channel monitoring, route safety, wormholes, market arbitrage, industry and your whole character — in one app for Windows and macOS.
+  Local and intel-channel monitoring, route safety, wormholes, market arbitrage, industry and your whole character — in one app for Windows, macOS and Linux.
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>⬇ Download for Windows / macOS</b></a> ·
+  <a href="../../releases/latest"><b>⬇ Download for Windows / macOS / Linux</b></a> ·
   English / Русский interface ·
   <a href="LICENSE">MIT</a>
 </p>
@@ -49,14 +49,23 @@ damage per tank layer against local repairs, and who dies first.
 ![Combat simulator](docs/screenshots/combat.png)
 
 ### Intel
-- **Local scan** — press **Ctrl+A, Ctrl+C** in the Local window: every pilot is checked for corporation, alliance, age, kills and losses, danger ratio and favourite ships. Threat is shown as a meter with a word, not colour alone. New arrivals are highlighted, and when a dangerous pilot enters you get an alert in the app and a Windows notification.
+- **Local scan** — press **Ctrl+A, Ctrl+C** in the Local window: every pilot is checked for corporation, alliance, age, kills and losses, danger ratio and favourite ships. Threat is shown as a meter with a word, not colour alone. New arrivals are highlighted, and when a dangerous pilot enters you get an alert in the app and a desktop notification.
 - **Intel channels** — Canopus follows your alliance's intel chat logs, recognises systems (including shorthand like "1DQ") and ships in every report and shows how many jumps away they are; reports within your range raise an alert, "clr" / "nv" mean all clear.
 - **D-scan and fleet window** analysis with warnings for interdictors, bombers, recons, logistics and capitals.
 - An always-on-top **overlay** for windowed / borderless mode (**Ctrl+Shift+L** show / hide, **Ctrl+Shift+K** click-through).
+- **Alerts in Discord** — the same Local and intel-channel alerts posted to your channel through a webhook.
 
 | Local scan | Intel channels | Overlay |
 |---|---|---|
 | ![Local](docs/screenshots/intel-local.png) | ![Intel channels](docs/screenshots/intel-channels.png) | ![Overlay](docs/screenshots/overlay.png) |
+
+### 3D galaxy map
+New Eden at the real coordinates from the SDE, rotate and zoom, region and system names, security colours and stargates.
+- **Kills in the last hour** as a glow, **routes** (secure / shortest / low-null) drawn on the map with the busiest systems on the way, set in game with one click.
+- **Alliance jump bridges (Ansiblex)** — paste the list (plain or Dotlan format), see them as arcs with their distance from the alliance capital (Cradle of War pricing), route through them.
+- **Avoided systems** and **notes** per system; avoided systems are left out of every route.
+- **Capital jump range** — a sphere around any system and every lowsec / nullsec system it reaches.
+- Fresh intel reports and your current system marked on the map.
 
 ### Map and travel
 - **Route safety** — every system on the route with security, ship / pod kills in the last hour and gate camps from zKillboard; set the destination in the game with one click.
@@ -71,6 +80,7 @@ damage per tank layer against local repairs, and who dies first.
 - **Signatures** — copy the probe scanner and Canopus remembers the signatures per system, marks new and vanished ones and tells what to expect at each site.
 - **Ratting** — bounties from the wallet, damage dealt and received from the combat log.
 - **Abyss** — a run log with results by tier and by ship.
+- **Mining** — the mining ledger of all your characters for 30 days by ore, day, character or system, valued at Jita.
 
 ![Signatures](docs/screenshots/signatures.png)
 
@@ -79,21 +89,27 @@ damage per tank layer against local repairs, and who dies first.
 - **Arbitrage between trade hubs** by market category, with taxes, margin, volume and profit per m³.
 - Loot appraisal (English or Russian names), LP store, your orders with outbid detection.
 - Manufacturing and reaction calculator (ME / TE, structure bonuses, system cost index, taxes), industry jobs and planetary colonies with extractor timers.
+- **Corporation structures** — fuel, state with timers and services; alerts for low fuel, attacks, lost shields / armor (with the out-of-reinforce time) and finished moon extractions, also to Discord.
+- **Moon mining** — refinery extraction timers and who mined what from your moons.
 
 | Arbitrage | Market | Industry |
 |---|---|---|
 | ![Arbitrage](docs/screenshots/arbitrage.png) | ![Market](docs/screenshots/market.png) | ![Industry](docs/screenshots/industry.png) |
 
 ### Character, mail and fleet
-- Overview, skill queue and a **skill planner**, attributes with implants, jump clones, assets with Jita valuation, blueprints, wallet, contracts, loyalty points, standings and jump fatigue.
+- **All characters** on one screen: where they are and in what, skill queue, ISK, industry, PI, jump fatigue, clone jump.
+- Overview, skill queue and a **skill planner** with the best remap or **two remaps** along a long plan, attributes with implants, jump clones, assets with Jita valuation, wallet, contracts, loyalty points, standings and jump fatigue.
+- **Blueprint library** across all characters: search by blueprint or by what it makes, ME / TE / runs, where it is.
 - **Contacts**, **calendar**, **EVE mail** and **fleet** management — invite, move and kick members.
-- **Tray and Windows notifications** for every character: skill queue running out, PI extractors, finished industry jobs, jump fatigue, outbid market orders, jump clone ready.
+- **Doctrines** — paste a fleet's fits as EFT: who of your characters can fly each one and how long the rest need to train, the cost in Jita and a Multibuy list.
+- **Tray and desktop notifications** for every character: skill queue running out, PI extractors, finished industry jobs, jump fatigue, outbid market orders, jump clone ready.
 - zKillboard statistics and recent fights with the victim's fit.
 
 ### In-game actions (optional)
 With your permission Canopus acts in the game through CCP's official ESI: opens the market, contract or info window,
 sets the destination, saves fits, sends mail, edits contacts, manages the fleet and answers calendar events.
 These permissions are requested only when you press **Settings → Allow in-game actions**; otherwise Canopus is read-only.
+Corporation data (structures, structure notifications, moon mining) is opt-in the same way: **Settings → Allow corporation**; it needs the Station Manager / Accountant roles in game.
 
 ## Install
 
@@ -102,18 +118,21 @@ Download from [Releases](../../releases/latest):
 - **Canopus-Setup-x.y.z.exe** — installer (Start menu and desktop shortcuts).
 - **Canopus-x.y.z-portable.exe** — single file, no installation.
 - **Canopus-x.y.z-mac.dmg** — macOS 12+ (Apple Silicon and Intel): open it and drag Canopus to Applications.
+- **Canopus-x.y.z-linux.AppImage** — Linux x64, any distribution: `chmod +x` and run. **Canopus-x.y.z-linux.deb** for Debian / Ubuntu.
 
-All builds update themselves: Canopus checks GitHub for new versions, downloads them in the background (verified by SHA-256) and installs on restart. This can be turned off in **Settings → Updates**.
+The Windows, macOS and AppImage builds update themselves (the .deb is updated from the release page): Canopus checks GitHub for new versions, downloads them in the background (verified by SHA-256) and installs on restart. This can be turned off in **Settings → Updates**.
 
 The builds are not code-signed yet, so Windows SmartScreen may warn on first launch: click **More info → Run anyway**.
 
 The macOS build is signed with a Developer ID and notarized by Apple, so it opens without warnings. Move Canopus to Applications and it updates itself like the Windows builds; shortcuts use **Cmd** instead of **Ctrl**.
 
+On Linux Canopus finds the chat logs of EVE running under Steam's Proton or Wine automatically; for another location set the folder in **Intel → Settings**.
+
 On first start Canopus downloads CCP's Static Data Export (~95 MB) and builds a local database; it updates itself when CCP publishes a new build. Game icons are fetched from CCP's image server on demand and cached.
 
 ## Getting started
 
-1. **Log in with EVE SSO** (bottom left) — CCP's login page opens inside the app. Canopus uses EVE SSO with PKCE; tokens are stored encrypted (Windows DPAPI / macOS Keychain) and never leave your computer.
+1. **Log in with EVE SSO** (bottom left) — CCP's login page opens inside the app. Canopus uses EVE SSO with PKCE; tokens are stored encrypted (Windows DPAPI / macOS Keychain / the Linux keyring) and never leave your computer.
 2. **Settings → Language** switches the interface and item names between English and Russian.
 3. For intel, run EVE windowed or borderless, copy Local with **Ctrl+A, Ctrl+C** and choose your intel channels.
 
@@ -134,6 +153,8 @@ npm install
 npm run dev        # development
 npm run typecheck
 npm run dist       # installer and portable .exe in release/
+npm run dist:mac   # dmg and zip (signing needs a Developer ID)
+npm run dist:linux # AppImage and .deb
 ```
 
 Stack: Electron, electron-vite, React, TypeScript.
