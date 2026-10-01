@@ -3660,3 +3660,24 @@ button.danger-fill:hover:not(:disabled) {
 .gx-link:hover {
   color: var(--accent-text);
 }
+.gx-legend i.gx-bridge {
+  width: 14px;
+  height: 2px;
+  border-radius: 0;
+  background: var(--star);
+  vertical-align: 3px;
+}
+.gx-bridges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gx-bridges textarea {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.gx-bridge-table {
+  max-height: 320px;
+  overflow: auto;
+}

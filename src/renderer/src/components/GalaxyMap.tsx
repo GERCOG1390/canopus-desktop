@@ -8,7 +8,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { GalaxyData } from '../../../shared/sde'
 import { REPORT_FRESH_MS, useIntel } from '../IntelContext'
 import { useApp } from '../AppContext'
-import { ErrorBox, Loading, SearchBox, Sec } from './ui'
+import { Card, ErrorBox, Loading, SearchBox, Sec } from './ui'
 import { searchSystemsSde, tn } from '../lib/sde'
 import { secColor } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
@@ -33,6 +33,14 @@ interface Kills {
 }
 const pvp = (k: Kills | undefined) => (k ? k.ship + k.pod : 0)
 
+const BRIDGES_KEY = 'galaxy-bridges'
+/** The player's Ansiblex network: the pasted text, the parsed pairs and the alliance capital. */
+interface BridgeStore {
+  text: string
+  list: [number, number][]
+  capital: number | null
+}
+
 interface Selected {
   i: number
   id: number
@@ -49,6 +57,7 @@ interface Scene {
   highlight: THREE.Points
   kills: THREE.Group
   route: THREE.Group
+  bridges: THREE.Group
   dot: THREE.Texture
   flyTo: (i: number) => void
   fitTo: (indices: number[]) => void
@@ -117,6 +126,17 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   const [routeFrom, setRouteFrom] = useState<number | null>(null)
   const [routeTo, setRouteTo] = useState<number | null>(null)
   const [flag, setFlag] = useState<Flag>('secure')
+  const [bridges, setBridges] = useState<BridgeStore>({ text: '', list: [], capital: null })
+  const [showBridges, setShowBridges] = useState(true)
+  const [viaBridges, setViaBridges] = useState(true)
+  const [bridgesOpen, setBridgesOpen] = useState(false)
+  useEffect(() => {
+    void window.api.store.get<BridgeStore>(BRIDGES_KEY).then((b) => b && setBridges(b))
+  }, [])
+  const saveBridges = (b: BridgeStore) => {
+    setBridges(b)
+    void window.api.store.set(BRIDGES_KEY, b)
+  }
 
   // Kills in the last hour (ESI), refreshed while the map is open.
   const kills = useAsync(async () => {
@@ -132,10 +152,17 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   }, [reloadKills])
 
   const origin = routeFrom ?? currentId ?? null
-  const route = useAsync(
-    async () => (origin && routeTo && origin !== routeTo ? esi<number[]>(`/route/${origin}/${routeTo}/?flag=${flag}`) : null),
-    [origin, routeTo, flag]
-  )
+  // ESI routes over stargates only. With jump bridges the route is worked out locally, and used
+  // only when it actually takes a bridge: otherwise ESI's route is exactly the game's.
+  const useBridgeRoute = viaBridges && bridges.list.length > 0
+  const route = useAsync(async (): Promise<{ ids: number[]; bridgeHops: number; local: boolean } | null> => {
+    if (!origin || !routeTo || origin === routeTo) return null
+    if (useBridgeRoute) {
+      const local = await window.api.sde.routeLocal(origin, routeTo, flag, bridges.list)
+      if (local?.bridgeHops) return { ...local, local: true }
+    }
+    return { ids: await esi<number[]>(`/route/${origin}/${routeTo}/?flag=${flag}`), bridgeHops: 0, local: false }
+  }, [origin, routeTo, flag, useBridgeRoute, bridges.list.length && JSON.stringify(bridges.list)])
 
   const data = galaxy.data
   const indexOf = useRef(new Map<number, number>())
@@ -225,6 +252,8 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     const routeGroup = new THREE.Group()
     routeGroup.renderOrder = 1
     scene.add(routeGroup)
+    const bridgesGroup = new THREE.Group()
+    scene.add(bridgesGroup)
 
     // Region labels at the centre of each region's systems.
     const regionSums = new Map<number, { v: THREE.Vector3; n: number }>()
@@ -439,7 +468,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     }
     frame()
 
-    sceneRef.current = { data, camera, controls, points: positions, highlight, kills: killsGroup, route: routeGroup, dot, flyTo, fitTo, view }
+    sceneRef.current = { data, camera, controls, points: positions, highlight, kills: killsGroup, route: routeGroup, bridges: bridgesGroup, dot, flyTo, fitTo, view }
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
@@ -450,6 +479,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
       hlGeo.dispose()
       clearGroup(killsGroup)
       clearGroup(routeGroup)
+      clearGroup(bridgesGroup)
       dot.dispose()
       ring.dispose()
       renderer.domElement.remove()
@@ -462,6 +492,36 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   useEffect(() => {
     if (gatesRef.current) gatesRef.current.visible = showGates
   }, [showGates, data])
+
+  // ---- Jump bridges: gold arcs lifted above the gate lines ----
+  const bridgesKey = JSON.stringify(bridges.list)
+  useEffect(() => {
+    const s = sceneRef.current
+    if (!s) return
+    clearGroup(s.bridges)
+    if (!showBridges || !bridges.list.length) return
+    const pts: number[] = []
+    const a = new THREE.Vector3()
+    const b = new THREE.Vector3()
+    for (const [x, y] of bridges.list) {
+      const i = indexOf.current.get(x)
+      const j = indexOf.current.get(y)
+      if (i === undefined || j === undefined) continue
+      a.fromArray(s.points, i * 3)
+      b.fromArray(s.points, j * 3)
+      const mid = a.clone().add(b).multiplyScalar(0.5)
+      mid.y += a.distanceTo(b) * 0.25
+      const curve = new THREE.QuadraticBezierCurve3(a.clone(), mid, b.clone())
+      const p = curve.getPoints(16)
+      for (let k = 0; k < p.length - 1; k++) pts.push(p[k].x, p[k].y, p[k].z, p[k + 1].x, p[k + 1].y, p[k + 1].z)
+    }
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3))
+    const lines = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: new THREE.Color(cssVar('--star', '#ffd98a')), transparent: true, opacity: 0.85, depthWrite: false }))
+    lines.frustumCulled = false
+    s.bridges.add(lines)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bridgesKey, showBridges, data])
 
   // ---- Kills in the last hour: a red glow, bigger for busier systems ----
   useEffect(() => {
@@ -503,7 +563,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   }, [kills.data, showKills, data])
 
   // ---- Route: a bright line through the systems, with a dot on each ----
-  const routeIds = route.data ?? null
+  const routeIds = route.data?.ids ?? null
   const routeKey = routeIds?.join(',') ?? ''
   useEffect(() => {
     const s = sceneRef.current
@@ -599,6 +659,15 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
           <input type="checkbox" checked={showGates} onChange={(e) => setShowGates(e.target.checked)} />
           Звёздные врата
         </label>
+        <button className={bridgesOpen ? '' : 'ghost'} onClick={() => setBridgesOpen((o) => !o)}>
+          {bridges.list.length ? `Мосты: ${bridges.list.length}` : 'Мосты'}
+        </button>
+        {bridges.list.length > 0 && (
+          <label className="check">
+            <input type="checkbox" checked={showBridges} onChange={(e) => setShowBridges(e.target.checked)} />
+            Показывать мосты
+          </label>
+        )}
         <label className="check" title={kills.error ?? undefined}>
           <input type="checkbox" checked={showKills} onChange={(e) => setShowKills(e.target.checked)} />
           Убийства за час
@@ -622,6 +691,11 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
           {showKills && (
             <span>
               <i className="gx-glow" /> убийства за час
+            </span>
+          )}
+          {showBridges && bridges.list.length > 0 && (
+            <span>
+              <i className="gx-bridge" /> мосты
             </span>
           )}
           <span>
@@ -666,6 +740,10 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
             data={data}
             indexOf={indexOf.current}
             ids={routeIds}
+            bridgeHops={route.data?.bridgeHops ?? 0}
+            hasBridges={bridges.list.length > 0}
+            viaBridges={viaBridges}
+            setViaBridges={setViaBridges}
             loading={route.loading}
             error={route.error}
             from={origin}
@@ -681,6 +759,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
           />
         )}
       </div>
+      {bridgesOpen && data && <BridgesCard data={data} indexOf={indexOf.current} value={bridges} onSave={saveBridges} onSystem={fly} />}
       <p className="muted small">Вращение — левая кнопка мыши, сдвиг — правая, масштаб — колесо. Координаты систем — из SDE, как в игровом клиенте.</p>
     </div>
   )
@@ -690,6 +769,10 @@ function RoutePanel({
   data,
   indexOf,
   ids,
+  bridgeHops,
+  hasBridges,
+  viaBridges,
+  setViaBridges,
   loading,
   error,
   from,
@@ -703,6 +786,10 @@ function RoutePanel({
   data: GalaxyData | undefined
   indexOf: Map<number, number>
   ids: number[] | null
+  bridgeHops: number
+  hasBridges: boolean
+  viaBridges: boolean
+  setViaBridges: (v: boolean) => void
   loading: boolean
   error: string | null
   from: number | null
@@ -739,6 +826,12 @@ function RoutePanel({
         <option value="shortest">Кратчайший</option>
         <option value="insecure">Через low/null</option>
       </select>
+      {hasBridges && (
+        <label className="check small">
+          <input type="checkbox" checked={viaBridges} onChange={(e) => setViaBridges(e.target.checked)} />
+          Через мосты альянса
+        </label>
+      )}
       {loading && !ids ? (
         <div className="muted">Прокладываю…</div>
       ) : error ? (
@@ -753,6 +846,13 @@ function RoutePanel({
               <span style={{ color: secColor(-0.5) }}>{count.null}</span>
             </span>
           </div>
+          {bridgeHops > 0 && (
+            <div className="small">
+              <span style={{ color: 'var(--star)' }}>{`По мостам: ${bridgeHops}`}</span>
+              <span className="muted"> · только для субкапиталов</span>
+              {flag !== 'shortest' && <div className="muted">Маршрут с мостами считает Canopus: безопасный вариант может отличаться от игрового на пару прыжков.</div>}
+            </div>
+          )}
           {hot.length > 0 ? (
             <div className="small">
               <span className="bad">{`Убийства за час на маршруте: ${hot.reduce((a, x) => a + x.n, 0)}`}</span>
@@ -776,5 +876,124 @@ function RoutePanel({
         </>
       ) : null}
     </div>
+  )
+}
+
+/** Paste the alliance's jump bridges, pick the capital: distances show how far each bridge reaches. */
+function BridgesCard({
+  data,
+  indexOf,
+  value,
+  onSave,
+  onSystem
+}: {
+  data: GalaxyData
+  indexOf: Map<number, number>
+  value: BridgeStore
+  onSave: (b: BridgeStore) => void
+  onSystem: (id: number) => void
+}) {
+  const [text, setText] = useState(value.text)
+  const [unknown, setUnknown] = useState<string[]>([])
+  const [busy, setBusy] = useState(false)
+  useEffect(() => setText(value.text), [value.text])
+  const name = (id: number) => data.names[indexOf.get(id) ?? -1] ?? String(id)
+  const ly = (x: number, y: number): number | null => {
+    const i = indexOf.get(x)
+    const j = indexOf.get(y)
+    if (i === undefined || j === undefined) return null
+    const p = data.pos
+    return Math.hypot(p[i * 3] - p[j * 3], p[i * 3 + 1] - p[j * 3 + 1], p[i * 3 + 2] - p[j * 3 + 2])
+  }
+  async function save() {
+    setBusy(true)
+    try {
+      const r = await window.api.sde.parseBridges(text)
+      setUnknown(r.unknown)
+      onSave({ ...value, text, list: r.bridges })
+    } finally {
+      setBusy(false)
+    }
+  }
+  // Cost grows with the distance from the capital to the bridge's far end.
+  const rows = value.list
+    .map(([a, b]) => {
+      const far = value.capital ? Math.max(ly(value.capital, a) ?? 0, ly(value.capital, b) ?? 0) : null
+      return { a, b, len: ly(a, b), far }
+    })
+    .sort((x, y) => (x.far ?? 0) - (y.far ?? 0))
+  return (
+    <Card title="Мосты альянса (Ansiblex)" className="gx-bridges">
+      <p className="muted small">
+        Вставьте список мостов, по одному на строку: «1DQ1-A » 8WA-Z6», формат Dotlan («1DQ1-A @ 3-4 » 8WA-Z6 @ 1-1») или названия структур. После Cradle of War
+        мосты доступны только субкапиталам, а цена прыжка растёт с расстоянием от столицы альянса.
+      </p>
+      <textarea rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder="1DQ1-A » 8WA-Z6" spellCheck={false} />
+      <div className="row">
+        <button disabled={busy} onClick={() => void save()}>
+          Сохранить
+        </button>
+        <span className="muted small">{`Найдено мостов: ${value.list.length}`}</span>
+      </div>
+      {unknown.length > 0 && (
+        <div className="small">
+          <span className="bad">{`Не распознано строк: ${unknown.length}`}</span>
+          <ul className="gx-hot">
+            {unknown.slice(0, 5).map((l, k) => (
+              <li key={k} className="muted" translate="no">
+                {l}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="row">
+        <span>Столица альянса:</span>
+        {value.capital ? (
+          <>
+            <button className="gx-link" onClick={() => onSystem(value.capital!)}>
+              {name(value.capital)}
+            </button>
+            <button className="ghost small" onClick={() => onSave({ ...value, capital: null })}>
+              ×
+            </button>
+          </>
+        ) : (
+          <div className="gx-search">
+            <SearchBox placeholder="Найти систему…" search={searchSystemsSde} onSelect={(s) => onSave({ ...value, capital: s.id })} clearOnSelect />
+          </div>
+        )}
+      </div>
+      {rows.length > 0 && (
+        <div className="gx-bridge-table">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Мост</th>
+                <th className="num">Длина, ly</th>
+                {value.capital && <th className="num">От столицы, ly</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={`${r.a}-${r.b}`}>
+                  <td>
+                    <button className="gx-link" onClick={() => onSystem(r.a)}>
+                      {name(r.a)}
+                    </button>
+                    {' ⇄ '}
+                    <button className="gx-link" onClick={() => onSystem(r.b)}>
+                      {name(r.b)}
+                    </button>
+                  </td>
+                  <td className="num">{r.len?.toFixed(1) ?? '—'}</td>
+                  {value.capital && <td className="num">{r.far?.toFixed(1) ?? '—'}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   )
 }

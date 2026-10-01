@@ -897,6 +897,123 @@ export function jumpsFrom(fromId: number, targets: number[], max = 40): Record<n
   return out
 }
 
+/**
+ * Jump bridges pasted by the player, one per line, in any of the usual formats
+ * ("1DQ1-A » 8WA-Z6", "1DQ1-A @ 3-4 --> 8WA-Z6 @ 1-1", a structure name, tab-separated…):
+ * the first two system names on a line, exact names only (a planet / moon like "3-4" must
+ * not match a system by prefix the way intel shorthand does).
+ */
+export function parseBridges(text: string): { bridges: [number, number][]; unknown: string[] } {
+  const idx = getIntelIndex()
+  const bridges: [number, number][] = []
+  const unknown: string[] = []
+  const seen = new Set<string>()
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line) continue
+    const words = line.split(/[\s,;:!?()[\]{}<>"*|/\\»«→=]+/).filter(Boolean)
+    const found: number[] = []
+    for (let i = 0; i < words.length && found.length < 2; ) {
+      let matched = 0
+      for (let n = Math.min(idx.maxWords, words.length - i); n >= 1 && !matched; n--) {
+        const id = idx.systems.get(words.slice(i, i + n).join(' ').toLowerCase())
+        if (id && !found.includes(id)) {
+          found.push(id)
+          matched = n
+        }
+      }
+      i += matched || 1
+    }
+    if (found.length < 2) {
+      unknown.push(line)
+      continue
+    }
+    const key = [...found].sort((a, b) => a - b).join('-')
+    if (seen.has(key)) continue
+    seen.add(key)
+    bridges.push([found[0], found[1]])
+  }
+  return { bridges, unknown }
+}
+
+/**
+ * A route over stargates plus the player's jump bridges, for when ESI's router (gates only) won't
+ * do. Same preferences as the game: "secure" avoids systems below 0.45, "insecure" avoids highsec.
+ */
+export function routeLocal(from: number, to: number, flag: 'secure' | 'shortest' | 'insecure', bridges: [number, number][]): { ids: number[]; bridgeHops: number } | null {
+  const d = need()
+  const extra = new Map<number, number[]>()
+  for (const [a, b] of bridges) {
+    ;(extra.get(a) ?? extra.set(a, []).get(a)!).push(b)
+    ;(extra.get(b) ?? extra.set(b, []).get(b)!).push(a)
+  }
+  const AVOID = 1000
+  // "Shortest" matches ESI exactly; ESI's secure / insecure weights aren't published, so those
+  // follow the displayed (rounded) security and can differ from the game by a few jumps.
+  const cost = (id: number): number => {
+    const high = Math.round((d.systems[id]?.sec ?? 0) * 10) / 10 >= 0.5
+    if (flag === 'secure') return high ? 1 : AVOID
+    if (flag === 'insecure') return high ? AVOID : 1
+    return 1
+  }
+  // Dijkstra with a binary heap of [cost, system].
+  const dist = new Map<number, number>([[from, 0]])
+  const prev = new Map<number, { from: number; bridge: boolean }>()
+  const heap: [number, number][] = [[0, from]]
+  const push = (item: [number, number]) => {
+    heap.push(item)
+    for (let i = heap.length - 1; i > 0; ) {
+      const p = (i - 1) >> 1
+      if (heap[p][0] <= heap[i][0]) break
+      ;[heap[p], heap[i]] = [heap[i], heap[p]]
+      i = p
+    }
+  }
+  const pop = (): [number, number] => {
+    const top = heap[0]
+    const last = heap.pop()!
+    if (heap.length) {
+      heap[0] = last
+      for (let i = 0; ; ) {
+        const l = i * 2 + 1
+        const r = l + 1
+        let m = i
+        if (l < heap.length && heap[l][0] < heap[m][0]) m = l
+        if (r < heap.length && heap[r][0] < heap[m][0]) m = r
+        if (m === i) break
+        ;[heap[m], heap[i]] = [heap[i], heap[m]]
+        i = m
+      }
+    }
+    return top
+  }
+  while (heap.length) {
+    const [c, id] = pop()
+    if (id === to) break
+    if (c > (dist.get(id) ?? Infinity)) continue
+    const step = (n: number, bridge: boolean) => {
+      const nc = c + cost(n)
+      if (nc < (dist.get(n) ?? Infinity)) {
+        dist.set(n, nc)
+        prev.set(n, { from: id, bridge })
+        push([nc, n])
+      }
+    }
+    for (const n of d.jumps[id] ?? []) step(n, false)
+    for (const n of extra.get(id) ?? []) step(n, true)
+  }
+  if (!dist.has(to)) return null
+  const ids = [to]
+  let bridgeHops = 0
+  for (let id = to; id !== from; ) {
+    const p = prev.get(id)!
+    if (p.bridge) bridgeHops++
+    ids.push(p.from)
+    id = p.from
+  }
+  return { ids: ids.reverse(), bridgeHops }
+}
+
 export function systemIdByName(name: string): number | null {
   if (!db) return null
   return getIntelIndex().systems.get(name.trim().toLowerCase()) ?? null
