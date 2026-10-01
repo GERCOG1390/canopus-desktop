@@ -55,8 +55,12 @@ export const SCOPES = [
  * Permissions to act in the game, asked for only on request: the EVE application must list them on
  * developers.eveonline.com, otherwise the SSO would refuse the whole login.
  */
-/** Corporation structures (fuel, state, services): also opt-in, and it needs the Station Manager role. */
-export const CORP_SCOPES = ['esi-corporations.read_structures.v1']
+/**
+ * Corporation permissions, opt-in: structures (fuel, state, services; Station Manager role), the
+ * character's game notifications (structure attacks, moon extractions) and the corporation's moon
+ * mining (extractions: Station Manager; observer ledgers: Accountant).
+ */
+export const CORP_SCOPES = ['esi-corporations.read_structures.v1', 'esi-characters.read_notifications.v1', 'esi-industry.read_corporation_mining.v1']
 
 export const EXTRA_SCOPES = [
   'esi-ui.open_window.v1',

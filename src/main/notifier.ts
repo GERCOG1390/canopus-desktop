@@ -158,6 +158,7 @@ async function checkStructures(id: number): Promise<void> {
   }
   for (const s of list) {
     const name = s.name ?? `#${s.structure_id}`
+    structureNames.set(s.structure_id, name)
     const where = await systemName(s.system_id)
     if (s.fuel_expires) {
       const left = Date.parse(s.fuel_expires) - Date.now()
@@ -170,6 +171,88 @@ async function checkStructures(id: number): Promise<void> {
       const until = s.state_timer_end ? ` · ${s.state_timer_end.slice(0, 16).replace('T', ' ')} EVE` : ''
       tell(`rf-${s.structure_id}-${s.state}-${s.state_timer_end}`, t(`${name}: в реинфорсе (${layer})`, `${name}: reinforced (${layer})`), `${where}${until}`)
     }
+  }
+}
+
+// ---------- Game notifications (esi-characters.read_notifications.v1) ----------
+
+interface GameNotification {
+  notification_id: number
+  type: string
+  timestamp: string
+  text?: string
+}
+
+/** The flat "key: value" lines of a notification's YAML text (anchors like "&id001" dropped). */
+function yamlFields(text = ''): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const line of text.split('\n')) {
+    const m = /^(\w+):\s*(?:&\w+\s+)?(.*)$/.exec(line.trim())
+    if (m) out[m[1]] = m[2].replace(/^['"]|['"]$/g, '')
+  }
+  return out
+}
+
+const pct = (v?: string) => (v ? `${Math.round(Number(v))}%` : '?')
+/** Windows FILETIME durations (100 ns ticks) in notification texts. */
+const ticksMs = (v?: string) => (v ? Number(v) / 10_000 : 0)
+const eveTime = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace('T', ' ') + ' EVE'
+
+const structureNames = new Map<number, string>()
+const moonNames = new Map<number, string>()
+async function moonName(id: number): Promise<string> {
+  if (!moonNames.has(id)) moonNames.set(id, (await esi<{ name: string }>(`/universe/moons/${id}/`).catch(() => ({ name: String(id) }))).name)
+  return moonNames.get(id)!
+}
+
+/** Same event seen by several characters of one corporation: announced once. */
+const seenEvents = new Set<string>()
+
+async function checkGameNotifications(id: number): Promise<void> {
+  const cfg = loadSettings()
+  if (!auth.characters().find((c) => c.id === id)?.scopes.includes('esi-characters.read_notifications.v1')) return
+  const list = await esi<GameNotification[]>(`/characters/${id}/notifications/`, id)
+  const discord = cfg.notify.structuresDiscord ? cfg.intel.discord.webhook : ''
+  // Only fresh ones: the list goes back weeks.
+  const recent = list.filter((n) => Date.now() - Date.parse(n.timestamp) < 3 * 3_600_000)
+  for (const n of recent) {
+    const f = yamlFields(n.text)
+    const sid = Number(f.structureID) || 0
+    const event = `${n.type}-${sid || f.moonID}-${n.timestamp}`
+    if (seenEvents.has(event)) continue
+    const name = sid ? structureNames.get(sid) ?? `#${sid}` : ''
+    const where = f.solarsystemID ? await systemName(Number(f.solarsystemID)) : ''
+    let msg: [string, string] | null = null
+    switch (n.type) {
+      case 'StructureUnderAttack': {
+        const who = [f.corpName, f.allianceName].filter(Boolean).join(' / ')
+        msg = [t(`${name}: атакуют`, `${name}: under attack`), `${where} · ${t('щит', 'shield')} ${pct(f.shieldPercentage)} · ${t('броня', 'armor')} ${pct(f.armorPercentage)} · ${t('корпус', 'hull')} ${pct(f.hullPercentage)}${who ? ` · ${who}` : ''}`]
+        break
+      }
+      case 'StructureLostShields':
+      case 'StructureLostArmor': {
+        const layer = n.type === 'StructureLostShields' ? t('щит', 'shields') : t('броня', 'armor')
+        const out = ticksMs(f.timeLeft)
+        msg = [t(`${name}: потерян ${layer}`, `${name}: ${layer} lost`), `${where}${out ? ` · ${t('выход из реинфорса', 'out of reinforce')} ${eveTime(Date.parse(n.timestamp) + out)}` : ''}`]
+        break
+      }
+      case 'StructureDestroyed':
+        msg = [t(`${name}: уничтожена`, `${name}: destroyed`), where]
+        break
+      case 'StructureServicesOffline':
+        msg = [t(`${name}: сервисы отключились`, `${name}: services went offline`), where]
+        break
+      case 'MoonminingExtractionFinished':
+      case 'MoonminingAutomaticFracture': {
+        const moon = f.moonID ? await moonName(Number(f.moonID)) : ''
+        const label = n.type === 'MoonminingExtractionFinished' ? t('экстракция готова', 'extraction ready') : t('луна взорвана автоматически', 'automatic fracture')
+        msg = [`${f.structureName ?? name}: ${label}`, moon || where]
+        break
+      }
+    }
+    if (!msg) continue
+    seenEvents.add(event)
+    if (announce(`gn-${event}`, 'structure', id, msg[0], msg[1]) && discord) postDiscord(discord, msg[0], msg[1], 'structure')
   }
 }
 
@@ -230,6 +313,7 @@ async function checkAll(): Promise<void> {
     await run(cfg.orders, checkOrders)
     await run(cfg.clone, checkClone)
     await run(cfg.structures, checkStructures)
+    await run(cfg.gameNotifications, checkGameNotifications)
   }
 }
 

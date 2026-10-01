@@ -49,7 +49,7 @@ export default function Structures() {
   }, [active?.id, active?.scopes.join(' ')])
 
   if (!active) return <RequireLogin what="структуры корпорации" />
-  if (!active.scopes.includes(SCOPE)) return <Empty>Нажмите «Настройки → Разрешить структуры корпорации». В игре у персонажа должна быть роль Station Manager.</Empty>
+  if (!active.scopes.includes(SCOPE)) return <Empty>Нажмите «Настройки → Разрешить корпорацию». В игре у персонажа должна быть роль Station Manager.</Empty>
   if (data.loading && !data.data) return <Loading />
   if (data.error)
     return <ErrorBox error={/403/.test(data.error) ? 'ESI отказал: у персонажа нет роли Station Manager в корпорации.' : data.error} />

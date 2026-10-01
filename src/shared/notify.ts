@@ -17,6 +17,8 @@ export interface NotifySettings {
   structureFuelDays: number
   /** Also post structure alerts to the intel Discord webhook */
   structuresDiscord: boolean
+  /** Game notifications: structure attacked / shields / armor lost / destroyed, moon extractions */
+  gameNotifications: boolean
 }
 
 export const DEFAULT_NOTIFY: NotifySettings = {
@@ -30,7 +32,8 @@ export const DEFAULT_NOTIFY: NotifySettings = {
   clone: false,
   structures: true,
   structureFuelDays: 3,
-  structuresDiscord: true
+  structuresDiscord: true,
+  gameNotifications: true
 }
 
 export type NotifyKind = 'skills' | 'pi' | 'industry' | 'fatigue' | 'orders' | 'clone' | 'structure'

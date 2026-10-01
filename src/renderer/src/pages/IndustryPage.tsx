@@ -10,8 +10,9 @@ import { jitaPrices } from '../lib/market'
 import { getBasic, searchSystemsSde, searchTypesSde, tn } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
 import Structures from './Structures'
+import Moons from './Moons'
 
-type Tab = 'calc' | 'jobs' | 'pi' | 'structures'
+type Tab = 'calc' | 'jobs' | 'pi' | 'structures' | 'moons'
 
 export default function IndustryPage() {
   const { pageArg } = useApp()
@@ -26,7 +27,8 @@ export default function IndustryPage() {
           { id: 'calc', label: 'Калькулятор производства' },
           { id: 'jobs', label: 'Мои работы' },
           { id: 'pi', label: 'Планетарка' },
-          { id: 'structures', label: 'Структуры' }
+          { id: 'structures', label: 'Структуры' },
+          { id: 'moons', label: 'Луны' }
         ]}
         value={tab}
         onChange={setTab}
@@ -34,6 +36,7 @@ export default function IndustryPage() {
       {tab === 'calc' && <Calculator />}
       {tab === 'jobs' && <Jobs />}
       {tab === 'structures' && <Structures />}
+      {tab === 'moons' && <Moons />}
       {tab === 'pi' && <Planets />}
     </div>
   )

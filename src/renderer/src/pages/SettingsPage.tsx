@@ -72,13 +72,13 @@ export default function SettingsPage() {
           <button className="ghost" onClick={() => void doLogin(true, hasCorp)} disabled={busy} title="Войти ещё раз с разрешениями на действия в игре">
             Разрешить действия в игре
           </button>
-          <button className="ghost" onClick={() => void doLogin(hasExtra, true)} disabled={busy} title="Войти ещё раз с разрешением читать структуры корпорации">
-            Разрешить структуры корпорации
+          <button className="ghost" onClick={() => void doLogin(hasExtra, true)} disabled={busy} title="Войти ещё раз с корпоративными разрешениями">
+            Разрешить корпорацию
           </button>
         </div>
         <p className="muted small">
-          «Разрешить структуры корпорации» — топливо, состояние и сервисы структур вашей корпорации (вкладка «Индустрия → Структуры» и уведомления). В игре у персонажа должна быть роль
-          Station Manager.
+          «Разрешить корпорацию» — структуры корпорации (топливо, состояние, сервисы), игровые уведомления об атаках на структуры и лунная добыча: вкладки «Индустрия → Структуры» и
+          «Индустрия → Луны», уведомления. Для структур и экстракций нужна роль Station Manager, для журнала лунной добычи — Accountant.
         </p>
         <p className="muted small">
           «Разрешить действия в игре» — вход с дополнительными разрешениями: открывать окна в клиенте (рынок, Show Info, контракты, письмо), сохранять фиты в игру, почта,
@@ -266,7 +266,8 @@ const NOTIFY_KINDS: [keyof Omit<NotifySettings, 'tray' | 'skillHours' | 'structu
   ['fatigue', 'Усталость от прыжков прошла'],
   ['orders', 'Ваш ордер на рынке перебили'],
   ['clone', 'Доступен прыжок клона'],
-  ['structures', 'Структуры корпорации: мало топлива, реинфорс']
+  ['structures', 'Структуры корпорации: мало топлива, реинфорс'],
+  ['gameNotifications', 'Игровые уведомления: структуру атакуют, потерян щит или броня, уничтожена, лунная экстракция готова']
 ]
 
 function NotifyCard() {
@@ -292,7 +293,7 @@ function NotifyCard() {
           {label}
         </label>
       ))}
-      {n.structures && (
+      {(n.structures || n.gameNotifications) && (
         <div className="row">
           <label>
             Топливо структур: предупреждать, когда осталось
