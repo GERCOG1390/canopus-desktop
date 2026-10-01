@@ -1,0 +1,54 @@
+# Windows and Linux builds on GitHub's runners (the macOS build is signed and notarized locally).
+# Run by hand from the Actions tab. With a release tag (e.g. v0.9.0) the files are attached to that
+# release, which must already exist (a draft is fine); without one they are only kept as artifacts.
+name: Build Windows and Linux
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach the files to (empty = artifacts only)
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win
+            files: |
+              release/*.exe
+              release/*.exe.blockmap
+          - os: ubuntu-latest
+            target: --linux
+            files: |
+              release/*.AppImage
+              release/*.deb
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npx electron-vite build
+      - run: npx electron-builder ${{ matrix.target }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: canopus-${{ matrix.os }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+      - name: Attach to the release
+        if: inputs.tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.tag }}" ${{ matrix.os == 'windows-latest' && 'release/*.exe release/*.exe.blockmap' || 'release/*.AppImage release/*.deb' }} --clobber

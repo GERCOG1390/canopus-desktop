@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useApp } from '../AppContext'
 import { Card, ErrorBox } from '../components/ui'
 import { imageUrl } from '../lib/esi'
-import { IS_MAC, locale } from '../i18n'
+import { IS_LINUX, IS_MAC, locale } from '../i18n'
 import { fmtDate } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 import { useUpdate } from '../lib/update'
@@ -234,7 +234,9 @@ function UpdateCard() {
         <p className="muted small">
           {IS_MAC
             ? 'Чтобы Canopus обновлялся сам, перенесите его из окна .dmg в папку «Программы» и запускайте оттуда.'
-            : 'Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.'}
+            : IS_LINUX
+              ? 'Сам обновляется только AppImage. Пакет .deb обновите вручную со страницы релиза.'
+              : 'Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.'}
         </p>
       )}
       {u.notes && u.version && (

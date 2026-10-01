@@ -11,6 +11,7 @@ const CYRILLIC = /[А-Яа-яЁё]/
 
 /** On macOS the game and Canopus' shortcuts use Cmd where Windows uses Ctrl. */
 export const IS_MAC = /Mac/.test(navigator.platform)
+export const IS_LINUX = /Linux/.test(navigator.platform)
 const platformKeys = (text: string): string => (IS_MAC && text.includes('Ctrl') ? text.replace(/\bCtrl\b/g, 'Cmd') : text)
 
 export function setUiLang(lang: UiLang): void {

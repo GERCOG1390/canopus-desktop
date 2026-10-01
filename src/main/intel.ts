@@ -16,11 +16,25 @@ type Send = (channel: string, payload: unknown) => void
 const LINE_RE = /^﻿?\[\s*(\d{4}\.\d{2}\.\d{2} \d{2}:\d{2}:\d{2})\s*\]\s*(.+?) > (.*)$/
 const SYSTEM_SPEAKERS = new Set(['EVE System', 'Система EVE', 'EVE-System', 'Système EVE', 'EVEシステム', '系统'])
 
+/** On Linux EVE runs under Steam's Proton (app 8500) or Wine: the logs live inside the prefix. */
+function linuxLogDirs(): string[] {
+  const home = app.getPath('home')
+  const user = process.env.USER ?? ''
+  const logs = (drive: string, who: string) => join(drive, 'users', who, 'Documents', 'EVE', 'logs', 'Chatlogs')
+  const steamRoots = [join(home, '.steam', 'steam'), join(home, '.local', 'share', 'Steam'), join(home, '.var', 'app', 'com.valvesoftware.Steam', '.local', 'share', 'Steam')]
+  return [
+    ...steamRoots.map((root) => logs(join(root, 'steamapps', 'compatdata', '8500', 'pfx', 'drive_c'), 'steamuser')),
+    logs(join(home, 'Games', 'eve-online', 'drive_c'), user),
+    logs(join(home, '.wine', 'drive_c'), user)
+  ]
+}
+
 export function defaultLogDir(): string | null {
   const candidates = [
     join(app.getPath('documents'), 'EVE', 'logs', 'Chatlogs'),
     join(app.getPath('home'), 'OneDrive', 'Documents', 'EVE', 'logs', 'Chatlogs'),
-    join(app.getPath('home'), 'Documents', 'EVE', 'logs', 'Chatlogs')
+    join(app.getPath('home'), 'Documents', 'EVE', 'logs', 'Chatlogs'),
+    ...(process.platform === 'linux' ? linuxLogDirs() : [])
   ]
   return candidates.find((d) => existsSync(d)) ?? null
 }

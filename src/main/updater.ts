@@ -48,6 +48,17 @@ function detectKind(): UpdateKind {
       return 'manual'
     }
   }
+  if (process.platform === 'linux') {
+    // An AppImage knows its own path; a .deb install is updated by the package manager.
+    const image = process.env.APPIMAGE
+    if (!app.isPackaged || !image) return 'manual'
+    try {
+      accessSync(dirname(image), constants.W_OK)
+      return 'appimage'
+    } catch {
+      return 'manual'
+    }
+  }
   if (process.env.PORTABLE_EXECUTABLE_FILE) return 'portable'
   // The NSIS installer puts its uninstaller next to the exe; an unpacked or dev build has none.
   if (app.isPackaged && existsSync(join(dirname(process.execPath), 'Uninstall Canopus.exe'))) return 'installer'
@@ -78,7 +89,9 @@ function pickAsset(r: Release): Asset | null {
   const name =
     status.kind === 'mac'
       ? `Canopus-${version}-mac.zip`
-      : status.kind === 'portable'
+      : status.kind === 'appimage'
+        ? `Canopus-${version}-linux.AppImage`
+        : status.kind === 'portable'
         ? `Canopus-${version}-portable.exe`
         : `Canopus-Setup-${version}.exe`
   return r.assets.find((a) => a.name === name) ?? null
@@ -96,7 +109,7 @@ export async function checkForUpdate(manual = false): Promise<UpdateStatus> {
       headers: { Accept: 'application/vnd.github+json', 'User-Agent': `Canopus/${status.current}` }
     })
     if (!res.ok) throw new Error(`GitHub: ${res.status}`)
-    const platformBuild = process.platform === 'darwin' ? /-mac\.(dmg|zip)$/ : /\.exe$/
+    const platformBuild = process.platform === 'darwin' ? /-mac\.(dmg|zip)$/ : process.platform === 'linux' ? /-linux\.(AppImage|deb)$/ : /\.exe$/
     const hasBuild = (x: Release) => (status.kind === 'manual' ? x.assets.some((a) => platformBuild.test(a.name)) : !!pickAsset(x))
     const releases = ((await res.json()) as Release[])
       .filter((x) => !x.draft && !x.prerelease && hasBuild(x))
@@ -203,6 +216,10 @@ function spawnInstaller(relaunch: boolean): boolean {
     spawnMacSwap(relaunch, env)
     return true
   }
+  if (status.kind === 'appimage') {
+    spawnAppImageSwap(relaunch, env)
+    return true
+  }
   if (status.kind === 'installer') {
     const args = ['--updated', '/S', ...(relaunch ? ['--force-run'] : [])]
     spawn(downloaded, args, { detached: true, stdio: 'ignore', env }).unref()
@@ -260,6 +277,33 @@ function spawnMacSwap(relaunch: boolean, env: NodeJS.ProcessEnv): void {
   const scriptPath = join(dir, 'apply-update.sh')
   writeFileSync(scriptPath, script, { mode: 0o755 })
   spawn('/bin/bash', [scriptPath], { detached: true, stdio: 'ignore', env }).unref()
+}
+
+/**
+ * Linux AppImage: a detached shell script waits for Canopus to exit, copies the new image next to
+ * the old one, makes it executable and moves it over the old file (keeping its name), then
+ * optionally starts it. The download was checked against GitHub's sha256 already.
+ */
+function spawnAppImageSwap(relaunch: boolean, env: NodeJS.ProcessEnv): void {
+  const q = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`
+  const target = process.env.APPIMAGE!
+  const dir = dirname(downloaded!)
+  const script = [
+    '#!/bin/sh',
+    `src=${q(downloaded!)}; dst=${q(target)}; log=${q(join(dir, 'apply-update.log'))}; pid=${process.pid}`,
+    'exec >"$log" 2>&1; echo "$(date) start"',
+    'i=0; while kill -0 "$pid" 2>/dev/null && [ $i -lt 240 ]; do sleep 0.5; i=$((i+1)); done',
+    'tmp="$dst.new-$$"',
+    'cp "$src" "$tmp" && chmod +x "$tmp" && mv -f "$tmp" "$dst" || { echo swap failed; rm -f "$tmp"; exit 1; }',
+    'rm -f "$src"; echo "$(date) done"',
+    relaunch ? 'nohup "$dst" >/dev/null 2>&1 &' : ''
+  ].join('\n')
+  const scriptPath = join(dir, 'apply-update.sh')
+  writeFileSync(scriptPath, script, { mode: 0o755 })
+  // The AppImage runtime sets these for its own process; the new image must start clean.
+  const clean = { ...env }
+  for (const k of ['APPIMAGE', 'APPDIR', 'OWD', 'ARGV0']) delete clean[k]
+  spawn('/bin/sh', [scriptPath], { detached: true, stdio: 'ignore', env: clean }).unref()
 }
 
 /** Installs the downloaded update and restarts Canopus. */

@@ -1,6 +1,6 @@
 {
   "name": "canopus",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Canopus — desktop companion for EVE Online: character, fitting with a dogma engine, intel, market, map and industry",
   "main": "./out/main/index.js",
   "private": true,
@@ -10,7 +10,8 @@
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "dist": "electron-vite build && electron-builder --win",
-    "dist:mac": "electron-vite build && electron-builder --mac"
+    "dist:mac": "electron-vite build && electron-builder --mac",
+    "dist:linux": "electron-vite build && electron-builder --linux"
   },
   "build": {
     "appId": "app.canopus.eve",
@@ -75,6 +76,27 @@
     "dmg": {
       "artifactName": "Canopus-${version}-mac.dmg",
       "title": "Canopus ${version}"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Game",
+      "synopsis": "Desktop companion for EVE Online",
+      "maintainer": "GERCOG1390 <GERCOG1390@users.noreply.github.com>",
+      "artifactName": "Canopus-${version}-linux.${ext}"
     },
     "protocols": [
       {
