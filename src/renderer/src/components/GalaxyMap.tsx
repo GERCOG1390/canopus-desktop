@@ -2,14 +2,14 @@
 // links, region and system labels, kills in the last hour, a route, fresh intel reports and your
 // current system. three.js / WebGL; labels are HTML placed over the canvas every frame.
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { GalaxyData } from '../../../shared/sde'
 import { REPORT_FRESH_MS, useIntel } from '../IntelContext'
 import { useApp } from '../AppContext'
 import { Card, ErrorBox, Loading, SearchBox, Sec } from './ui'
-import { searchSystemsSde, tn } from '../lib/sde'
+import { CATEGORY, searchSystemsSde, searchTypesSde, tn, useTypeBasic } from '../lib/sde'
 import { secColor } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 import { esi } from '../lib/esi'
@@ -32,6 +32,11 @@ interface Kills {
   npc: number
 }
 const pvp = (k: Kills | undefined) => (k ? k.ship + k.pod : 0)
+
+/** Jump drive: base range (attribute 867) × (1 + 20% per Jump Drive Calibration level). */
+const JUMP_RANGE_ATTR = 867
+const JUMP_CALIBRATION = 21611
+const REACH_COLOR = '#8ecbff'
 
 const BRIDGES_KEY = 'galaxy-bridges'
 /** The player's Ansiblex network: the pasted text, the parsed pairs and the alliance capital. */
@@ -65,6 +70,7 @@ interface Scene {
   kills: THREE.Group
   route: THREE.Group
   bridges: THREE.Group
+  jump: THREE.Group
   dot: THREE.Texture
   flyTo: (i: number) => void
   fitTo: (indices: number[]) => void
@@ -162,6 +168,22 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   }
   const marksRef = useRef(marks)
   marksRef.current = marks
+
+  // Capital jump range from a system: the sphere and the systems a jump drive can reach.
+  const { active } = useApp()
+  const [jumpFrom, setJumpFrom] = useState<number | null>(null)
+  const [jumpShip, setJumpShip] = useState<number | null>(null)
+  const [jumpSkills, setJumpSkills] = useState<'all5' | 'char'>('all5')
+  const jumpBase = useAsync(
+    async () => (jumpShip ? ((await window.api.sde.dogmaAttrs([jumpShip], [JUMP_RANGE_ATTR]))[jumpShip]?.[JUMP_RANGE_ATTR] ?? 0) : null),
+    [jumpShip]
+  )
+  const jdcLevel = useAsync(async () => {
+    if (jumpSkills === 'all5' || !active) return 5
+    const r = await esi<{ skills: { skill_id: number; active_skill_level: number }[] }>(`/characters/${active.id}/skills/`, { characterId: active.id })
+    return r.skills.find((x) => x.skill_id === JUMP_CALIBRATION)?.active_skill_level ?? 0
+  }, [jumpSkills, active?.id])
+  const jumpRange = jumpBase.data ? jumpBase.data * (1 + 0.2 * (jdcLevel.data ?? 5)) : 0
 
   // Kills in the last hour (ESI), refreshed while the map is open.
   const kills = useAsync(async () => {
@@ -282,6 +304,8 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     scene.add(routeGroup)
     const bridgesGroup = new THREE.Group()
     scene.add(bridgesGroup)
+    const jumpGroup = new THREE.Group()
+    scene.add(jumpGroup)
 
     // Region labels at the centre of each region's systems.
     const regionSums = new Map<number, { v: THREE.Vector3; n: number }>()
@@ -523,7 +547,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     }
     frame()
 
-    sceneRef.current = { data, camera, controls, points: positions, highlight, kills: killsGroup, route: routeGroup, bridges: bridgesGroup, dot, flyTo, fitTo, view }
+    sceneRef.current = { data, camera, controls, points: positions, highlight, kills: killsGroup, route: routeGroup, bridges: bridgesGroup, jump: jumpGroup, dot, flyTo, fitTo, view }
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
@@ -535,6 +559,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
       clearGroup(killsGroup)
       clearGroup(routeGroup)
       clearGroup(bridgesGroup)
+      clearGroup(jumpGroup)
       dot.dispose()
       ring.dispose()
       renderer.domElement.remove()
@@ -547,6 +572,41 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   useEffect(() => {
     if (gatesRef.current) gatesRef.current.visible = showGates
   }, [showGates, data])
+
+  // ---- Jump range: a sphere around the start and the systems inside it a jump drive can enter ----
+  const reach = useMemo(() => {
+    const i = jumpFrom ? indexOf.current.get(jumpFrom) : undefined
+    if (!data || i === undefined || !jumpRange) return null
+    const p = data.pos
+    const out: number[] = []
+    for (let j = 0; j < data.ids.length; j++) {
+      if (j === i || !data.jump[j]) continue
+      if (Math.hypot(p[i * 3] - p[j * 3], p[i * 3 + 1] - p[j * 3 + 1], p[i * 3 + 2] - p[j * 3 + 2]) <= jumpRange) out.push(j)
+    }
+    return { from: i, systems: out }
+  }, [data, jumpFrom, jumpRange])
+  useEffect(() => {
+    const s = sceneRef.current
+    if (!s) return
+    clearGroup(s.jump)
+    if (!reach) return
+    const centre = new THREE.Vector3().fromArray(s.points, reach.from * 3)
+    const sphere = new THREE.Mesh(
+      new THREE.SphereGeometry(jumpRange, 48, 24),
+      new THREE.MeshBasicMaterial({ color: REACH_COLOR, wireframe: true, transparent: true, opacity: 0.07, depthWrite: false })
+    )
+    sphere.position.copy(centre)
+    s.jump.add(sphere)
+    const pos = new Float32Array(reach.systems.length * 3)
+    reach.systems.forEach((j, k) => pos.set(s.points.subarray(j * 3, j * 3 + 3), k * 3))
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ size: 9, sizeAttenuation: false, color: REACH_COLOR, map: s.dot, transparent: true, depthWrite: false }))
+    pts.frustumCulled = false
+    s.jump.add(pts)
+    s.fitTo([reach.from, ...reach.systems])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reach])
 
   // ---- Jump bridges: gold arcs lifted above the gate lines ----
   const bridgesKey = JSON.stringify(bridges.list)
@@ -768,6 +828,11 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
             </span>
           )}
           {Object.keys(marks.notes).length > 0 && <span>✎ заметка</span>}
+          {reach && (
+            <span>
+              <i style={{ background: REACH_COLOR }} /> в досягаемости прыжка
+            </span>
+          )}
         </div>
         {selected && (
           <div className="gx-card">
@@ -798,6 +863,9 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
                 {marks.avoid.includes(selected.id) ? 'Избегается' : 'Избегать'}
               </button>
             </div>
+            <button className="ghost small gx-jump-btn" onClick={() => setJumpFrom(selected.id)}>
+              Прыжок капитала отсюда
+            </button>
             <NoteField key={selected.id} value={marks.notes[selected.id] ?? ''} onSave={(t) => setNote(selected.id, t)} />
           </div>
         )}
@@ -825,6 +893,35 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
               setRouteFrom(null)
             }}
           />
+        )}
+        {jumpFrom && (
+          <div className="gx-jump">
+            <div className="gx-card-head">
+              <b>{`Прыжок из ${data?.names[indexOf.current.get(jumpFrom) ?? -1] ?? ''}`}</b>
+              <button className="ghost gx-close" onClick={() => setJumpFrom(null)} aria-label="Закрыть">
+                ×
+              </button>
+            </div>
+            <JumpShipPicker shipId={jumpShip} onSelect={setJumpShip} />
+            <select value={jumpSkills} onChange={(e) => setJumpSkills(e.target.value as 'all5' | 'char')}>
+              <option value="all5">Jump Drive Calibration V</option>
+              {active && <option value="char">Навыки персонажа</option>}
+            </select>
+            {!jumpShip ? (
+              <div className="muted small">Выберите корабль с прыжковым двигателем</div>
+            ) : jumpBase.data === 0 ? (
+              <div className="bad small">У этого корабля нет прыжкового двигателя.</div>
+            ) : jumpRange ? (
+              <div className="small">
+                <b>{`${jumpRange.toFixed(2)} ly`}</b>
+                <span className="muted">{` · JDC ${jdcLevel.data ?? 5}`}</span>
+                <div>{`Систем в досягаемости: ${reach?.systems.length ?? 0}`}</div>
+                <div className="muted">Хайсек и Почвень недоступны для прыжка. Мосты капиталам закрыты.</div>
+              </div>
+            ) : (
+              <Loading />
+            )}
+          </div>
         )}
       </div>
       {bridgesOpen && data && <BridgesCard data={data} indexOf={indexOf.current} value={bridges} onSave={saveBridges} onSystem={fly} />}
@@ -1089,6 +1186,19 @@ function NoteField({ value, onSave }: { value: string; onSave: (text: string) =>
       placeholder="Заметка: станции, кто живёт, ссылки…"
       onChange={(e) => setText(e.target.value)}
       onBlur={() => text !== value && onSave(text)}
+    />
+  )
+}
+
+function JumpShipPicker({ shipId, onSelect }: { shipId: number | null; onSelect: (id: number) => void }) {
+  const { lang } = useApp()
+  const ship = useTypeBasic(shipId ?? 0)
+  return (
+    <SearchBox
+      placeholder={ship ? tn(ship.n, lang) : 'Archon, Revelation, Rhea…'}
+      search={(q) => searchTypesSde(q, lang, { categories: [CATEGORY.SHIP] })}
+      onSelect={(t) => onSelect(t.id)}
+      clearOnSelect
     />
   )
 }

@@ -820,6 +820,11 @@ export const EXACT: Record<string, string> = {
   '✎ заметка': '✎ note',
   'сбросить': 'clear',
   'Заметка: станции, кто живёт, ссылки…': 'Note: stations, who lives here, links…',
+  'Прыжок капитала отсюда': 'Capital jump from here',
+  'Навыки персонажа': "Character's skills",
+  'Выберите корабль с прыжковым двигателем': 'Pick a ship with a jump drive',
+  'Хайсек и Почвень недоступны для прыжка. Мосты капиталам закрыты.': 'Highsec and Pochven can’t be jumped to. Bridges are closed to capitals.',
+  'в досягаемости прыжка': 'in jump range',
   'Чтобы Canopus обновлялся сам, перенесите его из окна .dmg в папку «Программы» и запускайте оттуда.': 'To let Canopus update itself, drag it from the .dmg window to Applications and start it from there.',
   'Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.': 'This copy wasn\'t started from the installer or the portable exe — download the new version from the release page.',
   'Топливо': 'Fuel',
@@ -1306,6 +1311,8 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^Прыжок из (.+)$/, 'Jump from $1'],
+  [/^Систем в досягаемости: (\d+)$/, 'Systems in range: $1'],
   [/^Обходит систем: (\d+)$/, 'Avoiding systems: $1'],
   [/^Мосты: (\d+)$/, 'Bridges: $1'],
   [/^По мостам: (\d+)$/, 'Via bridges: $1'],

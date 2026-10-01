@@ -1181,7 +1181,7 @@ let galaxyCache: { db: SdeDb; data: GalaxyData } | null = null
 export function galaxy(): GalaxyData {
   const d = need()
   if (galaxyCache?.db === d) return galaxyCache.data
-  const data: GalaxyData = { ids: [], names: [], sec: [], region: [], pos: [], edges: [], regions: {} }
+  const data: GalaxyData = { ids: [], names: [], sec: [], region: [], pos: [], jump: [], edges: [], regions: {} }
   const index = new Map<number, number>()
   for (const [k, s] of Object.entries(d.systems)) {
     const id = Number(k)
@@ -1192,6 +1192,7 @@ export function galaxy(): GalaxyData {
     data.sec.push(s.sec)
     data.region.push(s.r)
     data.pos.push(...s.p)
+    data.jump.push(jumpTarget(id, s) ? 1 : 0)
     data.regions[s.r] ??= d.regions[s.r]
   }
   for (const [k, list] of Object.entries(d.jumps)) {

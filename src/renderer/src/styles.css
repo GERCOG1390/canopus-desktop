@@ -3701,3 +3701,23 @@ button.danger-fill:hover:not(:disabled) {
   font-size: 12px;
   resize: vertical;
 }
+.gx-jump {
+  position: absolute;
+  right: 10px;
+  bottom: 34px;
+  width: 270px;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 2;
+}
+.gx-jump .searchbox {
+  min-width: 0;
+}
+.gx-jump-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+}

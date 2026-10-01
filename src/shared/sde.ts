@@ -224,6 +224,8 @@ export interface GalaxyData {
   region: number[]
   /** x, y, z per system (SDE coordinates, light years) */
   pos: number[]
+  /** 1 where a jump drive can jump to (lowsec / nullsec outside Pochven) */
+  jump: number[]
   /** Stargate connections as pairs of indices into the arrays above */
   edges: number[]
   regions: Record<number, L10n>
