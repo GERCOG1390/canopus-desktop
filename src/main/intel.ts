@@ -520,9 +520,9 @@ export const isWebhook = (url: string): boolean => WEBHOOK_RE.test(url.trim())
 const discordQueue: { url: string; payload: unknown }[] = []
 let discordBusy = false
 
-function postDiscord(url: string, title: string, body: string, kind: 'local' | 'channel' | 'test'): void {
+export function postDiscord(url: string, title: string, body: string, kind: 'local' | 'channel' | 'structure' | 'test'): void {
   if (!isWebhook(url) || discordQueue.length >= 5) return
-  const color = kind === 'local' ? 0xe5533d : kind === 'channel' ? 0xf0b44f : 0x3dbf9c
+  const color = kind === 'local' ? 0xe5533d : kind === 'channel' ? 0xf0b44f : kind === 'structure' ? 0x8ecbff : 0x3dbf9c
   discordQueue.push({
     url: url.trim(),
     payload: { username: 'Canopus', embeds: [{ title: title.slice(0, 250), description: body.slice(0, 2000), color, timestamp: new Date().toISOString() }] }

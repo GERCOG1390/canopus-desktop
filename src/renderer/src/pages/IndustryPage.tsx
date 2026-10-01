@@ -9,8 +9,9 @@ import { fmtDate, fmtDuration, fmtIsk, fmtNum } from '../lib/format'
 import { jitaPrices } from '../lib/market'
 import { getBasic, searchSystemsSde, searchTypesSde, tn } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
+import Structures from './Structures'
 
-type Tab = 'calc' | 'jobs' | 'pi'
+type Tab = 'calc' | 'jobs' | 'pi' | 'structures'
 
 export default function IndustryPage() {
   const { pageArg } = useApp()
@@ -24,13 +25,15 @@ export default function IndustryPage() {
         tabs={[
           { id: 'calc', label: 'Калькулятор производства' },
           { id: 'jobs', label: 'Мои работы' },
-          { id: 'pi', label: 'Планетарка' }
+          { id: 'pi', label: 'Планетарка' },
+          { id: 'structures', label: 'Структуры' }
         ]}
         value={tab}
         onChange={setTab}
       />
       {tab === 'calc' && <Calculator />}
       {tab === 'jobs' && <Jobs />}
+      {tab === 'structures' && <Structures />}
       {tab === 'pi' && <Planets />}
     </div>
   )

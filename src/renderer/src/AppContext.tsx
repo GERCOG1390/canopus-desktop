@@ -20,7 +20,7 @@ interface AppState {
   navigate: (page: PageId, arg?: number | null) => void
   updateSettings: (patch: Partial<Settings>) => Promise<void>
   /** `extended`: also ask for the permissions to act in the game */
-  login: (extended?: boolean) => Promise<void>
+  login: (extended?: boolean, corp?: boolean) => Promise<void>
   logout: (id: number) => Promise<void>
   setActive: (id: number) => Promise<void>
 }
@@ -58,8 +58,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSettings(await window.api.settings.set(patch))
   }, [])
 
-  const login = useCallback(async (extended?: boolean) => {
-    const ch = await window.api.auth.login(extended)
+  const login = useCallback(async (extended?: boolean, corp?: boolean) => {
+    const ch = await window.api.auth.login(extended, corp)
     setCharacters(await window.api.auth.characters())
     setSettings(await window.api.settings.set({ activeCharacterId: ch.id }))
   }, [])

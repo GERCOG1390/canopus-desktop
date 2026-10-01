@@ -21,7 +21,7 @@ function on<T>(channel: string, listener: (payload: T) => void): () => void {
 const api: CanopusApi = {
   request: (url, options) => invoke('http:request', url, options),
   auth: {
-    login: (extended) => invoke('auth:login', extended),
+    login: (extended, corp) => invoke('auth:login', extended, corp),
     extraScopes: () => invoke('auth:extraScopes'),
     characters: () => invoke('auth:characters'),
     logout: (characterId) => invoke('auth:logout', characterId),

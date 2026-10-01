@@ -20,15 +20,18 @@ export default function SettingsPage() {
 
   const extra = useAsync(() => window.api.auth.extraScopes(), [])
 
-  async function doLogin(extended = false) {
+  // A new login replaces the token, so it asks again for the opt-in permissions the character has.
+  const hasExtra = !!active?.scopes.includes('esi-ui.open_window.v1')
+  const hasCorp = !!active?.scopes.includes('esi-corporations.read_structures.v1')
+  async function doLogin(extended = false, corp = false) {
     setBusy(true)
     setError(null)
     try {
-      await login(extended)
+      await login(extended, corp)
     } catch (e) {
       const msg = (e as Error).message
       // The SSO refuses scopes the EVE application doesn't list.
-      setError(extended && /scope|отмен|cancel/i.test(msg) ? `${msg}. Если EVE SSO отказал в разрешениях, их нужно добавить в приложение Canopus на developers.eveonline.com (см. ниже).` : msg)
+      setError((extended || corp) && /scope|отмен|cancel/i.test(msg) ? `${msg}. Если EVE SSO отказал в разрешениях, их нужно добавить в приложение Canopus на developers.eveonline.com (см. ниже).` : msg)
     } finally {
       setBusy(false)
     }
@@ -66,10 +69,17 @@ export default function SettingsPage() {
           <button onClick={() => void doLogin()} disabled={busy}>
             {busy ? 'Ожидаю вход…' : 'Добавить персонажа (EVE SSO)'}
           </button>
-          <button className="ghost" onClick={() => void doLogin(true)} disabled={busy} title="Войти ещё раз с разрешениями на действия в игре">
+          <button className="ghost" onClick={() => void doLogin(true, hasCorp)} disabled={busy} title="Войти ещё раз с разрешениями на действия в игре">
             Разрешить действия в игре
           </button>
+          <button className="ghost" onClick={() => void doLogin(hasExtra, true)} disabled={busy} title="Войти ещё раз с разрешением читать структуры корпорации">
+            Разрешить структуры корпорации
+          </button>
         </div>
+        <p className="muted small">
+          «Разрешить структуры корпорации» — топливо, состояние и сервисы структур вашей корпорации (вкладка «Индустрия → Структуры» и уведомления). В игре у персонажа должна быть роль
+          Station Manager.
+        </p>
         <p className="muted small">
           «Разрешить действия в игре» — вход с дополнительными разрешениями: открывать окна в клиенте (рынок, Show Info, контракты, письмо), сохранять фиты в игру, почта,
           контакты, управление флотом, календарь. Canopus ничего не делает в игре сам — только по вашей кнопке.
@@ -249,13 +259,14 @@ function UpdateCard() {
   )
 }
 
-const NOTIFY_KINDS: [keyof Omit<NotifySettings, 'tray' | 'skillHours'>, string][] = [
+const NOTIFY_KINDS: [keyof Omit<NotifySettings, 'tray' | 'skillHours' | 'structureFuelDays' | 'structuresDiscord'>, string][] = [
   ['skills', 'Очередь навыков кончается или пуста'],
   ['pi', 'Экстракторы планетарки остановились'],
   ['industry', 'Работа в индустрии готова'],
   ['fatigue', 'Усталость от прыжков прошла'],
   ['orders', 'Ваш ордер на рынке перебили'],
-  ['clone', 'Доступен прыжок клона']
+  ['clone', 'Доступен прыжок клона'],
+  ['structures', 'Структуры корпорации: мало топлива, реинфорс']
 ]
 
 function NotifyCard() {
@@ -281,6 +292,24 @@ function NotifyCard() {
           {label}
         </label>
       ))}
+      {n.structures && (
+        <div className="row">
+          <label>
+            Топливо структур: предупреждать, когда осталось
+            <select value={n.structureFuelDays} onChange={(e) => set({ structureFuelDays: Number(e.target.value) })}>
+              {[1, 3, 7, 14].map((d) => (
+                <option key={d} value={d}>
+                  {`${d} дн.`}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="check">
+            <input type="checkbox" checked={n.structuresDiscord} onChange={(e) => set({ structuresDiscord: e.target.checked })} />
+            Также в Discord (вебхук из настроек разведки)
+          </label>
+        </div>
+      )}
       <div className="row">
         <label>
           Предупреждать об очереди навыков заранее

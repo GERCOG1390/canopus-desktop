@@ -11,6 +11,12 @@ export interface NotifySettings {
   fatigue: boolean
   orders: boolean
   clone: boolean
+  /** Corporation structures: fuel running low, armor / hull reinforced */
+  structures: boolean
+  /** Warn when a structure has this many days of fuel left or less */
+  structureFuelDays: number
+  /** Also post structure alerts to the intel Discord webhook */
+  structuresDiscord: boolean
 }
 
 export const DEFAULT_NOTIFY: NotifySettings = {
@@ -21,10 +27,13 @@ export const DEFAULT_NOTIFY: NotifySettings = {
   industry: true,
   fatigue: true,
   orders: true,
-  clone: false
+  clone: false,
+  structures: true,
+  structureFuelDays: 3,
+  structuresDiscord: true
 }
 
-export type NotifyKind = 'skills' | 'pi' | 'industry' | 'fatigue' | 'orders' | 'clone'
+export type NotifyKind = 'skills' | 'pi' | 'industry' | 'fatigue' | 'orders' | 'clone' | 'structure'
 
 /** A notification that was shown (kept for the history in Settings). */
 export interface NotifyEvent {

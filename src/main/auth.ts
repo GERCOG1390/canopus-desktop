@@ -55,6 +55,9 @@ export const SCOPES = [
  * Permissions to act in the game, asked for only on request: the EVE application must list them on
  * developers.eveonline.com, otherwise the SSO would refuse the whole login.
  */
+/** Corporation structures (fuel, state, services): also opt-in, and it needs the Station Manager role. */
+export const CORP_SCOPES = ['esi-corporations.read_structures.v1']
+
 export const EXTRA_SCOPES = [
   'esi-ui.open_window.v1',
   'esi-fittings.write_fittings.v1',
@@ -149,7 +152,7 @@ export function handleCallbackUrl(raw: string): boolean {
   return true
 }
 
-export async function login(extended = false): Promise<CharacterAuth> {
+export async function login(extended = false, corp = false): Promise<CharacterAuth> {
   const id = clientId()
   const verifier = base64url(randomBytes(32))
   const challenge = base64url(createHash('sha256').update(verifier).digest())
@@ -160,7 +163,7 @@ export async function login(extended = false): Promise<CharacterAuth> {
     response_type: 'code',
     redirect_uri: CALLBACK_URL,
     client_id: id,
-    scope: (extended ? [...SCOPES, ...EXTRA_SCOPES] : SCOPES).join(' '),
+    scope: [...SCOPES, ...(extended ? EXTRA_SCOPES : []), ...(corp ? CORP_SCOPES : [])].join(' '),
     code_challenge: challenge,
     code_challenge_method: 'S256',
     state

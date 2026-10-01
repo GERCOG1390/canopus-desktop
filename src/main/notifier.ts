@@ -9,6 +9,7 @@ import type { NotifyEvent, NotifyKind } from '../shared/notify'
 import * as auth from './auth'
 import { request } from './http'
 import { loadSettings } from './storage'
+import { postDiscord } from './intel'
 
 const ESI = 'https://esi.evetech.net/latest'
 const CHECK_EVERY_MS = 5 * 60_000
@@ -50,16 +51,17 @@ function hoursText(ms: number): string {
 }
 
 /** Shows a notification once per `key`. */
-function announce(key: string, kind: NotifyKind, characterId: number, title: string, body: string): void {
-  if (seen[key]) return
+function announce(key: string, kind: NotifyKind, characterId: number, title: string, body: string): boolean {
+  if (seen[key]) return false
   seen[key] = Date.now()
   saveSeen()
   history.unshift({ at: new Date().toISOString(), kind, characterId, title, body })
   history.splice(HISTORY)
-  if (!Notification.isSupported()) return
+  if (!Notification.isSupported()) return true
   const n = new Notification({ title, body })
   n.on('click', () => onClick())
   n.show()
+  return true
 }
 
 const esi = async <T>(path: string, characterId?: number): Promise<T> => (await request(ESI + path, characterId ? { characterId } : {})) as T
@@ -125,6 +127,52 @@ async function checkClone(id: number, who: string): Promise<void> {
   }
 }
 
+interface CorpStructure {
+  structure_id: number
+  name?: string
+  system_id: number
+  state: string
+  state_timer_end?: string
+  fuel_expires?: string
+}
+
+const systemNames = new Map<number, string>()
+async function systemName(id: number): Promise<string> {
+  if (!systemNames.has(id)) systemNames.set(id, (await esi<{ name: string }>(`/universe/systems/${id}/`).catch(() => ({ name: String(id) }))).name)
+  return systemNames.get(id)!
+}
+
+/** Corporations whose structures were already checked in this round (several characters, one corp). */
+let checkedCorps = new Set<number>()
+
+async function checkStructures(id: number): Promise<void> {
+  const cfg = loadSettings()
+  if (!auth.characters().find((c) => c.id === id)?.scopes.includes(auth.CORP_SCOPES[0])) return
+  const me = await esi<{ corporation_id: number }>(`/characters/${id}/`)
+  if (checkedCorps.has(me.corporation_id)) return
+  checkedCorps.add(me.corporation_id)
+  const list = await esi<CorpStructure[]>(`/corporations/${me.corporation_id}/structures/`, id)
+  const discord = cfg.notify.structuresDiscord ? cfg.intel.discord.webhook : ''
+  const tell = (key: string, title: string, body: string) => {
+    if (announce(key, 'structure', id, title, body) && discord) postDiscord(discord, title, body, 'structure')
+  }
+  for (const s of list) {
+    const name = s.name ?? `#${s.structure_id}`
+    const where = await systemName(s.system_id)
+    if (s.fuel_expires) {
+      const left = Date.parse(s.fuel_expires) - Date.now()
+      if (left <= cfg.notify.structureFuelDays * 86400_000) {
+        tell(`fuel-${s.structure_id}-${s.fuel_expires}`, t(`${name}: заканчивается топливо`, `${name}: fuel running low`), t(`${where} · осталось ${hoursText(left)}`, `${where} · ${hoursText(left)} left`))
+      }
+    }
+    if (s.state === 'armor_reinforce' || s.state === 'hull_reinforce') {
+      const layer = s.state === 'armor_reinforce' ? t('броня', 'armor') : t('корпус', 'hull')
+      const until = s.state_timer_end ? ` · ${s.state_timer_end.slice(0, 16).replace('T', ' ')} EVE` : ''
+      tell(`rf-${s.structure_id}-${s.state}-${s.state_timer_end}`, t(`${name}: в реинфорсе (${layer})`, `${name}: reinforced (${layer})`), `${where}${until}`)
+    }
+  }
+}
+
 interface CharOrder {
   order_id: number
   type_id: number
@@ -165,6 +213,7 @@ async function checkOrders(id: number, who: string): Promise<void> {
 
 async function checkAll(): Promise<void> {
   const cfg = loadSettings().notify
+  checkedCorps = new Set()
   for (const c of auth.characters()) {
     const run = async (on: boolean, fn: (id: number, who: string) => Promise<void>) => {
       if (!on) return
@@ -180,6 +229,7 @@ async function checkAll(): Promise<void> {
     await run(cfg.fatigue, checkFatigue)
     await run(cfg.orders, checkOrders)
     await run(cfg.clone, checkClone)
+    await run(cfg.structures, checkStructures)
   }
 }
 
