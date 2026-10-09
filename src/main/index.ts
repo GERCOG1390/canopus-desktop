@@ -15,6 +15,7 @@ import { loadSettings, saveSettings } from './storage'
 import * as notifier from './notifier'
 import * as combatlog from './combatlog'
 import * as updater from './updater'
+import * as stream from './stream'
 import { storeGet, storeSet } from './userstore'
 import appIconPath from '../../build/icon.png?asset'
 
@@ -171,6 +172,7 @@ function registerIpc(): void {
     const next = { ...prev, ...patch }
     saveSettings(next)
     mainWindow?.setAlwaysOnTop(next.alwaysOnTop)
+    if (patch.stream || (patch.activeCharacterId !== undefined && !next.stream.characterId)) stream.apply()
     if (patch.intel) {
       intel.applyClipboardSetting()
       intel.applyOverlay(loadRenderer, PRELOAD)
@@ -227,6 +229,9 @@ function registerIpc(): void {
   ipcMain.handle('sde:jumpRoute', (_e, from: number, to: number, range: number) => sde.jumpRoute(from, to, range))
   ipcMain.handle('sde:lightYears', (_e, from: number, to: number) => sde.lightYears(from, to))
   ipcMain.handle('sde:galaxy', () => sde.galaxy())
+  ipcMain.handle('stream:status', () => stream.streamStatus())
+  ipcMain.handle('stream:state', () => stream.streamState())
+  ipcMain.handle('stream:reset', () => stream.resetSession())
   ipcMain.handle('sde:blueprintProducts', (_e, ids: number[]) => sde.blueprintProducts(ids))
   ipcMain.handle('sde:parseBridges', (_e, text: string) => sde.parseBridges(text))
   ipcMain.handle('sde:routeLocal', (_e, from: number, to: number, flag: 'secure' | 'shortest' | 'insecure', bridges: [number, number][], avoid?: number[]) =>
@@ -315,6 +320,7 @@ app.whenReady().then(() => {
   notifier.initNotifier(showMain)
   combatlog.initCombatLog(sendToMain)
   updater.initUpdater((status) => sendToMain('update:status', status))
+  stream.initStream((s) => sendToMain('stream:status', s))
   // macOS: clicking the Dock icon brings back a window hidden to the tray (menu bar).
   app.on('activate', showMain)
 })

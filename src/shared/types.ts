@@ -5,6 +5,7 @@ import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './f
 import type { NotifyEvent, NotifySettings } from './notify'
 import type { CombatLogEvent } from './ratting'
 import type { UpdateStatus } from './update'
+import type { StreamSettings, StreamState, StreamStatus } from './stream'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
 import type { GalaxyData, JumpHop, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
@@ -40,11 +41,18 @@ export interface Settings {
   theme: ThemeId
   /** compact: denser rows and 13px text; comfortable: 14px. */
   density: 'compact' | 'comfortable'
+  stream: StreamSettings
 }
 
 export type ThemeId = 'canopus' | 'photon' | 'amarr' | 'caldari' | 'gallente' | 'minmatar'
 
 export interface CanopusApi {
+  stream: {
+    status(): Promise<StreamStatus>
+    state(): Promise<StreamState>
+    resetSession(): Promise<void>
+    onStatus(listener: (s: StreamStatus) => void): () => void
+  }
   request<T = unknown>(url: string, options?: RequestOptions): Promise<T>
   auth: {
     /** Log in; `extended` also asks for the permissions to act in the game (open windows, fits, mail, contacts, fleet, calendar). */

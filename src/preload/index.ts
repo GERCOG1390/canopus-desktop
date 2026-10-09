@@ -19,6 +19,12 @@ function on<T>(channel: string, listener: (payload: T) => void): () => void {
 }
 
 const api: CanopusApi = {
+  stream: {
+    status: () => invoke('stream:status'),
+    state: () => invoke('stream:state'),
+    resetSession: () => invoke('stream:reset'),
+    onStatus: (listener) => on('stream:status', listener)
+  },
   request: (url, options) => invoke('http:request', url, options),
   auth: {
     login: (extended, corp) => invoke('auth:login', extended, corp),

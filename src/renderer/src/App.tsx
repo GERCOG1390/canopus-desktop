@@ -21,6 +21,7 @@ import ActivitiesPage from './pages/ActivitiesPage'
 import MailPage from './pages/MailPage'
 import FleetPage from './pages/FleetPage'
 import SettingsPage from './pages/SettingsPage'
+import StreamPage from './pages/StreamPage'
 
 const PAGES: (NavPage & { render: () => ReactNode })[] = [
   { id: 'character', label: 'Персонаж', group: 'Пилот', icon: 'character', render: () => <CharacterPage /> },
@@ -33,6 +34,7 @@ const PAGES: (NavPage & { render: () => ReactNode })[] = [
   { id: 'industry', label: 'Индустрия', group: 'Экономика', icon: 'industry', render: () => <IndustryPage /> },
   { id: 'map', label: 'Карта', group: 'Космос', icon: 'map', render: () => <MapPage /> },
   { id: 'activities', label: 'Активности', group: 'Космос', icon: 'activities', render: () => <ActivitiesPage /> },
+  { id: 'stream', label: 'Стрим', group: '', icon: 'stream', render: () => <StreamPage /> },
   { id: 'settings', label: 'Настройки', group: '', icon: 'settings', render: () => <SettingsPage /> }
 ]
 const GROUPS = ['Пилот', 'Бой', 'Экономика', 'Космос']

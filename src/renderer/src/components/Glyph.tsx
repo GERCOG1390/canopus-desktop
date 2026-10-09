@@ -1,6 +1,7 @@
 // Line icons for the app chrome (navigation, top bar). Game items use their own CCP icons.
 
 const PATHS = {
+  stream: 'M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8',
   character: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5',
   mail: 'M3 6h18v12H3zM3 7l9 6 9-6',
   fleet: 'M5 21V4M5 4h11l-2 4 2 4H5',

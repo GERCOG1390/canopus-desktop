@@ -3747,3 +3747,20 @@ button.danger-fill:hover:not(:disabled) {
 .online-dot.on {
   background: var(--good);
 }
+
+/* ---------- Stream ---------- */
+.stream-widgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 14px;
+}
+.stream-preview {
+  /* Same scheme as the widget page, or Chromium paints the frame opaque white. */
+  color-scheme: light;
+  width: 100%;
+  border: 1px dashed var(--line-strong);
+  background: repeating-conic-gradient(#2a2c31 0% 25%, #202226 0% 50%) 0 / 16px 16px;
+}
+.stream-port {
+  width: 90px;
+}

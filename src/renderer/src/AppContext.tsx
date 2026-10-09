@@ -5,7 +5,7 @@ import { setUiLang } from './i18n'
 import { retryMissing, type Lang } from './lib/sde'
 import { applyAppearance } from './lib/appearance'
 
-export type PageId = 'character' | 'intel' | 'fitting' | 'market' | 'map' | 'industry' | 'activities' | 'mail' | 'fleet' | 'pvp' | 'settings'
+export type PageId = 'character' | 'intel' | 'fitting' | 'market' | 'map' | 'industry' | 'activities' | 'mail' | 'fleet' | 'pvp' | 'stream' | 'settings'
 
 interface AppState {
   settings: Settings | null
