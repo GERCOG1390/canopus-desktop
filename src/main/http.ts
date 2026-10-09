@@ -39,6 +39,7 @@ async function fetchOnce(url: string, options: RequestOptions): Promise<{ data: 
   const headers: Record<string, string> = { 'User-Agent': USER_AGENT, Accept: 'application/json' }
   if (options.body !== undefined) headers['Content-Type'] = 'application/json'
   if (options.characterId) headers.Authorization = `Bearer ${await getAccessToken(options.characterId)}`
+  if (options.compat) headers['X-Compatibility-Date'] = options.compat
 
   const res = await fetch(url, {
     method: options.method ?? 'GET',

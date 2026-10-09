@@ -60,7 +60,32 @@ export interface DogmaEffect {
 }
 
 /** Bumped whenever the DB layout changes, forcing a rebuild from the SDE zip. */
-export const SDE_FORMAT = 7
+export const SDE_FORMAT = 8
+
+export interface CampaignDef {
+  t: L10n
+  s: L10n
+  faction?: number
+  target: number
+}
+
+export interface CampaignObjectiveDef {
+  campaign: string
+  t: L10n
+  s: L10n
+  target: number
+  /** Most progress one pilot can add */
+  max?: number
+  /** How it is contributed to: CompleteAgentMission, KillNPC, MineOre… */
+  method: string
+  /** Rewards per progress interval */
+  isk?: number
+  lp?: number
+  standing?: number
+  interval?: number
+  /** Corporation paying LP / ISK */
+  corp?: number
+}
 
 export interface SdeDb {
   format: number
@@ -93,6 +118,10 @@ export interface SdeDb {
   races: Record<number, L10n>
   /** iconID → client resource path (res:/ui/texture/...) */
   icons: Record<number, string>
+  /** Military Campaigns (Cradle of War), by UUID: title, subtitle, issuing faction, target progress */
+  campaigns: Record<string, CampaignDef>
+  /** Campaign objectives by UUID */
+  campaignObjectives: Record<string, CampaignObjectiveDef>
 }
 
 // ---------- IPC payloads ----------

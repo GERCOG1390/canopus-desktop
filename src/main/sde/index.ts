@@ -358,6 +358,14 @@ export function blueprintForProduct(productId: number): InfoBundle['producedBy']
   return { bp: hit.bp, activity: hit.activity, data: bp.act[hit.activity], maxRuns: bp.max }
 }
 
+/** Military Campaign and objective definitions (titles, texts, rewards) for ESI's live progress. */
+export function campaigns(): { campaigns: SdeDb['campaigns']; objectives: SdeDb['campaignObjectives']; factions: Record<number, L10n> } {
+  const d = need()
+  const factions: Record<number, L10n> = {}
+  for (const c of Object.values(d.campaigns ?? {})) if (c.faction && d.factions[c.faction]) factions[c.faction] = d.factions[c.faction]
+  return { campaigns: d.campaigns ?? {}, objectives: d.campaignObjectives ?? {}, factions }
+}
+
 /** What each blueprint makes (manufacturing, or the reaction for reaction formulas). */
 export function blueprintProducts(ids: number[]): Record<number, number> {
   const d = need()

@@ -11,8 +11,9 @@ import { jitaPrices, parseItemList } from '../lib/market'
 import { CATEGORY, searchTypesSde, tn, useTypeBasic } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
 import Mining from './Mining'
+import Campaigns from './Campaigns'
 
-type Tab = 'sigs' | 'ratting' | 'mining' | 'abyss'
+type Tab = 'campaigns' | 'sigs' | 'ratting' | 'mining' | 'abyss'
 
 export default function ActivitiesPage() {
   const [tab, setTab] = useState<Tab>('sigs')
@@ -20,6 +21,7 @@ export default function ActivitiesPage() {
     <div className="page">
       <Tabs
         tabs={[
+          { id: 'campaigns', label: 'Кампании' },
           { id: 'sigs', label: 'Сигнатуры' },
           { id: 'ratting', label: 'Крабинг' },
           { id: 'mining', label: 'Добыча' },
@@ -28,6 +30,7 @@ export default function ActivitiesPage() {
         value={tab}
         onChange={setTab}
       />
+      {tab === 'campaigns' && <Campaigns />}
       {tab === 'sigs' && <Signatures />}
       {tab === 'ratting' && <RattingTracker />}
       {tab === 'mining' && <Mining />}

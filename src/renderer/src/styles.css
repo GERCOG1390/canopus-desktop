@@ -3764,3 +3764,9 @@ button.danger-fill:hover:not(:disabled) {
 .stream-port {
   width: 90px;
 }
+.campaign-progress {
+  min-width: 150px;
+}
+.campaign-objectives td {
+  vertical-align: top;
+}

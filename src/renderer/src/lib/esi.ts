@@ -6,6 +6,11 @@ export function esi<T>(path: string, options?: RequestOptions): Promise<T> {
   return window.api.request<T>(ESI + path, options)
 }
 
+/** Newer ESI routes: no /latest/ prefix, a compatibility date instead. */
+export function esiNew<T>(path: string, options: RequestOptions = {}, compat = '2026-08-04'): Promise<T> {
+  return window.api.request<T>('https://esi.evetech.net' + path, { ...options, compat })
+}
+
 export const imageUrl = {
   portrait: (characterId: number, size = 128) => `https://images.evetech.net/characters/${characterId}/portrait?size=${size}`,
   typeIcon: (typeId: number, size = 32) => `https://images.evetech.net/types/${typeId}/icon?size=${size}`,

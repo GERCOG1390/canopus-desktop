@@ -7,7 +7,7 @@ import type { CombatLogEvent } from './ratting'
 import type { UpdateStatus } from './update'
 import type { StreamSettings, StreamState, StreamStatus } from './stream'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
-import type { GalaxyData, JumpHop, WormholeType } from './sde'
+import type { CampaignDef, CampaignObjectiveDef, GalaxyData, JumpHop, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
@@ -19,6 +19,8 @@ export interface RequestOptions {
   allPages?: boolean
   /** Skip the cache (e.g. right after changing something in the game) */
   fresh?: boolean
+  /** Newer ESI routes (no /latest/ prefix) want a compatibility date (X-Compatibility-Date) */
+  compat?: string
 }
 
 export interface CharacterAuth {
@@ -95,6 +97,7 @@ export interface CanopusApi {
     jumpRoute(from: number, to: number, rangeLy: number): Promise<JumpHop[] | null>
     lightYears(from: number, to: number): Promise<number | null>
     galaxy(): Promise<GalaxyData>
+    campaigns(): Promise<{ campaigns: Record<string, CampaignDef>; objectives: Record<string, CampaignObjectiveDef>; factions: Record<number, L10n> }>
     blueprintProducts(ids: number[]): Promise<Record<number, number>>
     parseBridges(text: string): Promise<{ bridges: [number, number][]; unknown: string[] }>
     routeLocal(from: number, to: number, flag: 'secure' | 'shortest' | 'insecure', bridges: [number, number][], avoid?: number[]): Promise<{ ids: number[]; bridgeHops: number } | null>

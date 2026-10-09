@@ -229,6 +229,7 @@ function registerIpc(): void {
   ipcMain.handle('sde:jumpRoute', (_e, from: number, to: number, range: number) => sde.jumpRoute(from, to, range))
   ipcMain.handle('sde:lightYears', (_e, from: number, to: number) => sde.lightYears(from, to))
   ipcMain.handle('sde:galaxy', () => sde.galaxy())
+  ipcMain.handle('sde:campaigns', () => sde.campaigns())
   ipcMain.handle('stream:status', () => stream.streamStatus())
   ipcMain.handle('stream:state', () => stream.streamState())
   ipcMain.handle('stream:reset', () => stream.resetSession())

@@ -66,6 +66,8 @@ const l10n = (v: Row | string | undefined): L10n => {
   return [v.en ?? '', v.ru || v.en || '']
 }
 
+const stripTags = (t: L10n): L10n => t.map((s) => s.replace(/<[^>]+>/g, '')) as L10n
+
 /** Metres in a light year. */
 const LY = 9_460_730_472_580_800
 
@@ -104,7 +106,9 @@ export async function buildSde(
     jumps: {},
     factions: {},
     races: {},
-    icons: {}
+    icons: {},
+    campaigns: {},
+    campaignObjectives: {}
   }
   const descriptions: Record<number, L10n> = {}
 
@@ -233,6 +237,24 @@ export async function buildSde(
     },
     factions: (r) => (db.factions[r._key] = l10n(r.name)),
     races: (r) => (db.races[r._key] = l10n(r.name)),
+    // Texts carry in-game links (<a href=showinfo:…>): keep only the words.
+    militaryCampaigns: (r) =>
+      (db.campaigns[r._key] = { t: l10n(r.title), s: stripTags(l10n(r.subtitle)), faction: r.issuer?.factionID, target: r.targetProgress ?? 0 }),
+    militaryCampaignObjectives: (r) => {
+      const rw = r.rewards ?? {}
+      db.campaignObjectives[r._key] = {
+        campaign: r.campaignID,
+        t: l10n(r.title),
+        s: stripTags(l10n(r.subtitle)),
+        target: r.targetProgress ?? 0,
+        ...(r.maxProgressPerParticipant ? { max: r.maxProgressPerParticipant } : {}),
+        method: r.contributionMethodConfiguration?.name ?? '',
+        ...(rw.isk ? { isk: rw.isk.amountPerInterval } : {}),
+        ...(rw.lp ? { lp: rw.lp.amountPerInterval, corp: rw.lp.issuer?.corporationID } : {}),
+        ...(rw.standing ? { standing: rw.standing.gainPercentPerInterval } : {}),
+        interval: rw.isk?.progressInterval ?? rw.lp?.progressInterval ?? rw.standing?.progressInterval ?? 1
+      }
+    },
     icons: (r) => {
       if (r.iconFile) db.icons[r._key] = String(r.iconFile).toLowerCase()
     }

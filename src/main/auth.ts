@@ -48,7 +48,9 @@ export const SCOPES = [
   'esi-wallet.read_character_wallet.v1',
   'esi-characters.read_contacts.v1',
   'esi-corporations.read_contacts.v1',
-  'esi-alliances.read_contacts.v1'
+  'esi-alliances.read_contacts.v1',
+  // Military Campaigns: the character's objectives and contributions
+  'esi.activity.char:read'
 ].filter((s, i, all) => all.indexOf(s) === i)
 
 /**
