@@ -165,6 +165,7 @@ function registerIpc(): void {
   ipcMain.handle('auth:logout', (_e, characterId: number) => auth.logout(characterId))
   ipcMain.handle('auth:callbackUrl', () => auth.CALLBACK_URL)
   ipcMain.handle('auth:scopes', () => auth.SCOPES)
+  ipcMain.handle('auth:scopeTiers', () => ({ base: auth.SCOPES, extra: auth.EXTRA_SCOPES, corp: auth.CORP_SCOPES }))
 
   ipcMain.handle('settings:get', () => loadSettings())
   ipcMain.handle('settings:set', (_e, patch: Partial<Settings>) => {

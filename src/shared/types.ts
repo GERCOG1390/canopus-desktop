@@ -67,6 +67,8 @@ export interface CanopusApi {
     callbackUrl(): Promise<string>
     /** Scopes Canopus requests at login. */
     scopes(): Promise<string[]>
+    /** Scopes of each login tier: base, in-game actions, corporation */
+    scopeTiers(): Promise<{ base: string[]; extra: string[]; corp: string[] }>
   }
   settings: {
     get(): Promise<Settings>

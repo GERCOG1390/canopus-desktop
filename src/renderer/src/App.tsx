@@ -5,6 +5,7 @@ import { CommandPalette, type NavPage } from './components/CommandPalette'
 import { BrandMark, Glyph, type GlyphName } from './components/Glyph'
 import { InfoProvider } from './components/InfoContext'
 import { InfoPanel } from './components/InfoPanel'
+import { ReloginGate } from './components/ReloginGate'
 import { imageUrl } from './lib/esi'
 import { fmtNum } from './lib/format'
 import { FittingProvider } from './lib/fitting'
@@ -232,6 +233,7 @@ function Shell() {
           </Fragment>
         ))}
         <div className="grow" />
+        <NavButton p={PAGES.find((p) => p.id === 'stream')!} />
         <NavButton p={PAGES.find((p) => p.id === 'settings')!} badge={needsSetup ? '●' : undefined} />
         {active ? (
           <button className="sidebar-char" onClick={() => navigate('settings')} title="Персонажи и вход">
@@ -276,6 +278,7 @@ function Shell() {
       </div>
       <InfoPanel />
       <CommandPalette pages={PAGES} open={palette} onClose={() => setPalette(false)} />
+      <ReloginGate />
       <DangerToast />
     </div>
   )

@@ -32,7 +32,8 @@ const api: CanopusApi = {
     characters: () => invoke('auth:characters'),
     logout: (characterId) => invoke('auth:logout', characterId),
     callbackUrl: () => invoke('auth:callbackUrl'),
-    scopes: () => invoke('auth:scopes')
+    scopes: () => invoke('auth:scopes'),
+    scopeTiers: () => invoke('auth:scopeTiers')
   },
   settings: {
     get: () => invoke('settings:get'),

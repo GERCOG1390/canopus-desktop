@@ -1007,6 +1007,16 @@ export const EXACT: Record<string, string> = {
   'Проект': 'Project',
   'Фонд': 'Pool',
   'Суверенитет': 'Sovereignty',
+  'Нужно войти заново': 'Log in again',
+  'Новым функциям этой версии нужны дополнительные разрешения EVE. Войдите заново каждым персонажем из списка — в окне EVE выберите именно его. Пока это не сделано, Canopus не может работать с этими персонажами полностью.': 'New features of this version need more EVE permissions. Log in again with each character in the list — pick that very character in the EVE window. Until then Canopus can’t fully work with them.',
+  'Войти заново': 'Log in again',
+  'Убрать персонажа из Canopus': 'Remove the character from Canopus',
+  'вклад в военные кампании': 'military campaign contributions',
+  'ваши фриланс-работы': 'your freelance jobs',
+  'проекты корпорации': 'corporation projects',
+  'уведомления об атаках на структуры': 'structure attack notifications',
+  'лунная добыча корпорации': 'corporation moon mining',
+  'структуры корпорации': 'corporation structures',
   'Чтобы Canopus обновлялся сам, перенесите его из окна .dmg в папку «Программы» и запускайте оттуда.': 'To let Canopus update itself, drag it from the .dmg window to Applications and start it from there.',
   'Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.': 'This copy wasn\'t started from the installer or the portable exe — download the new version from the release page.',
   'Топливо': 'Fuel',
@@ -1493,6 +1503,8 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^Появилось: (.+)$/, 'New: $1'],
+  [/^Новых разрешений: (\d+)$/, 'New permissions: $1'],
   [/^Skyhook уязвим: (\d+) · до (.+)$/, 'Skyhook raidable: $1 · until $2'],
   [/^Таймер суверенитета: (.+)$/, 'Sovereignty timer: $1'],
   [/^Skyhook уязвимы: (\d+)$/, 'Raidable Skyhooks: $1'],
