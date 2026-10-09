@@ -3772,6 +3772,7 @@ button.danger-fill:hover:not(:disabled) {
 }
 .freelance-filters {
   flex-wrap: wrap;
+  align-items: flex-end;
 }
 .freelance-filters input:first-child {
   min-width: 220px;

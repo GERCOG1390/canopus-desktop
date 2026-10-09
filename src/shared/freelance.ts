@@ -22,8 +22,9 @@ export interface FreelanceJob {
   id: string
   name: string
   state: string
-  progress: { current: number; desired: number }
-  reward: { initial: number; remaining: number }
+  /** ESI leaves these out on some jobs */
+  progress?: { current: number; desired: number }
+  reward?: { initial: number; remaining: number }
   details?: {
     description?: string
     career?: string

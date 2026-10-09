@@ -27,9 +27,13 @@ interface Listed {
   id: string
   name: string
   state: string
-  progress: { current: number; desired: number }
-  reward: { initial: number; remaining: number }
+  progress?: { current: number; desired: number }
+  reward?: { initial: number; remaining: number }
 }
+
+/** Share of a job or project done; ESI sometimes leaves progress out. */
+const done = (p?: { current: number; desired: number }) => (p?.desired ? p.current / p.desired : 0)
+const amount = (p?: { current: number; desired: number }) => (p ? `${fmtNum(p.current)} / ${fmtNum(p.desired)}` : '—')
 
 async function pages<T>(path: string, key: string, characterId?: number): Promise<T[]> {
   const out: T[] = []
@@ -171,11 +175,11 @@ export default function Freelance() {
                     </td>
                     <td className="small">{typeName(j.configuration?.method)}</td>
                     <td className="campaign-progress">
-                      <ProgressBar value={j.progress.desired ? j.progress.current / j.progress.desired : 0} />
-                      <span className="small">{`${fmtNum(j.progress.current)} / ${fmtNum(j.progress.desired)}`}</span>
+                      <ProgressBar value={done(j.progress)} />
+                      <span className="small">{amount(j.progress)}</span>
                     </td>
                     <td className="num">{j.contribution?.reward_per_contribution ? fmtIsk(j.contribution.reward_per_contribution, true) : '—'}</td>
-                    <td className="num">{fmtIsk(j.reward.remaining, true)}</td>
+                    <td className="num">{j.reward ? fmtIsk(j.reward.remaining, true) : '—'}</td>
                     <td className="small">
                       {near ? (
                         <>
@@ -220,7 +224,7 @@ function MyJobs({ id }: { id: number }) {
             <tr key={j.id}>
               <td translate="no">{j.name}</td>
               <td className="campaign-progress">
-                <ProgressBar value={j.progress.desired ? j.progress.current / j.progress.desired : 0} />
+                <ProgressBar value={done(j.progress)} />
               </td>
               <td className="num">{j.part ? `${fmtNum(j.part.contributed)} вклад` : '—'}</td>
               <td className="small muted">{j.state === 'Active' ? '' : j.state}</td>
@@ -265,10 +269,10 @@ function CorpProjects({ id }: { id: number }) {
               <tr key={p.id}>
                 <td translate="no">{p.name}</td>
                 <td className="campaign-progress">
-                  <ProgressBar value={p.progress.desired ? p.progress.current / p.progress.desired : 0} />
-                  <span className="small">{`${fmtNum(p.progress.current)} / ${fmtNum(p.progress.desired)}`}</span>
+                  <ProgressBar value={done(p.progress)} />
+                  <span className="small">{amount(p.progress)}</span>
                 </td>
-                <td className="num">{fmtIsk(p.reward.remaining, true)}</td>
+                <td className="num">{p.reward ? fmtIsk(p.reward.remaining, true) : '—'}</td>
                 <td className="num">{fmtNum(p.mine)}</td>
               </tr>
             ))}

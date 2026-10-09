@@ -6,6 +6,7 @@ import { BrandMark, Glyph, type GlyphName } from './components/Glyph'
 import { InfoProvider } from './components/InfoContext'
 import { InfoPanel } from './components/InfoPanel'
 import { ReloginGate } from './components/ReloginGate'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { imageUrl } from './lib/esi'
 import { fmtNum } from './lib/format'
 import { FittingProvider } from './lib/fitting'
@@ -273,7 +274,8 @@ function Shell() {
         <main className="content">
           <SdeBanner />
           <UpdateBanner />
-          {current.render()}
+          {/* A new boundary per section: switching sections clears a previous error. */}
+          <ErrorBoundary key={page}>{current.render()}</ErrorBoundary>
         </main>
       </div>
       <InfoPanel />
