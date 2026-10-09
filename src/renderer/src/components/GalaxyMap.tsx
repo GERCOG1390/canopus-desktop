@@ -12,7 +12,7 @@ import { Card, ErrorBox, Loading, SearchBox, Sec } from './ui'
 import { CATEGORY, searchSystemsSde, searchTypesSde, tn, useTypeBasic } from '../lib/sde'
 import { secColor } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
-import { esi } from '../lib/esi'
+import { esi, esiNew, resolveNames } from '../lib/esi'
 import { translate } from '../i18n'
 import { GameButton } from './GameButton'
 import { SCOPE, setDestinationInGame } from '../lib/gameActions'
@@ -37,6 +37,20 @@ const pvp = (k: Kills | undefined) => (k ? k.ship + k.pod : 0)
 const JUMP_RANGE_ATTR = 867
 const JUMP_CALIBRATION = 21611
 const REACH_COLOR = '#8ecbff'
+const SKYHOOK_COLOR = '#c77dff'
+const SOV_TIMER_COLOR = '#ff9f1c'
+const SOV_REFRESH_MS = 10 * 60_000
+
+/** The biggest alliances get clearly different colours; the rest a stable hue from their id. */
+const TOP_COLORS = ['#4e9bff', '#ff6b6b', '#ffd43b', '#51cf66', '#cc5de8', '#ff922b', '#22b8cf', '#f06595', '#94d82d', '#845ef7']
+const hashedColor = (id: number) => new THREE.Color().setHSL((((id * 0.618033988749895) % 1) + 1) % 1, 0.55, 0.6)
+
+interface SovInfo {
+  alliance?: number
+  faction?: number
+  skyhooks?: { count: number; end: number }
+  timer?: { event: string; start: number }
+}
 
 const BRIDGES_KEY = 'galaxy-bridges'
 /** The player's Ansiblex network: the pasted text, the parsed pairs and the alliance capital. */
@@ -66,6 +80,10 @@ interface Scene {
   camera: THREE.PerspectiveCamera
   controls: OrbitControls
   points: Float32Array
+  /** The stars' colour attribute and their security colours, for the sovereignty recolouring */
+  starColors: THREE.BufferAttribute
+  secColors: Float32Array
+  sov: THREE.Group
   highlight: THREE.Points
   kills: THREE.Group
   route: THREE.Group
@@ -169,6 +187,49 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   const marksRef = useRef(marks)
   marksRef.current = marks
 
+  // Sovereignty: who holds each system, raidable Skyhooks, sovereignty timers (public ESI).
+  const [showSov, setShowSov] = useState(false)
+  const sov = useAsync(async () => {
+    if (!showSov) return null
+    const [systems, skyhooks, timers] = await Promise.all([
+      esiNew<{ solar_systems: { solar_system_id: number; claim?: { alliance?: { alliance_id: number }; faction?: { faction_id: number } } }[] }>('/sovereignty/systems'),
+      esiNew<{ skyhooks: { solar_system_id: number; theft_vulnerability?: { end: string } }[] }>('/skyhooks/raidable').catch(() => ({ skyhooks: [] })),
+      esiNew<{ solar_system_id: number; event_type: string; start_time: string }[]>('/sovereignty/campaigns').catch(() => [])
+    ])
+    const map = new Map<number, SovInfo>()
+    const get = (id: number) => map.get(id) ?? (map.set(id, {}), map.get(id)!)
+    for (const s of systems.solar_systems) {
+      if (s.claim?.alliance) get(s.solar_system_id).alliance = s.claim.alliance.alliance_id
+      else if (s.claim?.faction) get(s.solar_system_id).faction = s.claim.faction.faction_id
+    }
+    for (const h of skyhooks.skyhooks) {
+      const g = get(h.solar_system_id)
+      const end = h.theft_vulnerability ? Date.parse(h.theft_vulnerability.end) : 0
+      g.skyhooks = { count: (g.skyhooks?.count ?? 0) + 1, end: Math.max(end, g.skyhooks?.end ?? 0) }
+    }
+    for (const c of timers) get(c.solar_system_id).timer = { event: c.event_type, start: Date.parse(c.start_time) }
+    const count = new Map<number, number>()
+    for (const v of map.values()) if (v.alliance) count.set(v.alliance, (count.get(v.alliance) ?? 0) + 1)
+    const names = await resolveNames(count.keys()).catch(() => new Map<number, string>())
+    const top = [...count].sort((a, b) => b[1] - a[1]).slice(0, 10)
+    const colors = new Map<number, THREE.Color>()
+    for (const id of count.keys()) colors.set(id, hashedColor(id))
+    top.forEach(([id], k) => colors.set(id, new THREE.Color(TOP_COLORS[k])))
+    return { map, names, top, colors, skyhooks: skyhooks.skyhooks.length, timers: timers.length }
+  }, [showSov])
+  const sovRef = useRef(new Map<number, SovInfo>())
+  const sovNamesRef = useRef(new Map<number, string>())
+  const sovColorsRef = useRef(new Map<number, THREE.Color>())
+  sovRef.current = showSov ? sov.data?.map ?? new Map() : new Map()
+  sovNamesRef.current = sov.data?.names ?? new Map()
+  sovColorsRef.current = sov.data?.colors ?? new Map()
+  const reloadSov = sov.reload
+  useEffect(() => {
+    if (!showSov) return
+    const t = setInterval(reloadSov, SOV_REFRESH_MS)
+    return () => clearInterval(t)
+  }, [showSov, reloadSov])
+
   // Capital jump range from a system: the sphere and the systems a jump drive can reach.
   const { active } = useApp()
   const [jumpFrom, setJumpFrom] = useState<number | null>(null)
@@ -267,6 +328,8 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
       new THREE.PointsMaterial({ size: 5, sizeAttenuation: false, vertexColors: true, map: dot, transparent: true, depthWrite: false })
     )
     scene.add(stars)
+    const starColors = geo.getAttribute('color') as THREE.BufferAttribute
+    const secColors = colors.slice()
 
     // Stargates: coloured like their systems, faint so the stars stay readable.
     const linePos = new Float32Array(data.edges.length * 3)
@@ -306,6 +369,8 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     scene.add(bridgesGroup)
     const jumpGroup = new THREE.Group()
     scene.add(jumpGroup)
+    const sovGroup = new THREE.Group()
+    scene.add(sovGroup)
 
     // Region labels at the centre of each region's systems.
     const regionSums = new Map<number, { v: THREE.Vector3; n: number }>()
@@ -414,6 +479,18 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
         kl.className = 'bad'
         kl.textContent = translate(`Убийств за час: ${k}`)
         t.append(kl)
+      }
+      const sv = sovRef.current.get(data.ids[i])
+      if (sv) {
+        const add = (text: string, color?: string) => {
+          const div = document.createElement('div')
+          div.textContent = text
+          if (color) div.style.color = color
+          t.append(div)
+        }
+        if (sv.alliance) add(sovNamesRef.current.get(sv.alliance) ?? `#${sv.alliance}`, `#${(sovColorsRef.current.get(sv.alliance) ?? hashedColor(sv.alliance)).getHexString()}`)
+        if (sv.skyhooks) add(translate(`Skyhook уязвим: ${sv.skyhooks.count} · до ${new Date(sv.skyhooks.end).toISOString().slice(11, 16)} EVE`), SKYHOOK_COLOR)
+        if (sv.timer) add(translate(`Таймер суверенитета: ${sv.timer.event} · ${new Date(sv.timer.start).toISOString().slice(0, 16).replace('T', ' ')} EVE`), SOV_TIMER_COLOR)
       }
       const note = marksRef.current.notes[data.ids[i]]
       if (note) {
@@ -547,7 +624,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     }
     frame()
 
-    sceneRef.current = { data, camera, controls, points: positions, highlight, kills: killsGroup, route: routeGroup, bridges: bridgesGroup, jump: jumpGroup, dot, flyTo, fitTo, view }
+    sceneRef.current = { data, camera, controls, points: positions, starColors, secColors, sov: sovGroup, highlight, kills: killsGroup, route: routeGroup, bridges: bridgesGroup, jump: jumpGroup, dot, flyTo, fitTo, view }
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
@@ -560,6 +637,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
       clearGroup(routeGroup)
       clearGroup(bridgesGroup)
       clearGroup(jumpGroup)
+      clearGroup(sovGroup)
       dot.dispose()
       ring.dispose()
       renderer.domElement.remove()
@@ -637,6 +715,43 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
     s.bridges.add(lines)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bridgesKey, showBridges, data])
+
+  // ---- Sovereignty: stars coloured by alliance, Skyhooks and sovereignty timers marked ----
+  useEffect(() => {
+    const s = sceneRef.current
+    if (!s) return
+    clearGroup(s.sov)
+    const arr = s.starColors.array as Float32Array
+    if (!showSov || !sov.data) {
+      arr.set(s.secColors)
+      s.starColors.needsUpdate = true
+      return
+    }
+    const dim = new THREE.Color('#3a3c42')
+    const open = new THREE.Color('#9d9e99')
+    const skyhooks: number[] = []
+    const timers: number[] = []
+    s.data.ids.forEach((id, i) => {
+      const v = sov.data!.map.get(id)
+      const c = v?.alliance ? sov.data!.colors.get(v.alliance) ?? hashedColor(v.alliance) : v?.faction || s.data.sec[i] >= 0.45 ? dim : open
+      arr.set([c.r, c.g, c.b], i * 3)
+      if (v?.skyhooks) skyhooks.push(...s.points.subarray(i * 3, i * 3 + 3))
+      if (v?.timer) timers.push(...s.points.subarray(i * 3, i * 3 + 3))
+    })
+    s.starColors.needsUpdate = true
+    for (const [pos, color, size] of [
+      [skyhooks, SKYHOOK_COLOR, 13],
+      [timers, SOV_TIMER_COLOR, 24]
+    ] as const) {
+      if (!pos.length) continue
+      const g = new THREE.BufferGeometry()
+      g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3))
+      const ring = new THREE.Points(g, new THREE.PointsMaterial({ size, sizeAttenuation: false, color, map: s.dot, transparent: true, depthWrite: false, depthTest: false }))
+      ring.frustumCulled = false
+      ring.renderOrder = 2
+      s.sov.add(ring)
+    }
+  }, [sov.data, showSov, data])
 
   // ---- Kills in the last hour: a red glow, bigger for busier systems ----
   useEffect(() => {
@@ -784,6 +899,10 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
             Показывать мосты
           </label>
         )}
+        <label className="check" title={sov.error ?? undefined}>
+          <input type="checkbox" checked={showSov} onChange={(e) => setShowSov(e.target.checked)} />
+          Суверенитет
+        </label>
         <label className="check" title={kills.error ?? undefined}>
           <input type="checkbox" checked={showKills} onChange={(e) => setShowKills(e.target.checked)} />
           Убийства за час
@@ -794,16 +913,36 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
         <div ref={labels} className="gx-labels" />
         <div ref={tip} className="gx-tip" hidden />
         {!data && <Loading label="Строю карту…" />}
+        {showSov && sov.data && (
+          <div className="gx-sov-legend">
+            {sov.data.top.map(([id, n]) => (
+              <span key={id}>
+                <i style={{ background: `#${sov.data!.colors.get(id)!.getHexString()}` }} />
+                <span translate="no">{sov.data!.names.get(id) ?? id}</span> <span className="muted">{n}</span>
+              </span>
+            ))}
+            <span>
+              <i style={{ background: SKYHOOK_COLOR }} /> {`Skyhook уязвимы: ${sov.data.skyhooks}`}
+            </span>
+            <span>
+              <i style={{ background: SOV_TIMER_COLOR }} /> {`Таймеры суверенитета: ${sov.data.timers}`}
+            </span>
+          </div>
+        )}
         <div className="gx-legend">
-          <span>
-            <i style={{ background: secColor(1) }} /> хайсек
-          </span>
-          <span>
-            <i style={{ background: secColor(0.3) }} /> лоусек
-          </span>
-          <span>
-            <i style={{ background: secColor(-0.5) }} /> нули
-          </span>
+          {!showSov && (
+            <>
+              <span>
+                <i style={{ background: secColor(1) }} /> хайсек
+              </span>
+              <span>
+                <i style={{ background: secColor(0.3) }} /> лоусек
+              </span>
+              <span>
+                <i style={{ background: secColor(-0.5) }} /> нули
+              </span>
+            </>
+          )}
           {showKills && (
             <span>
               <i className="gx-glow" /> убийства за час

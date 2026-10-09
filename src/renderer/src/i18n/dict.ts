@@ -1006,6 +1006,7 @@ export const EXACT: Record<string, string> = {
   'Активных проектов нет.': 'No active projects.',
   'Проект': 'Project',
   'Фонд': 'Pool',
+  'Суверенитет': 'Sovereignty',
   'Чтобы Canopus обновлялся сам, перенесите его из окна .dmg в папку «Программы» и запускайте оттуда.': 'To let Canopus update itself, drag it from the .dmg window to Applications and start it from there.',
   'Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.': 'This copy wasn\'t started from the installer or the portable exe — download the new version from the release page.',
   'Топливо': 'Fuel',
@@ -1492,6 +1493,10 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^Skyhook уязвим: (\d+) · до (.+)$/, 'Skyhook raidable: $1 · until $2'],
+  [/^Таймер суверенитета: (.+)$/, 'Sovereignty timer: $1'],
+  [/^Skyhook уязвимы: (\d+)$/, 'Raidable Skyhooks: $1'],
+  [/^Таймеры суверенитета: (\d+)$/, 'Sovereignty timers: $1'],
   [/^Фриланс: (\d+) из (\d+)$/, 'Freelance: $1 of $2'],
   [/^до (\d+) прыжков$/, 'within $1 jumps'],
   [/^ · (\d+) прыж\.$/, ' · $1 j'],

@@ -3784,3 +3784,23 @@ button.danger-fill:hover:not(:disabled) {
   margin-left: 6px;
   font-size: 11px;
 }
+.gx-sov-legend {
+  position: absolute;
+  left: 10px;
+  bottom: 34px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  pointer-events: none;
+}
+.gx-sov-legend i {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
