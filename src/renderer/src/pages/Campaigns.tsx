@@ -29,13 +29,12 @@ interface Objective {
   finished?: string
 }
 
-/** Contribution of the character to one objective; the field names follow the ESI docs loosely. */
+/** The character's part in one objective. */
 interface MyObjective {
-  id?: string
-  objective_id?: string
-  committed?: boolean
-  contribution?: number
-  progress?: number
+  id: string
+  campaign_id: string
+  contributed: number
+  is_committed: boolean
 }
 
 /** Cursor-paginated lists of the newer ESI routes: follow "after" until a page comes back empty. */
@@ -88,7 +87,7 @@ export default function Campaigns() {
   const mine = useAsync(async () => {
     if (!active?.scopes.includes(SCOPE)) return null
     const rows = await allPages<MyObjective>(`/characters/${active.id}/military-campaigns/objectives`, 'objectives', active.id)
-    return new Map(rows.map((o) => [o.objective_id ?? o.id ?? '', o]))
+    return new Map(rows.map((o) => [o.id, o]))
   }, [active?.id, active?.scopes.join(' ')])
 
   if (list.loading && !list.data) return <Loading />
@@ -192,7 +191,7 @@ function Objectives({
                 {def?.standing ? <div className="muted">{`+${def.standing}% стендинга`}</div> : null}
                 {def?.max ? <div className="muted">{`до ${fmtNum(def.max)} на пилота`}</div> : null}
               </td>
-              {mine && <td className="num">{my ? (my.contribution ?? my.progress ?? (my.committed ? '✔' : '—')) : <span className="muted">—</span>}</td>}
+              {mine && <td className="num">{my ? (my.contributed ? fmtNum(my.contributed) : my.is_committed ? 'взята' : '—') : <span className="muted">—</span>}</td>}
             </tr>
           )
         })}

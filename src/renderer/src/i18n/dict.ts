@@ -977,6 +977,7 @@ export const EXACT: Record<string, string> = {
   'Участники': 'Participants',
   'Награда': 'Reward',
   'Мой вклад': 'My contribution',
+  'взята': 'taken',
   'Чтобы Canopus обновлялся сам, перенесите его из окна .dmg в папку «Программы» и запускайте оттуда.': 'To let Canopus update itself, drag it from the .dmg window to Applications and start it from there.',
   'Эта копия запущена не из установщика и не из portable-файла — новую версию скачайте со страницы релиза.': 'This copy wasn\'t started from the installer or the portable exe — download the new version from the release page.',
   'Топливо': 'Fuel',
