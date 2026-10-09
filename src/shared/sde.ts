@@ -122,6 +122,8 @@ export interface SdeDb {
   campaigns: Record<string, CampaignDef>
   /** Campaign objectives by UUID */
   campaignObjectives: Record<string, CampaignObjectiveDef>
+  /** Freelance job types (DeliverItem, MineOre…): title and description */
+  jobTypes: Record<string, { t: L10n; d: L10n }>
 }
 
 // ---------- IPC payloads ----------

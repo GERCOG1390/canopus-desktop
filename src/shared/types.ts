@@ -6,6 +6,7 @@ import type { NotifyEvent, NotifySettings } from './notify'
 import type { CombatLogEvent } from './ratting'
 import type { UpdateStatus } from './update'
 import type { StreamSettings, StreamState, StreamStatus } from './stream'
+import type { FreelanceFilter } from './freelance'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
 import type { CampaignDef, CampaignObjectiveDef, GalaxyData, JumpHop, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
@@ -44,6 +45,7 @@ export interface Settings {
   /** compact: denser rows and 13px text; comfortable: 14px. */
   density: 'compact' | 'comfortable'
   stream: StreamSettings
+  freelance: FreelanceFilter
 }
 
 export type ThemeId = 'canopus' | 'photon' | 'amarr' | 'caldari' | 'gallente' | 'minmatar'
@@ -97,6 +99,7 @@ export interface CanopusApi {
     jumpRoute(from: number, to: number, rangeLy: number): Promise<JumpHop[] | null>
     lightYears(from: number, to: number): Promise<number | null>
     galaxy(): Promise<GalaxyData>
+    jobTypes(): Promise<Record<string, { t: L10n; d: L10n }>>
     campaigns(): Promise<{ campaigns: Record<string, CampaignDef>; objectives: Record<string, CampaignObjectiveDef>; factions: Record<number, L10n> }>
     blueprintProducts(ids: number[]): Promise<Record<number, number>>
     parseBridges(text: string): Promise<{ bridges: [number, number][]; unknown: string[] }>

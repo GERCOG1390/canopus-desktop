@@ -50,7 +50,9 @@ export const SCOPES = [
   'esi-corporations.read_contacts.v1',
   'esi-alliances.read_contacts.v1',
   // Military Campaigns: the character's objectives and contributions
-  'esi.activity.char:read'
+  'esi.activity.char:read',
+  // Freelance Jobs the character takes part in
+  'esi-characters.read_freelance_jobs.v1'
 ].filter((s, i, all) => all.indexOf(s) === i)
 
 /**
@@ -62,7 +64,7 @@ export const SCOPES = [
  * character's game notifications (structure attacks, moon extractions) and the corporation's moon
  * mining (extractions: Station Manager; observer ledgers: Accountant).
  */
-export const CORP_SCOPES = ['esi-corporations.read_structures.v1', 'esi-characters.read_notifications.v1', 'esi-industry.read_corporation_mining.v1']
+export const CORP_SCOPES = ['esi-corporations.read_structures.v1', 'esi-characters.read_notifications.v1', 'esi-industry.read_corporation_mining.v1', 'esi-corporations.read_projects.v1']
 
 export const EXTRA_SCOPES = [
   'esi-ui.open_window.v1',

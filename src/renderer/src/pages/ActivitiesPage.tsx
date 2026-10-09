@@ -12,8 +12,9 @@ import { CATEGORY, searchTypesSde, tn, useTypeBasic } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
 import Mining from './Mining'
 import Campaigns from './Campaigns'
+import Freelance from './Freelance'
 
-type Tab = 'campaigns' | 'sigs' | 'ratting' | 'mining' | 'abyss'
+type Tab = 'campaigns' | 'freelance' | 'sigs' | 'ratting' | 'mining' | 'abyss'
 
 export default function ActivitiesPage() {
   const [tab, setTab] = useState<Tab>('sigs')
@@ -22,6 +23,7 @@ export default function ActivitiesPage() {
       <Tabs
         tabs={[
           { id: 'campaigns', label: 'Кампании' },
+          { id: 'freelance', label: 'Фриланс' },
           { id: 'sigs', label: 'Сигнатуры' },
           { id: 'ratting', label: 'Крабинг' },
           { id: 'mining', label: 'Добыча' },
@@ -31,6 +33,7 @@ export default function ActivitiesPage() {
         onChange={setTab}
       />
       {tab === 'campaigns' && <Campaigns />}
+      {tab === 'freelance' && <Freelance />}
       {tab === 'sigs' && <Signatures />}
       {tab === 'ratting' && <RattingTracker />}
       {tab === 'mining' && <Mining />}

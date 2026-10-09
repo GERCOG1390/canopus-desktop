@@ -10,6 +10,8 @@ import * as auth from './auth'
 import { request } from './http'
 import { loadSettings } from './storage'
 import { postDiscord } from './intel'
+import { matchesFreelance, type FreelanceJob } from '../shared/freelance'
+import * as sde from './sde'
 
 const ESI = 'https://esi.evetech.net/latest'
 const CHECK_EVERY_MS = 5 * 60_000
@@ -256,6 +258,71 @@ async function checkGameNotifications(id: number): Promise<void> {
   }
 }
 
+// ---------- Freelance Jobs matching the saved filter ----------
+
+/** Newer ESI routes: no /latest/, a compatibility date, cursor pages. */
+async function esiPages<T>(path: string, key: string): Promise<T[]> {
+  const out: T[] = []
+  let after: string | undefined
+  for (let page = 0; page < 30; page++) {
+    const url = `https://esi.evetech.net${path}${after ? `?after=${encodeURIComponent(after)}` : ''}`
+    const r = (await request(url, { compat: '2026-08-04' })) as Record<string, unknown> & { cursor?: { after?: string } }
+    const items = (r[key] as T[] | undefined) ?? []
+    out.push(...items)
+    after = r.cursor?.after
+    if (!items.length || !after) break
+  }
+  return out
+}
+
+const jobDetails = new Map<string, FreelanceJob>()
+
+async function checkFreelance(): Promise<void> {
+  const cfg = loadSettings()
+  const f = cfg.freelance
+  if (!f.notify) return
+  const list = await esiPages<FreelanceJob>('/freelance-jobs', 'freelance_jobs')
+  // The first time: everything already posted counts as seen, only new jobs raise alerts.
+  const baseline = !Object.keys(seen).some((k) => k.startsWith('fj-'))
+  // Where the active character is, for the jump limit.
+  let here: number | null = null
+  if (f.maxJumps > 0 && cfg.activeCharacterId) {
+    here = (await esi<{ solar_system_id: number }>(`/characters/${cfg.activeCharacterId}/location/`, cfg.activeCharacterId).catch(() => null))?.solar_system_id ?? null
+  }
+  for (const j of list.filter((x) => x.state === 'Active')) {
+    const key = `fj-${j.id}`
+    if (seen[key]) continue
+    if (baseline) {
+      seen[key] = Date.now()
+      continue
+    }
+    const job = jobDetails.get(j.id) ?? ((await request(`https://esi.evetech.net/freelance-jobs/${j.id}`, { compat: '2026-08-04' }).catch(() => null)) as FreelanceJob | null)
+    if (!job) continue
+    jobDetails.set(j.id, job)
+    let near = ''
+    if (matchesFreelance(job, f) && f.maxJumps > 0) {
+      const places = job.access_and_visibility?.broadcast_locations ?? []
+      const jumps = here ? sde.jumpsFrom(here, places.map((p) => p.id)) : {}
+      const best = places.filter((p) => jumps[p.id] !== undefined && jumps[p.id] <= f.maxJumps).sort((a, b) => jumps[a.id] - jumps[b.id])[0]
+      if (!best) {
+        seen[key] = Date.now()
+        continue
+      }
+      near = ` · ${best.name}, ${jumps[best.id]} ${t('прыж.', 'j')}`
+    }
+    if (!matchesFreelance(job, f)) {
+      seen[key] = Date.now()
+      continue
+    }
+    const corp = job.details?.creator?.corporation?.name ?? ''
+    const per = job.contribution?.reward_per_contribution
+    const title = t(`Фриланс: ${job.name}`, `Freelance: ${job.name}`)
+    const body = `${corp}${per ? ` · ${Math.round(per).toLocaleString('en-US')} ISK ${t('за единицу', 'per unit')}` : ''}${near}`
+    if (announce(key, 'freelance', cfg.activeCharacterId ?? 0, title, body) && cfg.intel.discord.webhook) postDiscord(cfg.intel.discord.webhook, title, body, 'structure')
+  }
+  saveSeen()
+}
+
 interface CharOrder {
   order_id: number
   type_id: number
@@ -297,6 +364,7 @@ async function checkOrders(id: number, who: string): Promise<void> {
 async function checkAll(): Promise<void> {
   const cfg = loadSettings().notify
   checkedCorps = new Set()
+  await checkFreelance().catch(() => {})
   for (const c of auth.characters()) {
     const run = async (on: boolean, fn: (id: number, who: string) => Promise<void>) => {
       if (!on) return

@@ -366,6 +366,10 @@ export function campaigns(): { campaigns: SdeDb['campaigns']; objectives: SdeDb[
   return { campaigns: d.campaigns ?? {}, objectives: d.campaignObjectives ?? {}, factions }
 }
 
+export function jobTypes(): SdeDb['jobTypes'] {
+  return need().jobTypes ?? {}
+}
+
 /** What each blueprint makes (manufacturing, or the reaction for reaction formulas). */
 export function blueprintProducts(ids: number[]): Record<number, number> {
   const d = need()

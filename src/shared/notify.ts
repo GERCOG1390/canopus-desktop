@@ -36,7 +36,7 @@ export const DEFAULT_NOTIFY: NotifySettings = {
   gameNotifications: true
 }
 
-export type NotifyKind = 'skills' | 'pi' | 'industry' | 'fatigue' | 'orders' | 'clone' | 'structure'
+export type NotifyKind = 'skills' | 'pi' | 'industry' | 'fatigue' | 'orders' | 'clone' | 'structure' | 'freelance'
 
 /** A notification that was shown (kept for the history in Settings). */
 export interface NotifyEvent {

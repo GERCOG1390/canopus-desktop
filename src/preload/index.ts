@@ -56,6 +56,7 @@ const api: CanopusApi = {
     lightYears: (from, to) => invoke('sde:lightYears', from, to),
     galaxy: () => invoke('sde:galaxy'),
     campaigns: () => invoke('sde:campaigns'),
+    jobTypes: () => invoke('sde:jobTypes'),
     blueprintProducts: (ids) => invoke('sde:blueprintProducts', ids),
     parseBridges: (text) => invoke('sde:parseBridges', text),
     routeLocal: (from, to, flag, bridges, avoid) => invoke('sde:routeLocal', from, to, flag, bridges, avoid),

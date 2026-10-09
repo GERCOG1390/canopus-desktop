@@ -3770,3 +3770,17 @@ button.danger-fill:hover:not(:disabled) {
 .campaign-objectives td {
   vertical-align: top;
 }
+.freelance-filters {
+  flex-wrap: wrap;
+}
+.freelance-filters input:first-child {
+  min-width: 220px;
+  flex: 1 1 220px;
+}
+.freelance-num {
+  width: 110px;
+}
+.freelance-hide {
+  margin-left: 6px;
+  font-size: 11px;
+}

@@ -108,7 +108,8 @@ export async function buildSde(
     races: {},
     icons: {},
     campaigns: {},
-    campaignObjectives: {}
+    campaignObjectives: {},
+    jobTypes: {}
   }
   const descriptions: Record<number, L10n> = {}
 
@@ -254,6 +255,9 @@ export async function buildSde(
         ...(rw.standing ? { standing: rw.standing.gainPercentPerInterval } : {}),
         interval: rw.isk?.progressInterval ?? rw.lp?.progressInterval ?? rw.standing?.progressInterval ?? 1
       }
+    },
+    freelanceJobSchemas: (r) => {
+      for (const x of (r._value ?? []) as Row[]) db.jobTypes[x._key] = { t: l10n(x.title), d: l10n(x.description) }
     },
     icons: (r) => {
       if (r.iconFile) db.icons[r._key] = String(r.iconFile).toLowerCase()
