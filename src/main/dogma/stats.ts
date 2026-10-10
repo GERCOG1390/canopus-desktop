@@ -223,7 +223,9 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   const capacity = a(ship, A.capacitorCapacity)
   const rechargeSec = a(ship, A.rechargeRate) / 1000
   const usePerSecond = moduleResults.reduce((s, r) => s + r.capPerSecond, 0)
-  const capacitor = capacitorStability(capacity, rechargeSec, usePerSecond)
+  // Each active module takes its whole cost when it cycles, like the game (and Pyfa) count it.
+  const drains = moduleResults.filter((r) => r.capPerSecond && r.cycle).map((r) => ({ need: r.capPerSecond * r.cycle, cycle: r.cycle }))
+  const capacitor = capacitorStability(capacity, rechargeSec, drains)
 
   // ---------- Offense ----------
   const weapons: WeaponStats[] = []
@@ -383,24 +385,38 @@ function cycleAndCap(dogma: Dogma, m: Item): { cycle: number; capPerSecond: numb
 }
 
 /**
- * EVE capacitor regeneration: dC/dt = (10·Cmax/τ)·(√(C/Cmax) − C/Cmax).
- * Stable if the drain fits under that curve; otherwise simulate until empty.
+ * EVE capacitor: regeneration dC/dt = (10·Cmax/τ)·(√(C/Cmax) − C/Cmax), which between two moments
+ * solves to C(t) = Cmax·(1 + (√(C0/Cmax) − 1)·e^(−5t/τ))². Modules take their whole cost at the
+ * start of each cycle. Events are simulated in order: the capacitor runs out when a module can't
+ * pay for its next cycle; surviving six hours counts as stable, at the lowest level reached
+ * after the first hour (just before an activation, as the game shows it).
  */
-function capacitorStability(capacity: number, rechargeSec: number, use: number): { peakRecharge: number; stable: boolean; stableLevel?: number; lastsSec?: number } {
+function capacitorStability(capacity: number, rechargeSec: number, drains: { need: number; cycle: number }[]): { peakRecharge: number; stable: boolean; stableLevel?: number; lastsSec?: number } {
   const peakRecharge = rechargeSec ? (2.5 * capacity) / rechargeSec : 0
-  if (use <= 0 || !capacity || !rechargeSec) return { peakRecharge, stable: true, stableLevel: 1 }
-  const k = (use * rechargeSec) / (10 * capacity)
-  if (k <= 0.25) {
-    const x = (1 + Math.sqrt(1 - 4 * k)) / 2
-    return { peakRecharge, stable: true, stableLevel: x * x }
+  const mods = drains.filter((d) => d.need && d.cycle > 0)
+  if (!mods.some((d) => d.need > 0) || !capacity || !rechargeSec) return { peakRecharge, stable: true, stableLevel: 1 }
+  const regen = (c: number, dt: number) => {
+    const r = 1 + (Math.sqrt(Math.max(0, c) / capacity) - 1) * Math.exp((-5 * dt) / rechargeSec)
+    return capacity * r * r
   }
+  const LIMIT = 6 * 3600
+  const next = mods.map(() => 0)
   let c = capacity
   let t = 0
-  const dt = 0.5
-  while (c > 0 && t < 86_400) {
-    const f = c / capacity
-    c += ((10 * capacity) / rechargeSec) * (Math.sqrt(f) - f) * dt - use * dt
-    t += dt
+  let low = capacity
+  for (let guard = 0; guard < 2_000_000; guard++) {
+    const at = Math.min(...next)
+    if (at > LIMIT) break
+    c = regen(c, at - t)
+    t = at
+    for (let i = 0; i < mods.length; i++) {
+      if (next[i] > t + 1e-9) continue
+      if (t >= 3600) low = Math.min(low, c)
+      if (mods[i].need > 0 && c < mods[i].need) return { peakRecharge, stable: false, lastsSec: t }
+      // Capacitor boosters (negative need) can't fill past the maximum.
+      c = Math.min(capacity, c - mods[i].need)
+      next[i] += mods[i].cycle
+    }
   }
-  return { peakRecharge, stable: false, lastsSec: t }
+  return { peakRecharge, stable: true, stableLevel: low / capacity }
 }
