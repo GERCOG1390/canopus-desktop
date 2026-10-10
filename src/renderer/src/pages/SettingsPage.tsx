@@ -6,6 +6,7 @@ import { IS_LINUX, IS_MAC, locale } from '../i18n'
 import { fmtDate } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 import { useUpdate } from '../lib/update'
+import { openDiscussions, openIdeas, reportBug } from '../lib/feedback'
 import { THEMES } from '../lib/appearance'
 import type { NotifyEvent, NotifySettings } from '../../../shared/notify'
 
@@ -139,6 +140,7 @@ export default function SettingsPage() {
       <NotifyCard />
 
       <UpdateCard />
+      <FeedbackCard />
 
       <Card title="Источники данных">
         <p className="muted small">
@@ -196,6 +198,26 @@ function ReleaseNotes({ text }: { text: string }) {
         return line.trim() ? <p key={i}>{inline(line)}</p> : null
       })}
     </div>
+  )
+}
+
+/** Questions, ideas and bug reports go to the project's GitHub. */
+function FeedbackCard() {
+  return (
+    <Card title="Помощь и обратная связь">
+      <p className="muted small">Вопросы, идеи и ошибки — на GitHub. Для отчёта об ошибке Canopus заранее подставит версию и платформу.</p>
+      <div className="row">
+        <button className="ghost" onClick={openDiscussions}>
+          Вопросы и обсуждение
+        </button>
+        <button className="ghost" onClick={openIdeas}>
+          Предложить идею
+        </button>
+        <button className="ghost" onClick={() => reportBug()}>
+          Сообщить об ошибке
+        </button>
+      </div>
+    </Card>
   )
 }
 

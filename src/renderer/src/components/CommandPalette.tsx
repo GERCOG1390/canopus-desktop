@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useApp, useLang, type PageId } from '../AppContext'
 import { translate } from '../i18n'
+import { openDiscussions, reportBug } from '../lib/feedback'
 import { THEMES } from '../lib/appearance'
 import { searchTypesSde } from '../lib/sde'
 import { Glyph, type GlyphName } from './Glyph'
@@ -90,6 +91,8 @@ export function CommandPalette({ pages, open, onClose }: { pages: NavPage[]; ope
         icon: 'rows',
         run: done(() => updateSettings({ density: settings.density === 'compact' ? 'comfortable' : 'compact' }))
       },
+      { key: 'discussions', section: 'Команды', label: 'Вопросы и идеи (GitHub Discussions)', text: 'вопрос идея помощь help discussions форум', icon: 'mail', run: done(openDiscussions) },
+      { key: 'bug', section: 'Команды', label: 'Сообщить об ошибке (GitHub)', text: 'ошибка баг bug issue report сообщить', icon: 'alert', run: done(() => reportBug()) },
       {
         key: 'update',
         section: 'Команды',
