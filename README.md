@@ -140,6 +140,39 @@ On Linux Canopus finds the chat logs of EVE running under Steam's Proton or Wine
 
 On first start Canopus downloads CCP's Static Data Export (~95 MB) and builds a local database; it updates itself when CCP publishes a new build. Game icons are fetched from CCP's image server on demand and cached.
 
+## Verifying a download
+
+Every release lists the **SHA-256 checksum** of each file in its notes and in `SHA256SUMS.txt`, with a VirusTotal link for each. To check a file:
+
+- Windows (PowerShell): `Get-FileHash .\Canopus-Setup-x.y.z.exe`
+- macOS / Linux: `shasum -a 256 Canopus-x.y.z-mac.dmg`
+
+The macOS build is also signed with a Developer ID and notarized by Apple; Windows and Linux builds are made by GitHub Actions from the public source (`.github/workflows/build.yml`), so anyone can see how they were built.
+
+## Why the login asks for these permissions
+
+Canopus reads only what each section needs. Everything stays on your computer; nothing is sent to the developer.
+
+| Section | ESI permissions |
+|---|---|
+| Skills, planner, fitting with your skills | `esi-skills.read_skills.v1`, `esi-skills.read_skillqueue.v1` |
+| Wallet, ratting, trades | `esi-wallet.read_character_wallet.v1` |
+| Location, ship, online (intel, map, stream) | `esi-location.read_location.v1`, `esi-location.read_ship_type.v1`, `esi-location.read_online.v1` |
+| Assets, structures names | `esi-assets.read_assets.v1`, `esi-universe.read_structures.v1`, `esi-search.search_structures.v1` |
+| Industry, blueprints, mining, PI | `esi-industry.read_character_jobs.v1`, `esi-characters.read_blueprints.v1`, `esi-industry.read_character_mining.v1`, `esi-planets.manage_planets.v1` (read only) |
+| Market orders, contracts | `esi-markets.read_character_orders.v1`, `esi-contracts.read_character_contracts.v1` |
+| Clones, implants, fatigue, fittings | `esi-clones.read_clones.v1`, `esi-clones.read_implants.v1`, `esi-characters.read_fatigue.v1`, `esi-fittings.read_fittings.v1` |
+| PvP, contacts, standings, loyalty points | `esi-killmails.read_killmails.v1`, `esi-characters.read_contacts.v1`, `esi-corporations.read_contacts.v1`, `esi-alliances.read_contacts.v1`, `esi-characters.read_standings.v1`, `esi-characters.read_loyalty.v1` |
+| Military Campaigns, Freelance Jobs | `esi.activity.char:read`, `esi-characters.read_freelance_jobs.v1` |
+| Set destination (only when you click) | `esi-ui.write_waypoint.v1` |
+
+**Opt-in, only after you press the button in Settings:**
+
+| Button | ESI permissions |
+|---|---|
+| Allow in-game actions | open windows in the client, save fits, mail, contacts, fleet, calendar (`esi-ui.open_window.v1`, `esi-fittings.write_fittings.v1`, `esi-mail.*`, `esi-characters.write_contacts.v1`, `esi-fleets.*`, `esi-calendar.*`) — Canopus acts only when you click |
+| Allow corporation | structures, structure notifications, moon mining, corporation projects (`esi-corporations.read_structures.v1`, `esi-characters.read_notifications.v1`, `esi-industry.read_corporation_mining.v1`, `esi-corporations.read_projects.v1`) |
+
 ## Getting started
 
 1. **Log in with EVE SSO** (bottom left) — CCP's login page opens in your own browser, where you can check the login.eveonline.com address and certificate; Canopus never sees the page or your password. Canopus uses EVE SSO with PKCE; tokens are stored encrypted (Windows DPAPI / macOS Keychain / the Linux keyring) and never leave your computer. When a new version needs more permissions, Canopus asks you to log in again.

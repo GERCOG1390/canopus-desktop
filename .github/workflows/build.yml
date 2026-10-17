@@ -52,3 +52,31 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ inputs.tag }}" ${{ matrix.os == 'windows-latest' && 'release/*.exe release/*.exe.blockmap' || 'release/*.AppImage release/*.deb' }} --clobber
+
+  # After the builds: checksums of every file in the release (the macOS files included when they
+  # were uploaded first), as SHA256SUMS.txt and as a table with VirusTotal links in the notes.
+  checksums:
+    needs: build
+    if: inputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: SHA256SUMS and release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir files && cd files
+          gh release download "$TAG" -R "$REPO" --skip-existing
+          rm -f SHA256SUMS.txt
+          sha256sum $(ls | grep -v blockmap) > SHA256SUMS.txt
+          gh release upload "$TAG" -R "$REPO" SHA256SUMS.txt --clobber
+          gh release view "$TAG" -R "$REPO" --json body --jq .body | sed '/^## Checksums/,$d' > notes.md
+          {
+            echo '## Checksums / Контрольные суммы'
+            echo
+            echo '| File | SHA-256 | |'
+            echo '|---|---|---|'
+            while read -r sum name; do echo "| \`$name\` | \`$sum\` | [VirusTotal](https://www.virustotal.com/gui/file/$sum) |"; done < SHA256SUMS.txt
+          } >> notes.md
+          gh release edit "$TAG" -R "$REPO" --notes-file notes.md
