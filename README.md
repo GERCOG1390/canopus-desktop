@@ -65,6 +65,7 @@ New Eden at the real coordinates from the SDE, rotate and zoom, region and syste
 - **Alliance jump bridges (Ansiblex)** — paste the list (plain or Dotlan format), see them as arcs with their distance from the alliance capital (Cradle of War pricing), route through them.
 - **Avoided systems** and **notes** per system; avoided systems are left out of every route.
 - **Capital jump range** — a sphere around any system and every lowsec / nullsec system it reaches.
+- **Sovereignty** — systems coloured by the alliance holding them, raidable Skyhooks and sovereignty timers marked.
 - Fresh intel reports and your current system marked on the map.
 
 ### Map and travel
@@ -77,6 +78,8 @@ New Eden at the real coordinates from the SDE, rotate and zoom, region and syste
 | ![Route safety](docs/screenshots/route-safety.png) | ![Jump planner](docs/screenshots/jump-planner.png) | ![Wormholes](docs/screenshots/wormholes.png) |
 
 ### Activities
+- **Military Campaigns** — every faction campaign with its progress, the objectives with their rewards and your own contribution.
+- **Freelance Jobs** — every public job with type, reward per unit, pool left and the jumps from you; filters the game doesn't have (any number of hidden corporations, minimum reward, within N jumps), alerts for new matching jobs; your jobs and your corporation's projects.
 - **Signatures** — copy the probe scanner and Canopus remembers the signatures per system, marks new and vanished ones and tells what to expect at each site.
 - **Ratting** — bounties from the wallet, damage dealt and received from the combat log.
 - **Abyss** — a run log with results by tier and by ship.
@@ -105,6 +108,9 @@ New Eden at the real coordinates from the SDE, rotate and zoom, region and syste
 - **Tray and desktop notifications** for every character: skill queue running out, PI extractors, finished industry jobs, jump fatigue, outbid market orders, jump clone ready.
 - zKillboard statistics and recent fights with the victim's fit.
 
+### Streaming
+Widgets for OBS (Browser source), served by Canopus on this computer only: your ship, the current system (optionally 2–60 minutes late, against stream sniping), the session's wallet change with kills and losses, and a killfeed from zKillboard.
+
 ### In-game actions (optional)
 With your permission Canopus acts in the game through CCP's official ESI: opens the market, contract or info window,
 sets the destination, saves fits, sends mail, edits contacts, manages the fleet and answers calendar events.
@@ -132,7 +138,7 @@ On first start Canopus downloads CCP's Static Data Export (~95 MB) and builds a 
 
 ## Getting started
 
-1. **Log in with EVE SSO** (bottom left) — CCP's login page opens inside the app. Canopus uses EVE SSO with PKCE; tokens are stored encrypted (Windows DPAPI / macOS Keychain / the Linux keyring) and never leave your computer.
+1. **Log in with EVE SSO** (bottom left) — CCP's login page opens in your own browser, where you can check the login.eveonline.com address and certificate; Canopus never sees the page or your password. Canopus uses EVE SSO with PKCE; tokens are stored encrypted (Windows DPAPI / macOS Keychain / the Linux keyring) and never leave your computer. When a new version needs more permissions, Canopus asks you to log in again.
 2. **Settings → Language** switches the interface and item names between English and Russian.
 3. For intel, run EVE windowed or borderless, copy Local with **Ctrl+A, Ctrl+C** and choose your intel channels.
 
@@ -163,7 +169,7 @@ Stack: Electron, electron-vite, React, TypeScript.
 - `src/renderer` — React UI; `i18n/` translates the interface on render.
 - `src/shared` — types shared across processes.
 
-Questions and ideas: [Discussions](../../discussions) · bug reports: [Issues](../../issues).
+Questions and ideas: [Discussions](../../discussions) · bug reports: [Issues](../../issues) — also from **Settings → Help and feedback** in the app.
 
 ## License
 
