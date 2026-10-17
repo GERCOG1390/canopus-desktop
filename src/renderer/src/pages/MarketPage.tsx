@@ -8,12 +8,13 @@ import { MarketTree } from '../components/MarketTree'
 import { GameButton } from '../components/GameButton'
 import { openMarketInGame, SCOPE } from '../lib/gameActions'
 import { Arbitrage, LpStore } from './MarketTools'
+import Trades from './Trades'
 import { fmtDate, fmtIsk, fmtNum } from '../lib/format'
 import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/market'
 import { getBasic, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 
-type Tab = 'prices' | 'appraisal' | 'arbitrage' | 'lp' | 'orders'
+type Tab = 'prices' | 'appraisal' | 'arbitrage' | 'lp' | 'orders' | 'trades'
 
 export default function MarketPage() {
   const { pageArg } = useApp()
@@ -29,7 +30,8 @@ export default function MarketPage() {
           { id: 'appraisal', label: 'Оценка лута' },
           { id: 'arbitrage', label: 'Арбитраж' },
           { id: 'lp', label: 'LP-магазин' },
-          { id: 'orders', label: 'Мои ордера' }
+          { id: 'orders', label: 'Мои ордера' },
+          { id: 'trades', label: 'Мои сделки' }
         ]}
         value={tab}
         onChange={setTab}
@@ -39,6 +41,7 @@ export default function MarketPage() {
       {tab === 'arbitrage' && <Arbitrage />}
       {tab === 'lp' && <LpStore />}
       {tab === 'orders' && <MyOrders />}
+      {tab === 'trades' && <Trades />}
     </div>
   )
 }
