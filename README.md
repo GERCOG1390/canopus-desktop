@@ -68,6 +68,10 @@ New Eden at the real coordinates from the SDE, rotate and zoom, region and syste
 - **Sovereignty** — systems coloured by the alliance holding them, raidable Skyhooks and sovereignty timers marked.
 - Fresh intel reports and your current system marked on the map.
 
+| Galaxy | Sovereignty |
+|---|---|
+| ![Galaxy map](docs/screenshots/galaxy-map.png) | ![Sovereignty](docs/screenshots/galaxy-sovereignty.png) |
+
 ### Map and travel
 - **Route safety** — every system on the route with security, ship / pod kills in the last hour and gate camps from zKillboard; set the destination in the game with one click.
 - **Jump planner** for capitals and black ops: range with your skills, fuel per jump and jump fatigue along a chain of cyno jumps.
