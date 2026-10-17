@@ -8,6 +8,7 @@ import type { UpdateStatus } from './update'
 import type { StreamSettings, StreamState, StreamStatus } from './stream'
 import type { FreelanceFilter } from './freelance'
 import type { WidgetSettings, WidgetView } from './widgets'
+import type { ClientWindow, PreviewSettings } from './previews'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
 import type { CampaignDef, CampaignObjectiveDef, GalaxyData, JumpHop, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
@@ -48,11 +49,20 @@ export interface Settings {
   stream: StreamSettings
   freelance: FreelanceFilter
   widgets: WidgetSettings
+  previews: PreviewSettings
 }
 
 export type ThemeId = 'canopus' | 'photon' | 'amarr' | 'caldari' | 'gallente' | 'minmatar'
 
 export interface CanopusApi {
+  previews: {
+    list(): Promise<ClientWindow[]>
+    activate(client: ClientWindow): Promise<void>
+    set(patch: Partial<PreviewSettings>): Promise<PreviewSettings>
+    permissions(): Promise<{ screen: string; accessibility: boolean }>
+    onActive(listener: (id: string) => void): () => void
+    onSettings(listener: () => void): () => void
+  }
   widgets: {
     set(view: WidgetView, enabled: boolean): Promise<WidgetSettings>
     setOpacity(opacity: number): Promise<WidgetSettings>

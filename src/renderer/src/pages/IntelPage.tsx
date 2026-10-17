@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { WIDGET_VIEWS, type WidgetView } from '../../../shared/widgets'
+import { PREVIEW_KEYS, type PreviewSettings } from '../../../shared/previews'
 import type { IntelReport, Threat } from '../../../shared/intel'
 import { useApp } from '../AppContext'
 import { REPORT_FRESH_MS, useIntel } from '../IntelContext'
@@ -676,6 +677,8 @@ function IntelSettingsTab() {
 
       <WidgetsCard />
 
+      <PreviewsCard />
+
       <Card title="Оверлей поверх игры">
         <label className="check">
           <input type="checkbox" checked={intel.overlay.enabled} onChange={(e) => setOverlay({ enabled: e.target.checked })} />
@@ -788,6 +791,69 @@ function WidgetsCard() {
         Прозрачность: {Math.round(w.opacity * 100)}%
         <input type="range" min={0.4} max={1} step={0.05} value={w.opacity} onChange={(e) => void window.api.widgets.setOpacity(Number(e.target.value)).then(refresh)} />
       </label>
+    </Card>
+  )
+}
+
+/** Multi-client previews: live tiles of the EVE clients, click or a hotkey to switch. */
+function PreviewsCard() {
+  const { settings, updateSettings } = useApp()
+  if (!settings) return null
+  const p = settings.previews
+  const set = (patch: Partial<PreviewSettings>) => void window.api.previews.set(patch).then(() => updateSettings({}))
+  const key = (value: string, onChange: (v: string) => void) => (
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      {PREVIEW_KEYS.map((k) => (
+        <option key={k} value={k}>
+          {k || 'нет'}
+        </option>
+      ))}
+    </select>
+  )
+  return (
+    <Card title="Превью клиентов (мультибокс)">
+      <p className="muted small">
+        Живые миниатюры всех окон EVE. Клик по миниатюре или горячая клавиша выводит этот клиент на передний план. Одно действие — одно окно: Canopus ничего не нажимает в игре
+        и не повторяет ввод в других клиентах.
+      </p>
+      <label className="check">
+        <input type="checkbox" checked={p.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
+        Показывать превью клиентов
+      </label>
+      <div className="row">
+        <label>
+          Размер миниатюры
+          <select value={p.tile} onChange={(e) => set({ tile: Number(e.target.value) })}>
+            {[160, 200, 240, 320, 400].map((w) => (
+              <option key={w} value={w}>{`${w} px`}</option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Кадров в секунду
+          <select value={p.fps} onChange={(e) => set({ fps: Number(e.target.value) })}>
+            {[1, 2, 5, 10, 15, 30].map((f) => (
+              <option key={f} value={f}>
+                {f}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="row">
+        <label>
+          Следующий клиент
+          {key(p.nextKey, (v) => set({ nextKey: v }))}
+        </label>
+        <label>
+          Предыдущий клиент
+          {key(p.prevKey, (v) => set({ prevKey: v }))}
+        </label>
+      </div>
+      <p className="muted small">
+        Горячие клавиши работают во всей системе — выберите те, что не нужны в игре. macOS попросит разрешить «Запись экрана» (для миниатюр) и «Универсальный доступ» (для
+        переключения). Linux: для переключения нужен wmctrl или xdotool.
+      </p>
     </Card>
   )
 }

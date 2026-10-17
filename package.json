@@ -105,12 +105,17 @@
           "eveauthcanopus"
         ]
       }
+    ],
+    "asarUnpack": [
+      "node_modules/koffi/**",
+      "node_modules/@koromix/**"
     ]
   },
   "dependencies": {
     "@fontsource/exo-2": "^5.3.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
+    "koffi": "^3.3.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "three": "^0.186.1",

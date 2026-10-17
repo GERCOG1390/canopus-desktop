@@ -3888,3 +3888,51 @@ button.danger-fill:hover:not(:disabled) {
 .widget-body button {
   -webkit-app-region: no-drag;
 }
+
+/* ---------- Multi-client previews ---------- */
+.preview-tiles {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 6px;
+  padding: 6px;
+  overflow: auto;
+}
+.preview-tile {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  background: #000;
+  overflow: hidden;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.preview-tile.active {
+  border-color: var(--star);
+}
+.preview-tile video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.preview-name {
+  position: absolute;
+  left: 4px;
+  bottom: 3px;
+  font-size: 11px;
+  color: #fff;
+  text-shadow: 0 0 3px #000, 0 0 6px #000;
+}
+.preview-fail {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+.preview-hint {
+  padding: 4px 8px;
+}

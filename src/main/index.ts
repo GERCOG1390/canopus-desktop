@@ -17,6 +17,8 @@ import * as combatlog from './combatlog'
 import * as updater from './updater'
 import * as stream from './stream'
 import * as widgets from './widgets'
+import * as previews from './previews'
+import type { ClientWindow, PreviewSettings } from '../shared/previews'
 import type { WidgetView } from '../shared/widgets'
 import { storeGet, storeSet } from './userstore'
 import appIconPath from '../../build/icon.png?asset'
@@ -242,6 +244,17 @@ function registerIpc(): void {
     return w
   })
   ipcMain.handle('widgets:opacity', (_e, opacity: number) => widgets.setWidgetOpacity(opacity, loadRenderer, PRELOAD))
+  ipcMain.handle('previews:list', () => previews.listClients())
+  ipcMain.handle('previews:activate', async (_e, client: ClientWindow) => {
+    previews.activate(client)
+    previews.setActiveIndex(client.id, await previews.listClients())
+  })
+  ipcMain.handle('previews:set', (_e, patch: Partial<PreviewSettings>) => {
+    const p = previews.setPreviews(patch, loadRenderer, PRELOAD)
+    sendToMain('intel:settingsChanged', null)
+    return p
+  })
+  ipcMain.handle('previews:permissions', () => previews.permissions())
   ipcMain.handle('stream:status', () => stream.streamStatus())
   ipcMain.handle('stream:state', () => stream.streamState())
   ipcMain.handle('stream:reset', () => stream.resetSession())
@@ -329,6 +342,7 @@ app.whenReady().then(() => {
   intel.initIntel(sendToMain)
   intel.applyOverlay(loadRenderer, PRELOAD)
   widgets.applyWidgets(loadRenderer, PRELOAD)
+  previews.applyPreviews(loadRenderer, PRELOAD)
   intel.registerShortcuts(loadRenderer, PRELOAD, () => sendToMain('intel:settingsChanged', null))
   createTray()
   notifier.initNotifier(showMain)

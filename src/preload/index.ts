@@ -19,6 +19,14 @@ function on<T>(channel: string, listener: (payload: T) => void): () => void {
 }
 
 const api: CanopusApi = {
+  previews: {
+    list: () => invoke('previews:list'),
+    activate: (client) => invoke('previews:activate', client),
+    set: (patch) => invoke('previews:set', patch),
+    permissions: () => invoke('previews:permissions'),
+    onActive: (listener) => on('previews:active', listener),
+    onSettings: (listener) => on('previews:settings', listener)
+  },
   widgets: {
     set: (view, enabled) => invoke('widgets:set', view, enabled),
     setOpacity: (opacity) => invoke('widgets:opacity', opacity)

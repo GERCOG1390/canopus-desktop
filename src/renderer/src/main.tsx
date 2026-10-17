@@ -4,6 +4,7 @@ import App from './App'
 import CombatWindow from './CombatWindow'
 import Overlay from './Overlay'
 import Widget from './Widget'
+import Previews from './Previews'
 import { WIDGET_VIEWS, type WidgetView } from '../../shared/widgets'
 import '@fontsource/exo-2/500.css'
 import '@fontsource/exo-2/600.css'
@@ -33,6 +34,6 @@ window.api.onSettingsChanged(() => void window.api.settings.get().then(applyAppe
 // #widget-<view> and #combat.
 const widget = /^#widget-(\w+)$/.exec(location.hash)?.[1] as WidgetView | undefined
 const view =
-  location.hash === '#overlay' ? <Overlay /> : widget && WIDGET_VIEWS.includes(widget) ? <Widget view={widget} /> : location.hash === '#combat' ? <CombatWindow /> : <App />
+  location.hash === '#overlay' ? <Overlay /> : location.hash === '#previews' ? <Previews /> : widget && WIDGET_VIEWS.includes(widget) ? <Widget view={widget} /> : location.hash === '#combat' ? <CombatWindow /> : <App />
 
 createRoot(document.getElementById('root')!).render(<StrictMode>{view}</StrictMode>)
