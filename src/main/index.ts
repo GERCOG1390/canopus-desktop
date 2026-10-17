@@ -159,7 +159,8 @@ const sendToMain = (channel: string, payload: unknown): void => {
 function registerIpc(): void {
   ipcMain.handle('http:request', (_e, url: string, options?: RequestOptions) => request(url, options))
 
-  ipcMain.handle('auth:login', (_e, extended?: boolean, corp?: boolean) => auth.login(!!extended, !!corp))
+  ipcMain.handle('auth:login', (_e, extended?: boolean, corp?: boolean, mode?: auth.LoginMode) => auth.login(!!extended, !!corp, mode))
+  ipcMain.handle('auth:cancel', () => auth.cancelLogin())
   ipcMain.handle('auth:extraScopes', () => [...auth.EXTRA_SCOPES, ...auth.CORP_SCOPES])
   ipcMain.handle('auth:characters', () => auth.characters())
   ipcMain.handle('auth:logout', (_e, characterId: number) => auth.logout(characterId))

@@ -1,12 +1,13 @@
 // EVE SSO (OAuth 2.0 authorization code + PKCE) for a native desktop client.
 // No client secret is needed. Canopus uses its own application registered at
 // https://developers.eveonline.com with the callback URL below; its Client ID is built in.
-// The login page opens in a Canopus window that catches the redirect to the custom
-// callback scheme itself, so it works regardless of the default browser and of how
-// Windows routes eveauthcanopus:// links (that route, see index.ts, stays as a fallback).
-// No local port is opened.
+// The login page opens in the user's own browser, where the address and the certificate of
+// login.eveonline.com can be checked and Canopus can't see the page (RFC 8252); the browser hands
+// the result back through the eveauthcanopus:// scheme registered with the OS (see index.ts).
+// When that hand-off doesn't work on a machine, the login can run in a Canopus window instead,
+// which catches the redirect itself. No local port is opened.
 
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, shell } from 'electron'
 import appIconPath from '../../build/icon.png?asset'
 import { appendFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -160,7 +161,15 @@ export function handleCallbackUrl(raw: string): boolean {
   return true
 }
 
-export async function login(extended = false, corp = false): Promise<CharacterAuth> {
+/** Where the EVE login page opens: the default browser, or a Canopus window as a fallback. */
+export type LoginMode = 'browser' | 'window'
+
+/** Gives up the login in progress (the "Cancel" button while waiting for the browser). */
+export function cancelLogin(): void {
+  pendingLogin?.finish(new Error('Вход отменён'), '')
+}
+
+export async function login(extended = false, corp = false, mode: LoginMode = 'browser'): Promise<CharacterAuth> {
   const id = clientId()
   const verifier = base64url(randomBytes(32))
   const challenge = base64url(createHash('sha256').update(verifier).digest())
@@ -178,7 +187,12 @@ export async function login(extended = false, corp = false): Promise<CharacterAu
   }).toString()
 
   const codePromise = waitForCallback(state)
-  const win = openLoginWindow(authUrl.toString())
+  let win: BrowserWindow | null = null
+  if (mode === 'window') win = openLoginWindow(authUrl.toString())
+  else {
+    log(`open in browser ${redact(authUrl.toString())}`)
+    await shell.openExternal(authUrl.toString())
+  }
   let code: string
   try {
     code = await codePromise
@@ -186,7 +200,7 @@ export async function login(extended = false, corp = false): Promise<CharacterAu
     log(`login failed: ${(err as Error).message}`)
     throw err
   } finally {
-    if (!win.isDestroyed()) win.close()
+    if (win && !win.isDestroyed()) win.close()
   }
 
   try {

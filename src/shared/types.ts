@@ -60,7 +60,8 @@ export interface CanopusApi {
   request<T = unknown>(url: string, options?: RequestOptions): Promise<T>
   auth: {
     /** Log in; `extended` also asks for the permissions to act in the game (open windows, fits, mail, contacts, fleet, calendar). */
-    login(extended?: boolean, corp?: boolean): Promise<CharacterAuth>
+    login(extended?: boolean, corp?: boolean, mode?: 'browser' | 'window'): Promise<CharacterAuth>
+    cancelLogin(): Promise<void>
     extraScopes(): Promise<string[]>
     characters(): Promise<CharacterAuth[]>
     logout(characterId: number): Promise<void>

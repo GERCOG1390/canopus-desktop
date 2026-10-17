@@ -27,7 +27,8 @@ const api: CanopusApi = {
   },
   request: (url, options) => invoke('http:request', url, options),
   auth: {
-    login: (extended, corp) => invoke('auth:login', extended, corp),
+    login: (extended, corp, mode) => invoke('auth:login', extended, corp, mode),
+    cancelLogin: () => invoke('auth:cancel'),
     extraScopes: () => invoke('auth:extraScopes'),
     characters: () => invoke('auth:characters'),
     logout: (characterId) => invoke('auth:logout', characterId),

@@ -19,8 +19,10 @@ interface AppState {
   pageArg: number | null
   navigate: (page: PageId, arg?: number | null) => void
   updateSettings: (patch: Partial<Settings>) => Promise<void>
-  /** `extended`: also ask for the permissions to act in the game */
-  login: (extended?: boolean, corp?: boolean) => Promise<void>
+  /** `extended`: also ask for the permissions to act in the game; opens in the browser unless `mode` says otherwise */
+  login: (extended?: boolean, corp?: boolean, mode?: 'browser' | 'window') => Promise<void>
+  /** The login in progress (the waiting dialog shows while it is set) */
+  loginPending: { extended: boolean; corp: boolean; mode: 'browser' | 'window' } | null
   logout: (id: number) => Promise<void>
   setActive: (id: number) => Promise<void>
 }
@@ -58,10 +60,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSettings(await window.api.settings.set(patch))
   }, [])
 
-  const login = useCallback(async (extended?: boolean, corp?: boolean) => {
-    const ch = await window.api.auth.login(extended, corp)
-    setCharacters(await window.api.auth.characters())
-    setSettings(await window.api.settings.set({ activeCharacterId: ch.id }))
+  const [loginPending, setLoginPending] = useState<AppState['loginPending']>(null)
+  const login = useCallback(async (extended?: boolean, corp?: boolean, mode: 'browser' | 'window' = 'browser') => {
+    const attempt = { extended: !!extended, corp: !!corp, mode }
+    setLoginPending(attempt)
+    try {
+      const ch = await window.api.auth.login(extended, corp, mode)
+      setCharacters(await window.api.auth.characters())
+      setSettings(await window.api.settings.set({ activeCharacterId: ch.id }))
+    } finally {
+      // A newer attempt (another mode, "open again") replaces this one: leave its dialog alone.
+      setLoginPending((p) => (p === attempt ? null : p))
+    }
   }, [])
 
   const logout = useCallback(async (id: number) => {
@@ -83,7 +93,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => applyAppearance(settings), [settings?.theme, settings?.density])
 
   return (
-    <Ctx.Provider value={{ settings, characters, active, lang, sde, page, pageArg, navigate, updateSettings, login, logout, setActive }}>
+    <Ctx.Provider value={{ settings, characters, active, lang, sde, page, pageArg, navigate, updateSettings, login, loginPending, logout, setActive }}>
       {children}
     </Ctx.Provider>
   )

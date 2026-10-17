@@ -6,6 +6,7 @@ import { BrandMark, Glyph, type GlyphName } from './components/Glyph'
 import { InfoProvider } from './components/InfoContext'
 import { InfoPanel } from './components/InfoPanel'
 import { ReloginGate } from './components/ReloginGate'
+import { LoginWaiting } from './components/LoginWaiting'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { imageUrl } from './lib/esi'
 import { fmtNum } from './lib/format'
@@ -281,6 +282,7 @@ function Shell() {
       <InfoPanel />
       <CommandPalette pages={PAGES} open={palette} onClose={() => setPalette(false)} />
       <ReloginGate />
+      <LoginWaiting />
       <DangerToast />
     </div>
   )
