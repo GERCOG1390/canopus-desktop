@@ -13,7 +13,7 @@ import { useAsync } from '../../lib/useAsync'
 const REFRESH_MS = 5 * 60_000
 const INFOMORPH_SYNCHRONIZING = 33399
 
-interface Row {
+export interface Row {
   id: number
   name: string
   online?: boolean
@@ -33,7 +33,7 @@ interface Row {
 /** Each part may fail on its own (a missing scope): the rest of the row still shows. */
 const opt = <T,>(p: Promise<T>): Promise<T | undefined> => p.catch(() => undefined)
 
-async function loadRow(c: CharacterAuth): Promise<Row> {
+export async function loadRow(c: CharacterAuth): Promise<Row> {
   const id = c.id
   const get = <T,>(path: string) => opt(esi<T>(path, { characterId: id }))
   const [online, location, ship, queue, wallet, jobs, planets, fatigue, clones, skills] = await Promise.all([

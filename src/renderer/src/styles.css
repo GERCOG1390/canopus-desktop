@@ -3838,3 +3838,53 @@ button.danger-fill:hover:not(:disabled) {
 .relogin-list img {
   border-radius: 4px;
 }
+
+/* ---------- Overlay mini-windows ---------- */
+.widget-body {
+  flex: 1;
+  overflow: auto;
+  padding: 6px 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.widget-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.widget-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 11px;
+}
+.widget-table td,
+.widget-table th {
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+.widget-table .num {
+  text-align: right;
+}
+.widget-total td {
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+}
+.widget-input {
+  width: 100%;
+  -webkit-app-region: no-drag;
+}
+.widget-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.widget-price {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.widget-body button {
+  -webkit-app-region: no-drag;
+}

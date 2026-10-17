@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { WIDGET_VIEWS, type WidgetView } from '../../../shared/widgets'
 import type { IntelReport, Threat } from '../../../shared/intel'
 import { useApp } from '../AppContext'
 import { REPORT_FRESH_MS, useIntel } from '../IntelContext'
@@ -673,6 +674,8 @@ function IntelSettingsTab() {
 
       <DiscordCard />
 
+      <WidgetsCard />
+
       <Card title="Оверлей поверх игры">
         <label className="check">
           <input type="checkbox" checked={intel.overlay.enabled} onChange={(e) => setOverlay({ enabled: e.target.checked })} />
@@ -755,6 +758,35 @@ function DiscordCard() {
       <label className="check">
         <input type="checkbox" checked={intel.discord.channels} onChange={(e) => set({ channels: e.target.checked })} />
         Доклады интел-каналов в пределах дальности тревоги
+      </label>
+    </Card>
+  )
+}
+
+const WIDGET_LABEL: Record<WidgetView, string> = {
+  timers: 'Таймеры: навыки, планетарка, работы всех персонажей',
+  price: 'Цена в Jita: быстрый поиск предмета с копированием цены',
+  wallet: 'Кошелёк: ISK всех персонажей'
+}
+
+/** Mini-windows over the game besides the intel overlay. */
+function WidgetsCard() {
+  const { settings, updateSettings } = useApp()
+  if (!settings) return null
+  const w = settings.widgets
+  const refresh = () => updateSettings({})
+  return (
+    <Card title="Мини-окна поверх игры">
+      <p className="muted small">Маленькие окна поверх EVE — каждое можно перетащить за заголовок и изменить размер. Работают в оконном режиме или «окно без рамки».</p>
+      {WIDGET_VIEWS.map((v) => (
+        <label key={v} className="check">
+          <input type="checkbox" checked={!!w.views[v]?.enabled} onChange={(e) => void window.api.widgets.set(v, e.target.checked).then(refresh)} />
+          {WIDGET_LABEL[v]}
+        </label>
+      ))}
+      <label>
+        Прозрачность: {Math.round(w.opacity * 100)}%
+        <input type="range" min={0.4} max={1} step={0.05} value={w.opacity} onChange={(e) => void window.api.widgets.setOpacity(Number(e.target.value)).then(refresh)} />
       </label>
     </Card>
   )

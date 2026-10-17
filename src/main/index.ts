@@ -16,6 +16,8 @@ import * as notifier from './notifier'
 import * as combatlog from './combatlog'
 import * as updater from './updater'
 import * as stream from './stream'
+import * as widgets from './widgets'
+import type { WidgetView } from '../shared/widgets'
 import { storeGet, storeSet } from './userstore'
 import appIconPath from '../../build/icon.png?asset'
 
@@ -233,6 +235,13 @@ function registerIpc(): void {
   ipcMain.handle('sde:galaxy', () => sde.galaxy())
   ipcMain.handle('sde:campaigns', () => sde.campaigns())
   ipcMain.handle('sde:jobTypes', () => sde.jobTypes())
+  ipcMain.handle('widgets:set', (_e, view: WidgetView, enabled: boolean) => {
+    const w = widgets.setWidget(view, enabled, loadRenderer, PRELOAD)
+    // A mini-window closed by its own ✕: the settings in the main window follow.
+    sendToMain('intel:settingsChanged', null)
+    return w
+  })
+  ipcMain.handle('widgets:opacity', (_e, opacity: number) => widgets.setWidgetOpacity(opacity, loadRenderer, PRELOAD))
   ipcMain.handle('stream:status', () => stream.streamStatus())
   ipcMain.handle('stream:state', () => stream.streamState())
   ipcMain.handle('stream:reset', () => stream.resetSession())
@@ -319,6 +328,7 @@ app.whenReady().then(() => {
   void sde.initSde()
   intel.initIntel(sendToMain)
   intel.applyOverlay(loadRenderer, PRELOAD)
+  widgets.applyWidgets(loadRenderer, PRELOAD)
   intel.registerShortcuts(loadRenderer, PRELOAD, () => sendToMain('intel:settingsChanged', null))
   createTray()
   notifier.initNotifier(showMain)

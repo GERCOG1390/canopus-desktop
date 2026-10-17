@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import App from './App'
 import CombatWindow from './CombatWindow'
 import Overlay from './Overlay'
+import Widget from './Widget'
+import { WIDGET_VIEWS, type WidgetView } from '../../shared/widgets'
 import '@fontsource/exo-2/500.css'
 import '@fontsource/exo-2/600.css'
 import '@fontsource/exo-2/700.css'
@@ -27,7 +29,10 @@ document.addEventListener('click', (e) => {
 void window.api.settings.get().then(applyAppearance)
 window.api.onSettingsChanged(() => void window.api.settings.get().then(applyAppearance))
 
-// The overlay and the combat simulator windows load the same bundle with #overlay / #combat.
-const view = location.hash === '#overlay' ? <Overlay /> : location.hash === '#combat' ? <CombatWindow /> : <App />
+// The overlay, its mini-windows and the combat simulator load the same bundle with #overlay,
+// #widget-<view> and #combat.
+const widget = /^#widget-(\w+)$/.exec(location.hash)?.[1] as WidgetView | undefined
+const view =
+  location.hash === '#overlay' ? <Overlay /> : widget && WIDGET_VIEWS.includes(widget) ? <Widget view={widget} /> : location.hash === '#combat' ? <CombatWindow /> : <App />
 
 createRoot(document.getElementById('root')!).render(<StrictMode>{view}</StrictMode>)

@@ -7,6 +7,7 @@ import type { CombatLogEvent } from './ratting'
 import type { UpdateStatus } from './update'
 import type { StreamSettings, StreamState, StreamStatus } from './stream'
 import type { FreelanceFilter } from './freelance'
+import type { WidgetSettings, WidgetView } from './widgets'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
 import type { CampaignDef, CampaignObjectiveDef, GalaxyData, JumpHop, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
@@ -46,11 +47,16 @@ export interface Settings {
   density: 'compact' | 'comfortable'
   stream: StreamSettings
   freelance: FreelanceFilter
+  widgets: WidgetSettings
 }
 
 export type ThemeId = 'canopus' | 'photon' | 'amarr' | 'caldari' | 'gallente' | 'minmatar'
 
 export interface CanopusApi {
+  widgets: {
+    set(view: WidgetView, enabled: boolean): Promise<WidgetSettings>
+    setOpacity(opacity: number): Promise<WidgetSettings>
+  }
   stream: {
     status(): Promise<StreamStatus>
     state(): Promise<StreamState>

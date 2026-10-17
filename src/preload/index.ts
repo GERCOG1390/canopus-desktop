@@ -19,6 +19,10 @@ function on<T>(channel: string, listener: (payload: T) => void): () => void {
 }
 
 const api: CanopusApi = {
+  widgets: {
+    set: (view, enabled) => invoke('widgets:set', view, enabled),
+    setOpacity: (opacity) => invoke('widgets:opacity', opacity)
+  },
   stream: {
     status: () => invoke('stream:status'),
     state: () => invoke('stream:state'),

@@ -5,6 +5,7 @@ import { DEFAULT_INTEL } from '../shared/intel'
 import { DEFAULT_NOTIFY } from '../shared/notify'
 import { DEFAULT_STREAM } from '../shared/stream'
 import { DEFAULT_FREELANCE } from '../shared/freelance'
+import { DEFAULT_WIDGETS } from '../shared/widgets'
 import type { Settings } from '../shared/types'
 
 const settingsPath = (): string => join(app.getPath('userData'), 'settings.json')
@@ -16,7 +17,7 @@ const tokensPath = (): string => join(app.getPath('userData'), 'tokens.bin')
  */
 export const DEFAULT_CLIENT_ID = 'a3159d301b8d450a86f4a95f26e55fd9'
 
-const DEFAULT_SETTINGS: Settings = { clientId: DEFAULT_CLIENT_ID, activeCharacterId: null, alwaysOnTop: false, lang: 'ru', intel: DEFAULT_INTEL, notify: DEFAULT_NOTIFY, autoUpdate: true, theme: 'canopus', density: 'comfortable', stream: DEFAULT_STREAM, freelance: DEFAULT_FREELANCE }
+const DEFAULT_SETTINGS: Settings = { clientId: DEFAULT_CLIENT_ID, activeCharacterId: null, alwaysOnTop: false, lang: 'ru', intel: DEFAULT_INTEL, notify: DEFAULT_NOTIFY, autoUpdate: true, theme: 'canopus', density: 'comfortable', stream: DEFAULT_STREAM, freelance: DEFAULT_FREELANCE, widgets: DEFAULT_WIDGETS }
 
 export function loadSettings(): Settings {
   try {
@@ -28,7 +29,7 @@ export function loadSettings(): Settings {
         discord: { ...DEFAULT_INTEL.discord, ...saved.intel?.discord },
         overlay: { ...DEFAULT_INTEL.overlay, ...saved.intel?.overlay }
       }
-      return { ...DEFAULT_SETTINGS, ...saved, clientId: DEFAULT_CLIENT_ID, intel, notify: { ...DEFAULT_NOTIFY, ...saved.notify }, stream: { ...DEFAULT_STREAM, ...saved.stream }, freelance: { ...DEFAULT_FREELANCE, ...saved.freelance } }
+      return { ...DEFAULT_SETTINGS, ...saved, clientId: DEFAULT_CLIENT_ID, intel, notify: { ...DEFAULT_NOTIFY, ...saved.notify }, stream: { ...DEFAULT_STREAM, ...saved.stream }, freelance: { ...DEFAULT_FREELANCE, ...saved.freelance }, widgets: { ...DEFAULT_WIDGETS, ...saved.widgets, views: { ...saved.widgets?.views } } }
     }
   } catch (err) {
     console.error('Failed to read settings, using defaults', err)
