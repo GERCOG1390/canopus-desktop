@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain, Menu, nativeImage, shell, Tray } from 'electron'
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, screen, shell, Tray } from 'electron'
+import { writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import type { RequestOptions, Settings } from '../shared/types'
+import type { FitShotData, RequestOptions, Settings } from '../shared/types'
 import * as auth from './auth'
 import { request } from './http'
 import * as sde from './sde'
@@ -156,6 +157,37 @@ function openCombatWindow(): void {
   loadRenderer(combatWindow, 'combat')
 }
 
+// ---------- Fit snapshot window ----------
+
+/** The fit shown in the snapshot window: one picture with every module and the resulting stats. */
+let fitShot: FitShotData | null = null
+let fitShotWindow: BrowserWindow | null = null
+
+function openFitShot(pilot: FitShotData): void {
+  fitShot = pilot
+  if (fitShotWindow && !fitShotWindow.isDestroyed()) {
+    fitShotWindow.webContents.send('fitshot:fit', pilot)
+    if (fitShotWindow.isMinimized()) fitShotWindow.restore()
+    fitShotWindow.focus()
+    return
+  }
+  fitShotWindow = new BrowserWindow({
+    icon: appIconPath,
+    width: 980,
+    height: 720,
+    title: 'Canopus — снимок фита',
+    backgroundColor: '#131416',
+    autoHideMenuBar: true,
+    webPreferences: { preload: PRELOAD, contextIsolation: true, sandbox: true }
+  })
+  fitShotWindow.webContents.setWindowOpenHandler(({ url }) => {
+    openExternal(url)
+    return { action: 'deny' }
+  })
+  fitShotWindow.on('closed', () => (fitShotWindow = null))
+  loadRenderer(fitShotWindow, 'fitshot')
+}
+
 const sendToMain = (channel: string, payload: unknown): void => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload)
 }
@@ -288,6 +320,31 @@ function registerIpc(): void {
   ipcMain.handle('combat:setAttacker', (_e, attacker: CombatPilot) => {
     combatAttacker = attacker
     if (combatWindow && !combatWindow.isDestroyed()) combatWindow.webContents.send('combat:attacker', attacker)
+  })
+  ipcMain.handle('fitshot:open', (_e, pilot: FitShotData) => openFitShot(pilot))
+  ipcMain.handle('fitshot:get', () => fitShot)
+  // The window fits itself around the card, so the picture has no empty margins or scrollbars.
+  ipcMain.handle('fitshot:resize', (e, width: number, height: number) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    if (!win) return
+    const area = screen.getDisplayMatching(win.getBounds()).workAreaSize
+    win.setContentSize(Math.min(Math.ceil(width), area.width - 40), Math.min(Math.ceil(height), area.height - 40))
+  })
+  // A picture of the card (the rectangle the renderer passes), to the clipboard or a PNG file.
+  ipcMain.handle('fitshot:capture', async (e, rect: { x: number; y: number; width: number; height: number }, to: 'clipboard' | 'file', name: string) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    if (!win) return false
+    const r = { x: Math.floor(rect.x), y: Math.floor(rect.y), width: Math.ceil(rect.width), height: Math.ceil(rect.height) }
+    const img = await e.sender.capturePage(r)
+    if (to === 'clipboard') {
+      await clipboard.write([new ClipboardItem({ 'image/png': new Blob([new Uint8Array(img.toPNG())], { type: 'image/png' }) })])
+      return true
+    }
+    const safe = name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'fit'
+    const res = await dialog.showSaveDialog(win, { defaultPath: join(app.getPath('pictures'), `${safe}.png`), filters: [{ name: 'PNG', extensions: ['png'] }] })
+    if (res.canceled || !res.filePath) return false
+    writeFileSync(res.filePath, img.toPNG())
+    return true
   })
   ipcMain.handle('combat:isOpen', () => !!combatWindow && !combatWindow.isDestroyed())
   ipcMain.handle('combat:getAttacker', () => combatAttacker)

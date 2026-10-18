@@ -1,6 +1,9 @@
 // Types shared between the main process, preload and renderer.
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
+
+/** A fit for the snapshot window, with the name of the character whose skills it uses */
+export type FitShotData = CombatPilot & { pilotName?: string }
 import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
 import type { NotifyEvent, NotifySettings } from './notify'
 import type { CombatLogEvent } from './ratting'
@@ -181,6 +184,16 @@ export interface CanopusApi {
     /** Stargate jumps from a system to others (unreachable / far ones omitted). */
     jumpsFrom(fromId: number, ids: number[]): Promise<Record<number, number>>
     systemId(name: string): Promise<number | null>
+  }
+  fitShot: {
+    /** Open the snapshot window (or show this fit in it): every module and the stats on one card. */
+    open(pilot: FitShotData): Promise<void>
+    get(): Promise<FitShotData | null>
+    onFit(listener: (p: FitShotData) => void): () => void
+    /** Size the window around the card */
+    resize(width: number, height: number): Promise<void>
+    /** Picture of a part of the window to the clipboard or a PNG file; false when the save was cancelled */
+    capture(rect: { x: number; y: number; width: number; height: number }, to: 'clipboard' | 'file', name: string): Promise<boolean>
   }
   combat: {
     /** Open (or focus) the simulator window with this fit as "your" side. */

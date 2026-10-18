@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import CombatWindow from './CombatWindow'
+import FitShot from './FitShot'
 import Overlay from './Overlay'
 import Widget from './Widget'
 import Previews from './Previews'
@@ -31,9 +32,9 @@ void window.api.settings.get().then(applyAppearance)
 window.api.onSettingsChanged(() => void window.api.settings.get().then(applyAppearance))
 
 // The overlay, its mini-windows and the combat simulator load the same bundle with #overlay,
-// #widget-<view> and #combat.
+// #widget-<view>, #combat and #fitshot.
 const widget = /^#widget-(\w+)$/.exec(location.hash)?.[1] as WidgetView | undefined
 const view =
-  location.hash === '#overlay' ? <Overlay /> : location.hash === '#previews' ? <Previews /> : widget && WIDGET_VIEWS.includes(widget) ? <Widget view={widget} /> : location.hash === '#combat' ? <CombatWindow /> : <App />
+  location.hash === '#overlay' ? <Overlay /> : location.hash === '#previews' ? <Previews /> : widget && WIDGET_VIEWS.includes(widget) ? <Widget view={widget} /> : location.hash === '#combat' ? <CombatWindow /> : location.hash === '#fitshot' ? <FitShot /> : <App />
 
 createRoot(document.getElementById('root')!).render(<StrictMode>{view}</StrictMode>)

@@ -305,6 +305,13 @@ function Editor() {
         <button className="ghost" title="Открыть окно симуляции боя с этим фитом" onClick={() => void window.api.combat.open({ fit: f, skills })}>
           ⚔ Симуляция боя
         </button>
+        <button
+          className="ghost"
+          title="Весь фит и его характеристики на одной картинке — скопировать или сохранить PNG"
+          onClick={() => void window.api.fitShot.open({ fit: f, skills, pilotName: mode === 'char' ? active?.name : undefined })}
+        >
+          📷 Снимок фита
+        </button>
         <button className="ghost" onClick={() => setFit(null)}>
           Закрыть
         </button>

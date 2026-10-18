@@ -127,6 +127,13 @@ const api: CanopusApi = {
     history: () => invoke('notify:history'),
     checkNow: () => invoke('notify:checkNow')
   },
+  fitShot: {
+    open: (pilot) => invoke('fitshot:open', pilot),
+    get: () => invoke('fitshot:get'),
+    onFit: (listener) => on('fitshot:fit', listener),
+    resize: (width, height) => invoke('fitshot:resize', width, height),
+    capture: (rect, to, name) => invoke('fitshot:capture', rect, to, name)
+  },
   combat: {
     open: (attacker) => invoke('combat:open', attacker),
     setAttacker: (attacker) => invoke('combat:setAttacker', attacker),
