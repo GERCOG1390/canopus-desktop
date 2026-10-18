@@ -2,8 +2,8 @@
 // using the game's published formulas (turret hit chance, missile application), and the
 // time each side needs to strip the other's shield, armor and hull through resists and repairs.
 
-import type { AppliedWeapon, CombatDirection, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
-import type { FitStats, LayerStats, WeaponStats } from '../../shared/fit'
+import type { AppliedWeapon, CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
+import type { FitStats, LayerStats, TacticalModule, WeaponStats } from '../../shared/fit'
 import { calculateFit } from './index'
 
 /** Turret tracking is normalised to a 40 km signature resolution since the 2019 rework. */
@@ -159,17 +159,22 @@ function direction(att: FitStats, def: FitStats, g: Geometry): CombatDirection {
   }
 }
 
-function sideInfo(pilot: CombatPilot, s: FitStats, sig: number): CombatSideInfo {
-  const d = s.defense
+function sideInfo(side: Side, st: SideState): CombatSideInfo {
+  const d = st.stats.defense
   return {
-    shipTypeId: pilot.fit.shipTypeId,
-    name: pilot.fit.name,
-    maxVelocity: s.navigation.maxVelocity,
-    signature: sig,
+    shipTypeId: side.pilot.fit.shipTypeId,
+    name: side.pilot.fit.name,
+    maxVelocity: st.maxVelocity,
+    webbedVelocity: st.webbedVelocity,
+    speed: st.speed,
+    signature: st.signature,
+    prop: side.prop && { kind: side.prop.kind, typeId: side.prop.typeId, on: st.propOn, blocked: st.blocked },
+    hasEwar: side.ewar.some((m) => m.t.kind !== 'point'),
+    effects: st.effects,
     ehp: d.ehp,
     hp: { shield: d.shield.hp, armor: d.armor.hp, hull: d.hull.hp },
     resist: { shield: d.shield.resist, armor: d.armor.resist, hull: d.hull.resist },
-    ranges: weaponRanges(s)
+    ranges: weaponRanges(st.stats)
   }
 }
 
@@ -195,41 +200,171 @@ function chartRange(stats: FitStats[], current: number): number {
   return Math.min(300_000, Math.max(10_000, max, current * 1.25))
 }
 
-export function simulate(a: CombatPilot, b: CombatPilot, sc: CombatScenario): CombatResult {
-  const sa = calculateFit(a.fit, a.skills)
-  const sb = calculateFit(b.fit, b.skills)
-  const sigA = sc.sigA ?? sa.navigation.signatureRadius
-  const sigB = sc.sigB ?? sb.navigation.signatureRadius
-  const rad = Math.PI / 180
-  // Sideways components along the same axis: opposite directions add up.
-  const transversal = Math.abs(sc.speedB * Math.sin(sc.headingB * rad) - sc.speedA * Math.sin(sc.headingA * rad))
-  // Rate the distance grows (same for both shooters): the opponent moving away, you moving closer.
-  const receding = sc.speedB * Math.cos(sc.headingB * rad) - sc.speedA * Math.cos(sc.headingA * rad)
-  const geo = (distance: number, target: 'a' | 'b'): Geometry => ({
-    distance,
-    transversal,
-    targetSpeed: target === 'b' ? sc.speedB : sc.speedA,
-    targetSig: target === 'b' ? sigB : sigA,
-    receding
-  })
+/** The game's stacking penalty for the n-th strongest module of a kind (0-based). */
+const stackingPenalty = (n: number) => Math.exp(-((n / 2.67) ** 2))
 
-  const maxD = chartRange([sa, sb], sc.distance)
+/** Strength of a web or painter at a distance: full within range, 0.5^((d − range)/falloff)² beyond. */
+function ewarEfficiency(d: number, range: number, falloff: number): number {
+  if (d <= range) return 1
+  if (!falloff) return 0
+  return 0.5 ** (((d - range) / falloff) ** 2)
+}
+
+interface Tactical {
+  typeId: number
+  t: TacticalModule
+}
+
+/** Webs, painters, scrams and points of a fit that are fitted (not offline). */
+function ewarModules(pilot: CombatPilot, s: FitStats): Tactical[] {
+  return s.modules
+    .filter((r) => r.tactical && r.tactical.kind !== 'mwd' && r.tactical.kind !== 'ab' && pilot.fit.modules[r.index]?.state !== 'offline')
+    .map((r) => ({ typeId: pilot.fit.modules[r.index].typeId, t: r.tactical! }))
+}
+
+/**
+ * Combined multiplier of several webs or painters (strength in %, −60 or +30) at a distance, strongest
+ * first with the stacking penalty, plus one line per module type for the UI.
+ */
+function stacked(mods: Tactical[], kind: 'web' | 'paint', d: number): { mult: number; effects: CombatEffect[] } {
+  const list = mods
+    .filter((m) => m.t.kind === kind)
+    .map((m) => {
+      const t = m.t as Extract<TacticalModule, { kind: 'web' | 'paint' }>
+      const efficiency = ewarEfficiency(d, t.range, t.falloff)
+      return { typeId: m.typeId, t, efficiency, value: t.strength * efficiency }
+    })
+    .filter((m) => m.efficiency > 0.001)
+    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+  let mult = 1
+  const byType = new Map<number, CombatEffect>()
+  list.forEach((m, i) => {
+    const value = m.value * stackingPenalty(i)
+    mult *= 1 + value / 100
+    const e = byType.get(m.typeId)
+    if (e) {
+      e.count++
+      e.value = ((1 + e.value / 100) * (1 + value / 100) - 1) * 100
+    } else byType.set(m.typeId, { kind, typeId: m.typeId, count: 1, value, efficiency: m.efficiency, range: m.t.range, falloff: m.t.falloff })
+  })
+  return { mult, effects: [...byType.values()] }
+}
+
+/** Scramblers or disruptors of a kind in reach at a distance, one line per module type. */
+function tackle(mods: Tactical[], kind: 'scram' | 'point', d: number): CombatEffect[] {
+  const byType = new Map<number, CombatEffect>()
+  for (const m of mods) {
+    if (m.t.kind !== kind || m.t.range < d) continue
+    const e = byType.get(m.typeId)
+    if (e) e.count++
+    else byType.set(m.typeId, { kind, typeId: m.typeId, count: 1, value: 0, efficiency: 1, range: m.t.range, falloff: 0 })
+  }
+  return [...byType.values()]
+}
+
+/** One side's fit with the propulsion module switched on or off (for MWD/AB toggles and a scram). */
+function withProp(pilot: CombatPilot, index: number, on: boolean): CombatPilot {
+  return {
+    ...pilot,
+    fit: { ...pilot.fit, modules: pilot.fit.modules.map((m, i) => (i === index ? { ...m, state: on ? (m.state === 'overload' ? 'overload' : 'active') : 'online' } : m)) }
+  }
+}
+
+/** A side of the fight: its fit stats with the propulsion on or off, computed once each. */
+class Side {
+  readonly base: FitStats
+  readonly prop?: { kind: 'mwd' | 'ab'; typeId: number; index: number; fitOn: boolean }
+  readonly ewar: Tactical[]
+  private cache = new Map<boolean, FitStats>()
+
+  constructor(readonly pilot: CombatPilot) {
+    this.base = calculateFit(pilot.fit, pilot.skills)
+    const p = this.base.modules.find((r) => r.tactical?.kind === 'mwd' || r.tactical?.kind === 'ab')
+    if (p) {
+      const m = pilot.fit.modules[p.index]
+      this.prop = { kind: p.tactical!.kind as 'mwd' | 'ab', typeId: m.typeId, index: p.index, fitOn: m.state === 'active' || m.state === 'overload' }
+    }
+    this.ewar = ewarModules(pilot, this.base)
+  }
+
+  stats(propOn: boolean): FitStats {
+    if (!this.prop || propOn === this.prop.fitOn) return this.base
+    let s = this.cache.get(propOn)
+    if (!s) this.cache.set(propOn, (s = calculateFit(withProp(this.pilot, this.prop.index, propOn).fit, this.pilot.skills)))
+    return s
+  }
+}
+
+/** Where one side stands at a distance: its stats, top speed and signature under the opponent's modules. */
+interface SideState {
+  stats: FitStats
+  propOn: boolean
+  blocked: boolean
+  maxVelocity: number
+  webbedVelocity: number
+  speed: number
+  signature: number
+  effects: CombatEffect[]
+}
+
+function sideState(me: Side, them: Side, d: number, wantProp: boolean | undefined, theirEwar: boolean, speed: number, sigOverride?: number): SideState {
+  const want = wantProp ?? me.prop?.fitOn ?? false
+  const ewar = theirEwar ? them.ewar : []
+  const scrams = tackle(ewar, 'scram', d)
+  // A warp scrambler shuts down a microwarpdrive (not an afterburner).
+  const blocked = want && me.prop?.kind === 'mwd' && scrams.length > 0
+  const propOn = !!me.prop && want && !blocked
+  const stats = me.stats(propOn)
+  const web = stacked(ewar, 'web', d)
+  const paint = stacked(ewar, 'paint', d)
+  const maxVelocity = stats.navigation.maxVelocity
+  const webbedVelocity = maxVelocity * Math.max(0, web.mult)
+  return {
+    stats,
+    propOn,
+    blocked,
+    maxVelocity,
+    webbedVelocity,
+    speed: Math.min(speed, webbedVelocity),
+    signature: sigOverride ?? stats.navigation.signatureRadius * paint.mult,
+    effects: [...web.effects, ...paint.effects, ...scrams, ...tackle(ewar, 'point', d)]
+  }
+}
+
+export function simulate(a: CombatPilot, b: CombatPilot, sc: CombatScenario): CombatResult {
+  const A = new Side(a)
+  const B = new Side(b)
+  const rad = Math.PI / 180
+  const at = (d: number) => {
+    const sa = sideState(A, B, d, sc.propA, sc.ewarB !== false, sc.speedA, sc.sigA)
+    const sb = sideState(B, A, d, sc.propB, sc.ewarA !== false, sc.speedB, sc.sigB)
+    // Sideways components along the same axis: opposite directions add up.
+    const transversal = Math.abs(sb.speed * Math.sin(sc.headingB * rad) - sa.speed * Math.sin(sc.headingA * rad))
+    // Rate the distance grows (same for both shooters): the opponent moving away, you moving closer.
+    const receding = sb.speed * Math.cos(sc.headingB * rad) - sa.speed * Math.cos(sc.headingA * rad)
+    const geo = (target: SideState): Geometry => ({ distance: d, transversal, targetSpeed: target.speed, targetSig: target.signature, receding })
+    return { sa, sb, transversal, ab: geo(sb), ba: geo(sa) }
+  }
+
+  const now = at(sc.distance)
+  const maxD = chartRange([now.sa.stats, now.sb.stats], sc.distance)
   const points = 80
   const curve = { distance: [] as number[], ab: [] as number[], ba: [] as number[] }
   for (let i = 0; i <= points; i++) {
     const d = Math.max(500, (maxD * i) / points)
+    const p = at(d)
     curve.distance.push(d)
-    curve.ab.push(sa.offense.weapons.reduce((s, w) => s + w.dps * application(w, geo(d, 'b')).factor, 0))
-    curve.ba.push(sb.offense.weapons.reduce((s, w) => s + w.dps * application(w, geo(d, 'a')).factor, 0))
+    curve.ab.push(p.sa.stats.offense.weapons.reduce((s, w) => s + w.dps * application(w, p.ab).factor, 0))
+    curve.ba.push(p.sb.stats.offense.weapons.reduce((s, w) => s + w.dps * application(w, p.ba).factor, 0))
   }
 
   return {
-    a: sideInfo(a, sa, sigA),
-    b: sideInfo(b, sb, sigB),
-    ab: direction(sa, sb, geo(sc.distance, 'b')),
-    ba: direction(sb, sa, geo(sc.distance, 'a')),
-    angularVelocity: transversal / Math.max(sc.distance, 1),
-    transversal,
+    a: sideInfo(A, now.sa),
+    b: sideInfo(B, now.sb),
+    ab: direction(now.sa.stats, now.sb.stats, now.ab),
+    ba: direction(now.sb.stats, now.sa.stats, now.ba),
+    angularVelocity: now.transversal / Math.max(sc.distance, 1),
+    transversal: now.transversal,
     curve
   }
 }

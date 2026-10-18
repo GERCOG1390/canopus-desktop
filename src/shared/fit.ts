@@ -77,7 +77,15 @@ export interface ModuleResult {
   problems: string[]
   optimal?: number
   falloff?: number
+  /** What the module does to a target or to its own ship's movement, for the combat simulator */
+  tactical?: TacticalModule
 }
+
+/** Webs, painters, scrams, points and propulsion, with their strength (skills applied) and reach. */
+export type TacticalModule =
+  | { kind: 'web' | 'paint'; strength: number; range: number; falloff: number }
+  | { kind: 'scram' | 'point'; strength: number; range: number }
+  | { kind: 'mwd' | 'ab' }
 
 export interface FitStats {
   ship: {

@@ -1,4 +1,4 @@
-import type { FitSpec, FitStats, LayerStats, ModuleResult, SkillSource, Slot, WeaponStats } from '../../shared/fit'
+import type { FitSpec, FitStats, LayerStats, ModuleResult, SkillSource, Slot, WeaponStats, TacticalModule } from '../../shared/fit'
 import type { SdeDb } from '../../shared/sde'
 import { Dogma, type Item } from './engine'
 
@@ -188,7 +188,8 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       capPerSecond: activeState(m) ? capPerSecond : 0,
       problems: p,
       optimal: a(m, A.maxRange) || undefined,
-      falloff: a(m, A.falloff) || undefined
+      falloff: a(m, A.falloff) || undefined,
+      tactical: tacticalOf(dogma, m)
     }
   })
   moduleResults.forEach((r) => r.problems.forEach((p) => problems.push(`${db.types[spec.modules[r.index].typeId]?.n[0]}: ${p}`)))
@@ -372,6 +373,28 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
 }
 
 const defaultEffectName = (dogma: Dogma, m: Item): string | undefined => dogma.defaultEffect(m)?.name
+
+/** speedFactor, signatureRadiusBonus, maxRange, warpScrambleStrength, falloffEffectiveness */
+const TA = { speedFactor: 20, sigBonus: 554, range: 54, scramStrength: 105, falloffEff: 2044 }
+
+function tacticalOf(dogma: Dogma, m: Item): TacticalModule | undefined {
+  const a = (id: number) => dogma.attr(m, id)
+  switch (defaultEffectName(dogma, m)) {
+    case 'remoteWebifierFalloff':
+      return { kind: 'web', strength: a(TA.speedFactor), range: a(TA.range), falloff: a(TA.falloffEff) }
+    case 'remoteTargetPaintFalloff':
+      return { kind: 'paint', strength: a(TA.sigBonus), range: a(TA.range), falloff: a(TA.falloffEff) }
+    case 'warpScrambleBlockMWDWithNPCEffect':
+      return { kind: 'scram', strength: a(TA.scramStrength), range: a(TA.range) }
+    case 'warpDisrupt':
+      return { kind: 'point', strength: a(TA.scramStrength), range: a(TA.range) }
+    case 'moduleBonusMicrowarpdrive':
+      return { kind: 'mwd' }
+    case 'moduleBonusAfterburner':
+      return { kind: 'ab' }
+  }
+  return undefined
+}
 
 function cycleAndCap(dogma: Dogma, m: Item): { cycle: number; capPerSecond: number } {
   const e = dogma.defaultEffect(m)

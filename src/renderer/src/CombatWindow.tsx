@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { CombatDirection, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
+import type { CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
 import type { FitSpec, FittableType, SavedFit } from '../../shared/fit'
 import { AppProvider, useApp, useLang } from './AppContext'
 import { ChargePicker } from './components/ChargePicker'
@@ -10,7 +10,7 @@ import { fmtNum } from './lib/format'
 import { chargesFor, fromEft, fromEsiItems, loadCatalog, toEft } from './lib/fitting'
 import { groupByShip, loadGameFits, type GameFitting } from './lib/gameFits'
 import { CATEGORY, searchTypesSde, tn, useTypeBasic, useTypeBasics } from './lib/sde'
-import { locale } from './i18n'
+import { locale, translate } from './i18n'
 
 /** Damage type icons (em, thermal, kinetic, explosive) and resist icons (same order). */
 const DAMAGE_ICONS = [114, 118, 117, 116]
@@ -88,7 +88,7 @@ function Simulator() {
   useEffect(() => {
     if (!attacker || !defender) return
     void window.api.combat.defaults(you ?? attacker, defender).then((d) => {
-      setSc((s) => ({ ...s, speedA: Math.round(d.speedA), speedB: Math.round(d.speedB), sigA: undefined, sigB: undefined }))
+      setSc((s) => ({ ...s, speedA: Math.round(d.speedA), speedB: Math.round(d.speedB), sigA: undefined, sigB: undefined, propA: undefined, propB: undefined }))
       setMaxSpeed({ a: Math.max(500, Math.ceil(d.speedA * 1.5)), b: Math.max(500, Math.ceil(d.speedB * 1.5)) })
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -110,6 +110,23 @@ function Simulator() {
   }, [attacker, you, defender, sc])
 
   const set = (patch: Partial<CombatScenario>) => setSc((s) => ({ ...s, ...patch }))
+  // Switching propulsion on or off: the ship then flies at its new top speed.
+  const [follow, setFollow] = useState<{ a?: boolean; b?: boolean }>({})
+  const setProp = (side: 'a' | 'b', on: boolean) => {
+    set(side === 'a' ? { propA: on } : { propB: on })
+    setFollow((f) => ({ ...f, [side]: true }))
+  }
+  useEffect(() => {
+    if (!result || (!follow.a && !follow.b)) return
+    if (follow.a) set({ speedA: Math.round(result.a.maxVelocity) })
+    if (follow.b) set({ speedB: Math.round(result.b.maxVelocity) })
+    setMaxSpeed((m) => ({
+      a: follow.a ? Math.max(500, Math.ceil(result.a.maxVelocity * 1.5)) : m.a,
+      b: follow.b ? Math.max(500, Math.ceil(result.b.maxVelocity * 1.5)) : m.b
+    }))
+    setFollow({})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result])
   const [picking, setPicking] = useState(false)
   // Opponent's direction on the map is only for the picture: the physics depends on distance and headings.
   const [bearing, setBearing] = useState(0)
@@ -141,6 +158,9 @@ function Simulator() {
             />
           )}
           {result && <SideStats info={result.a} />}
+          {result && attacker && defender && (
+            <Tactics info={result.a} ewar={sc.ewarA !== false} onProp={(on) => setProp('a', on)} onEwar={(on) => set({ ewarA: on })} own="Ваши" />
+          )}
         </Card>
         <div className="combat-vs">VS</div>
         <Card className="combat-side-card side-b">
@@ -162,6 +182,9 @@ function Simulator() {
             />
           )}
           {defender && result && !picking && <SideStats info={result.b} />}
+          {defender && result && attacker && !picking && (
+            <Tactics info={result.b} ewar={sc.ewarB !== false} onProp={(on) => setProp('b', on)} onEwar={(on) => set({ ewarB: on })} own="Его" />
+          )}
           {(!defender || picking) && (
             <OpponentPicker
               attacker={attacker}
@@ -226,8 +249,8 @@ function Simulator() {
           <p className="muted small">
             Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E,
             (S/E·Ve/Vt)^drf), дальность — скорость × время полёта с поправкой на уходящую цель. Щит регенерирует по игровой кривой (пик при 25%), активные ремонтники
-            работают, пока хватает накопителя. Не учитываются: РЭБ (сетки, нейтрализаторы, дизрапторы), перегрев, расход вашего накопителя на оружие, запуск
-            ракет от края корпуса у крупных кораблей.
+            работают, пока хватает накопителя. Стазис-сетки и подсветка целей — с фоллофом и штрафом за стакинг, варп-скрамблер выключает MWD. Не учитываются:
+            нейтрализаторы, ECM и дампы, перегрев, расход вашего накопителя на оружие, запуск ракет от края корпуса у крупных кораблей.
           </p>
         </>
       )}
@@ -434,8 +457,12 @@ function TacticalMap({
       </g>
       <circle cx={ta.x} cy={ta.y} r={8} className="handle handle-a" onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('va'))} />
       <circle cx={tb.x} cy={tb.y} r={8} className="handle handle-b" onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('vb'))} />
-      <text x={ta.x + 10} y={ta.y - 8} className="vec-label vec-label-a">{`${fmtNum(sc.speedA)} м/с`}</text>
-      <text x={tb.x + 10} y={tb.y - 8} className="vec-label vec-label-b">{`${fmtNum(sc.speedB)} м/с`}</text>
+      <text x={ta.x + 10} y={ta.y - 8} className="vec-label vec-label-a">
+        {r.a.speed < sc.speedA - 0.5 ? `${fmtNum(r.a.speed)} м/с под сеткой` : `${fmtNum(sc.speedA)} м/с`}
+      </text>
+      <text x={tb.x + 10} y={tb.y - 8} className="vec-label vec-label-b">
+        {r.b.speed < sc.speedB - 0.5 ? `${fmtNum(r.b.speed)} м/с под сеткой` : `${fmtNum(sc.speedB)} м/с`}
+      </text>
       <g className="map-scale">
         <line x1={16} y1={H - 16} x2={16 + scaleKm * k} y2={H - 16} />
         <text x={16} y={H - 22}>
@@ -467,12 +494,57 @@ function SigInput({ label, value, auto, onChange }: { label: string; value?: num
   )
 }
 
+const EFFECT_NAMES: Record<CombatEffect['kind'], string> = { web: 'Сетка', paint: 'Подсветка', scram: 'Скрамблер', point: 'Дизраптор' }
+
+/** Propulsion and EWAR switches of a side, and what the other side's modules do to it right now. */
+function Tactics({ info, ewar, onProp, onEwar, own }: { info: CombatSideInfo; ewar: boolean; onProp: (on: boolean) => void; onEwar: (on: boolean) => void; own: string }) {
+  const lang = useLang()
+  const prop = useTypeBasic(info.prop?.typeId ?? 0)
+  if (!info.prop && !info.hasEwar && !info.effects.length) return null
+  return (
+    <div className="combat-tactics">
+      {info.prop && (
+        <label className="check">
+          <input type="checkbox" checked={info.prop.on || info.prop.blocked} onChange={(e) => onProp(e.target.checked)} />
+          <span translate="no">{tn(prop?.n, lang)}</span>
+          {info.prop.blocked && <span className="bad small">{translate('выключен скрамблером')}</span>}
+        </label>
+      )}
+      {info.hasEwar && (
+        <label className="check">
+          <input type="checkbox" checked={ewar} onChange={(e) => onEwar(e.target.checked)} />
+          {`${own} сетки, подсветка и скрамблеры включены`}
+        </label>
+      )}
+      {info.effects.length > 0 && (
+        <ul className="combat-effects">
+          {info.effects.map((e) => (
+            <EffectLine key={`${e.kind}${e.typeId}`} e={e} />
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function EffectLine({ e }: { e: CombatEffect }) {
+  const lang = useLang()
+  const t = useTypeBasic(e.typeId)
+  const value = e.kind === 'web' ? `${n1(e.value)}% ${translate('скорости')}` : e.kind === 'paint' ? `+${n1(e.value)}% ${translate('сигнатуры')}` : translate(e.kind === 'scram' ? 'варп и MWD заблокированы' : 'варп заблокирован')
+  return (
+    <li className={e.kind === 'paint' ? '' : 'bad'}>
+      <b>{translate(EFFECT_NAMES[e.kind])}</b> <span translate="no">{`${e.count > 1 ? `${e.count}× ` : ''}${tn(t?.n, lang)}`}</span>: {value}
+      {e.efficiency < 0.995 && <span className="muted small">{` · ${translate('фоллоф')} ${Math.round(e.efficiency * 100)}%`}</span>}
+    </li>
+  )
+}
+
 function SideStats({ info }: { info: CombatSideInfo }) {
   return (
     <div className="combat-sidestats">
       <div className="kv-list">
         <span>Скорость</span>
-        <b>{`${n1(info.maxVelocity)} м/с`}</b>
+        <b>{info.webbedVelocity < info.maxVelocity - 0.5 ? `${n1(info.webbedVelocity)} из ${n1(info.maxVelocity)} м/с` : `${n1(info.maxVelocity)} м/с`}</b>
         <span>Сигнатура</span>
         <b>{`${n1(info.signature)} м`}</b>
         <span>EHP</span>

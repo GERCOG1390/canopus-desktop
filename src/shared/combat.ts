@@ -24,6 +24,25 @@ export interface CombatScenario {
   /** Signature radius overrides (e.g. a painted target), m; undefined = from the fit */
   sigA?: number
   sigB?: number
+  /** Propulsion (MWD / afterburner) on or off; undefined = as in the fit */
+  propA?: boolean
+  propB?: boolean
+  /** Use this side's webs, target painters and scramblers on the other; undefined = on */
+  ewarA?: boolean
+  ewarB?: boolean
+}
+
+/** Something one side's modules do to the other at the current distance. */
+export interface CombatEffect {
+  kind: 'web' | 'paint' | 'scram' | 'point'
+  typeId: number
+  count: number
+  /** Change applied, % (−60 for a web at full strength, +30 for a painter), after falloff and stacking */
+  value: number
+  /** 1 within optimal, falling off beyond it, 0 out of reach */
+  efficiency: number
+  range: number
+  falloff: number
 }
 
 /** One weapon group as it applies against the target. */
@@ -62,8 +81,20 @@ export interface CombatDirection {
 export interface CombatSideInfo {
   shipTypeId: number
   name: string
+  /** Top speed with the propulsion as chosen, before webs */
   maxVelocity: number
+  /** Top speed under the opponent's webs */
+  webbedVelocity: number
+  /** Speed used in the calculation: the chosen one, capped by the webbed top speed */
+  speed: number
+  /** Signature with the propulsion bloom and the opponent's painters */
   signature: number
+  /** The fit's propulsion module, and whether it runs in this simulation */
+  prop?: { kind: 'mwd' | 'ab'; typeId: number; on: boolean; blocked: boolean }
+  /** This side has webs / painters / scramblers to use on the other */
+  hasEwar: boolean
+  /** What the opponent's modules do to this side */
+  effects: CombatEffect[]
   ehp: number
   hp: { shield: number; armor: number; hull: number }
   resist: { shield: number[]; armor: number[]; hull: number[] }
