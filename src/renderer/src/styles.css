@@ -3965,7 +3965,7 @@ button.danger-fill:hover:not(:disabled) {
 .fitshot-page {
   display: inline-block;
   padding: 12px 16px 16px;
-  min-width: 860px;
+  min-width: 1000px;
 }
 .fitshot-toolbar {
   display: flex;
@@ -3974,7 +3974,7 @@ button.danger-fill:hover:not(:disabled) {
   margin-bottom: 12px;
 }
 .fitshot-card {
-  width: 860px;
+  width: 1000px;
   padding: 18px 20px;
   border-radius: 10px;
   background: var(--panel, #1a1c1f);
@@ -4009,8 +4009,8 @@ button.danger-fill:hover:not(:disabled) {
 }
 .fitshot-body {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  grid-template-columns: 1.25fr 1fr;
+  gap: 24px;
 }
 .fitshot-slot {
   margin-bottom: 10px;
@@ -4029,10 +4029,17 @@ button.danger-fill:hover:not(:disabled) {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
   font-size: 13px;
-  line-height: 1.25;
-  padding: 2px 0;
+  line-height: 1.2;
+  padding: 1px 0;
+  white-space: nowrap;
+  min-width: 0;
+}
+.fitshot-mod > span:first-of-type {
+  flex-shrink: 0;
+}
+.fitshot-extra {
+  margin-top: 14px;
 }
 .fitshot-mod.off {
   opacity: 0.45;
@@ -4041,6 +4048,9 @@ button.danger-fill:hover:not(:disabled) {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 12px;
   opacity: 0.7;
 }

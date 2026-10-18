@@ -45,6 +45,7 @@ function Shot() {
   const [status, setStatus] = useState<string | null>(null)
   const page = useRef<HTMLDivElement>(null)
   const card = useRef<HTMLDivElement>(null)
+  const zoom = useRef(1)
 
   useEffect(() => {
     document.title = 'Canopus — снимок фита'
@@ -65,7 +66,18 @@ function Shot() {
   useLayoutEffect(() => {
     const el = page.current
     if (!el) return
-    const fit = () => void window.api.fitShot.resize(el.scrollWidth, el.scrollHeight)
+    // A fit too tall for the screen is scaled down as a whole, so the picture always shows all of it.
+    const fit = () => {
+      const r = el.getBoundingClientRect()
+      const w = r.width / zoom.current
+      const h = r.height / zoom.current
+      const z = Math.min(1, (window.screen.availHeight - 60) / h)
+      if (Math.abs(z - zoom.current) > 0.005) {
+        zoom.current = z
+        el.style.zoom = String(z)
+      }
+      void window.api.fitShot.resize(w * z, h * z)
+    }
     const ro = new ResizeObserver(fit)
     ro.observe(el)
     fit()
@@ -152,7 +164,7 @@ function Card({ data, s }: { data: FitShotData; s: FitStats }) {
                 </div>
                 {groups.map(({ m, n }, i) => (
                   <div key={i} className={`fitshot-mod ${m.state === 'offline' ? 'off' : ''}`}>
-                    <img src={imageUrl.typeIcon(m.typeId, 32)} width={24} height={24} alt="" />
+                    <img src={imageUrl.typeIcon(m.typeId, 32)} width={22} height={22} alt="" />
                     <span translate="no">{`${n > 1 ? `${n}× ` : ''}${name(m.typeId)}`}</span>
                     {m.chargeTypeId ? (
                       <span className="fitshot-charge" translate="no">
@@ -167,31 +179,6 @@ function Card({ data, s }: { data: FitShotData; s: FitStats }) {
               </div>
             )
           })}
-          {f.drones.length > 0 && (
-            <div className="fitshot-slot">
-              <div className="fitshot-slot-head">
-                Дроны <span className="muted">{`${fmtNum(s.ship.droneBay.used)}/${fmtNum(s.ship.droneBay.total)} м³`}</span>
-              </div>
-              {f.drones.map((x) => (
-                <div key={x.typeId} className="fitshot-mod">
-                  <img src={imageUrl.typeIcon(x.typeId, 32)} width={24} height={24} alt="" />
-                  <span translate="no">{`${x.count}× ${name(x.typeId)}`}</span>
-                  {x.active > 0 && x.active < x.count && <span className="muted small">{`запущено ${x.active}`}</span>}
-                </div>
-              ))}
-            </div>
-          )}
-          {f.implants.length > 0 && (
-            <div className="fitshot-slot">
-              <div className="fitshot-slot-head">Импланты</div>
-              {f.implants.map((id) => (
-                <div key={id} className="fitshot-mod">
-                  <img src={imageUrl.typeIcon(id, 32)} width={24} height={24} alt="" />
-                  <span translate="no">{name(id)}</span>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="fitshot-stats">
@@ -283,6 +270,31 @@ function Card({ data, s }: { data: FitShotData; s: FitStats }) {
               </>
             )}
           </div>
+          {f.drones.length > 0 && (
+            <div className="fitshot-slot fitshot-extra">
+              <div className="fitshot-slot-head">
+                Дроны <span className="muted">{`${fmtNum(s.ship.droneBay.used)}/${fmtNum(s.ship.droneBay.total)} м³`}</span>
+              </div>
+              {f.drones.map((x) => (
+                <div key={x.typeId} className="fitshot-mod">
+                  <img src={imageUrl.typeIcon(x.typeId, 32)} width={24} height={24} alt="" />
+                  <span translate="no">{`${x.count}× ${name(x.typeId)}`}</span>
+                  {x.active > 0 && x.active < x.count && <span className="muted small">{`запущено ${x.active}`}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+          {f.implants.length > 0 && (
+            <div className="fitshot-slot fitshot-extra">
+              <div className="fitshot-slot-head">Импланты</div>
+              {f.implants.map((id) => (
+                <div key={id} className="fitshot-mod">
+                  <img src={imageUrl.typeIcon(id, 32)} width={24} height={24} alt="" />
+                  <span translate="no">{name(id)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </>
