@@ -284,6 +284,13 @@ function Card({ data, s }: { data: FitShotData; s: FitStats }) {
               ))}
             </div>
           )}
+          {f.implants.length === 0 && (
+            <div className="fitshot-slot fitshot-extra">
+              <div className="fitshot-slot-head">
+                Импланты <span className="muted">нет</span>
+              </div>
+            </div>
+          )}
           {f.implants.length > 0 && (
             <div className="fitshot-slot fitshot-extra">
               <div className="fitshot-slot-head">Импланты</div>
