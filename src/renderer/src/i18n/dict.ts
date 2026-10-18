@@ -1466,6 +1466,8 @@ export const EXACT: Record<string, string> = {
   'Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E, (S/E·Ve/Vt)^drf), дальность — скорость × время полёта с поправкой на уходящую цель. Щит регенерирует по игровой кривой (пик при 25%), активные ремонтники работают, пока хватает накопителя. Стазис-сетки и подсветка целей — с фоллофом и штрафом за стакинг, варп-скрамблер выключает MWD. Не учитываются: нейтрализаторы, ECM и дампы, перегрев, расход вашего накопителя на оружие, запуск ракет от края корпуса у крупных кораблей.': 'Turrets: hit chance 0.5^((ω·40,000 / (tracking·signature))² + (max(0, d − optimal) / falloff)²), including wrecking hits. Missiles: min(1, S/E, (S/E·Ve/Vt)^drf), range = speed × flight time, corrected for a receding target. Shields regenerate along the game curve (peak at 25%), active repairers run while the capacitor lasts. Stasis webs and target painters apply with falloff and stacking penalties; a warp scrambler shuts off the MWD. Not included: neuts, ECM and damps, overheating, your capacitor use by weapons, missiles launched from the hull edge of large ships.',
   'Сетка': 'Web',
   'Копировать картинку': 'Copy picture',
+  'Выберите импланты справа — по одному на слот 1–10': 'Pick implants on the right, one per slot 1–10',
+  '— нет имплантов — нажмите, чтобы выбрать': '— no implants — click to pick',
   'Сохранить PNG': 'Save PNG',
   'Картинка скопирована': 'Picture copied',
   'выкл.': 'off',

@@ -228,7 +228,12 @@ function Editor() {
         ? { ...x, drones: x.drones.map((d) => (d.typeId === id ? { ...d, count: d.count + 1, active: d.active + canLaunch } : d)) }
         : { ...x, drones: [...x.drones, { typeId: id, count: 1, active: canLaunch }] }
     }
-    if (info.slot === 'implant') return x.implants.includes(id) ? x : { ...x, implants: [...x.implants, id] }
+    if (info.slot === 'implant') {
+      if (x.implants.includes(id)) return x
+      // One implant per slot, as in the game: a new one replaces the implant in its slot.
+      const keep = x.implants.filter((y) => !info.is || catalog.data?.get(y)?.is !== info.is)
+      return { ...x, implants: [...keep, id] }
+    }
     const slot = info.slot as Slot
     // One subsystem of each kind, as in the game: a new one replaces the fitted one of the same kind.
     if (slot === 'sub' && info.ss) {
@@ -434,15 +439,23 @@ function Editor() {
                 </button>
               ) : null}
             </div>
-            {f.implants.map((id) => (
-              <div key={id} className="module-row">
-                <TypeLink id={id} size={24} />
-                <span className="grow" />
-                <button className="ghost small danger" onClick={() => updateFit((x) => ({ ...x, implants: x.implants.filter((y) => y !== id) }))}>
-                  ✕
-                </button>
+            {[...f.implants]
+              .sort((a, b) => (catalog.data?.get(a)?.is ?? 99) - (catalog.data?.get(b)?.is ?? 99))
+              .map((id) => (
+                <div key={id} className="module-row">
+                  {catalog.data?.get(id)?.is ? <span className="implant-slot muted small">{catalog.data.get(id)!.is}</span> : null}
+                  <TypeLink id={id} size={24} />
+                  <span className="grow" />
+                  <button className="ghost small danger" onClick={() => updateFit((x) => ({ ...x, implants: x.implants.filter((y) => y !== id) }))}>
+                    ✕
+                  </button>
+                </div>
+              ))}
+            {!f.implants.length && (
+              <div className={`module-row empty ${browserSlot === 'implant' ? 'target' : ''}`} onClick={() => setBrowserSlot('implant')}>
+                {browserSlot === 'implant' ? 'Выберите импланты справа — по одному на слот 1–10' : '— нет имплантов — нажмите, чтобы выбрать'}
               </div>
-            ))}
+            )}
           </div>
         </div>
 

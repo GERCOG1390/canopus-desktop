@@ -176,6 +176,8 @@ export interface FittableType {
   burst?: boolean
   /** Subsystem kind (subSystemSlot: core, defensive, offensive, propulsion) */
   ss?: number
+  /** Implant slot 1–10 (implantness): one implant per slot */
+  is?: number
 }
 
 export interface SavedFit extends FitSpec {

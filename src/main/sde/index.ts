@@ -484,6 +484,7 @@ export function fittingCatalog(): FittableType[] {
       oh: effects.some((e) => e.cat === 5),
       burst: !!(noRepeatAttr && dogma?.a[noRepeatAttr]),
       ss: dogma?.a[1366] || undefined,
+      is: slot === 'implant' ? dogma?.a[331] || undefined : undefined,
       charges: CHARGE_GROUP_ATTRS.some((x) => dogma?.a[x])
     })
   }

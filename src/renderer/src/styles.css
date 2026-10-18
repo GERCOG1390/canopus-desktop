@@ -4110,3 +4110,9 @@ button.danger-fill:hover:not(:disabled) {
 .fitshot-kv b {
   font-weight: 500;
 }
+
+.implant-slot {
+  display: inline-block;
+  min-width: 18px;
+  text-align: center;
+}
