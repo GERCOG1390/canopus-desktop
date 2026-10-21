@@ -4,7 +4,7 @@ import type { CombatPilot, CombatResult, CombatScenario } from './combat'
 
 /** A fit for the snapshot window, with the name of the character whose skills it uses */
 export type FitShotData = CombatPilot & { pilotName?: string }
-import type { FitSpec, FitStats, FittableType, SavedFit, SkillSource } from './fit'
+import type { FitMetrics, FitSpec, FitStats, FitVariant, FittableType, SavedFit, SkillSource } from './fit'
 import type { NotifyEvent, NotifySettings } from './notify'
 import type { CombatLogEvent } from './ratting'
 import type { UpdateStatus } from './update'
@@ -208,6 +208,9 @@ export interface CanopusApi {
   }
   fit: {
     /** What the next level of each skill would change on this fit (skills that change nothing are left out). */
+    /** Every fitted module / drone type swapped for its other versions, with the resulting numbers */
+    variants(spec: FitSpec, skills: SkillSource): Promise<{ base: FitMetrics; options: FitVariant[] }>
+    metrics(spec: FitSpec, skills: SkillSource): Promise<FitMetrics>
     skillGains(spec: FitSpec, levels: Record<number, number>): Promise<{ skill: number; from: number; dps: number; ehp: number; activeTank: number; speed: number; align: number; capacitor: number; lockRange: number }[]>
     calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>
     catalog(): Promise<FittableType[]>

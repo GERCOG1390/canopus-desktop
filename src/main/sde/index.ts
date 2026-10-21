@@ -216,6 +216,17 @@ function getVariationIndex(): Map<number, number[]> {
   return variationIndex
 }
 
+/** Other published versions of an item (Tech I, Tech II, faction, deadspace, officer...), without itself. */
+export function variantsOf(typeId: number): number[] {
+  const d = need()
+  const t = d.types[typeId]
+  if (!t) return []
+  const parent = t.vp ?? typeId
+  const family = new Set([parent, ...(getVariationIndex().get(parent) ?? [])])
+  family.delete(typeId)
+  return [...family].filter((id) => d.types[id]?.pub)
+}
+
 function getTypesByGroup(): Map<number, number[]> {
   if (typesByGroup) return typesByGroup
   typesByGroup = new Map()

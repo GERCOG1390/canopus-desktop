@@ -323,7 +323,7 @@ function Editor() {
         {notice && <span className="good small">{notice}</span>}
       </div>
 
-      {tool && <FitTools tool={tool} setTool={setTool} fit={f} skills={skills} onLoad={(x) => setFit(x)} />}
+      {tool && <FitTools tool={tool} setTool={setTool} fit={f} skills={skills} onLoad={(x) => setFit(x)} onChange={(x) => updateFit(() => x)} />}
 
       {stats && <FitMetrics stats={preview?.stats ?? stats} base={preview?.stats ? stats : undefined} />}
 

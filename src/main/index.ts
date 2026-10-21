@@ -311,6 +311,8 @@ function registerIpc(): void {
   ipcMain.handle('sde:blueprintForProduct', (_e, id: number) => sde.blueprintForProduct(id))
 
   ipcMain.handle('fit:calculate', (_e, spec: FitSpec, skills: SkillSource) => dogma.calculateFit(spec, skills))
+  ipcMain.handle('fit:variants', (_e, spec: FitSpec, skills: SkillSource) => dogma.fitVariants(spec, skills))
+  ipcMain.handle('fit:metrics', (_e, spec: FitSpec, skills: SkillSource) => dogma.fitMetrics(dogma.calculateFit(spec, skills)))
   ipcMain.handle('fit:skillGains', (_e, spec: FitSpec, levels: Record<number, number>) => dogma.skillGains(spec, levels))
 
   ipcMain.handle('combat:open', (_e, attacker: CombatPilot) => {

@@ -15,12 +15,27 @@ import { loadGameFits } from '../lib/gameFits'
 import { getBasic, primeBasics, tn, useTypeBasics } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 import { locale } from '../i18n'
+import { FitOptimize } from './FitOptimize'
 
-export type FitTool = 'learn' | 'compare' | 'popular'
+export type FitTool = 'learn' | 'compare' | 'popular' | 'optimize'
 
 const n1 = (v: number, d = 1) => v.toLocaleString(locale(), { maximumFractionDigits: d })
 
-export function FitTools({ tool, setTool, fit, skills, onLoad }: { tool: FitTool; setTool: (t: FitTool | null) => void; fit: FitSpec; skills: SkillSource; onLoad: (f: FitSpec) => void }) {
+export function FitTools({
+  tool,
+  setTool,
+  fit,
+  skills,
+  onLoad,
+  onChange
+}: {
+  tool: FitTool
+  setTool: (t: FitTool | null) => void
+  fit: FitSpec
+  skills: SkillSource
+  onLoad: (f: FitSpec) => void
+  onChange: (f: FitSpec) => void
+}) {
   return (
     <Card
       className="fit-tools"
@@ -33,6 +48,7 @@ export function FitTools({ tool, setTool, fit, skills, onLoad }: { tool: FitTool
       <Tabs
         tabs={[
           { id: 'learn', label: 'Что выучить' },
+          { id: 'optimize', label: 'Оптимизация по цене' },
           { id: 'compare', label: 'Сравнить фиты' },
           { id: 'popular', label: 'Популярные фиты (zKillboard)' }
         ]}
@@ -40,6 +56,7 @@ export function FitTools({ tool, setTool, fit, skills, onLoad }: { tool: FitTool
         onChange={setTool}
       />
       {tool === 'learn' && <WhatToLearn fit={fit} />}
+      {tool === 'optimize' && <FitOptimize fit={fit} skills={skills} onChange={onChange} />}
       {tool === 'compare' && <CompareFits fit={fit} skills={skills} />}
       {tool === 'popular' && <PopularFits shipTypeId={fit.shipTypeId} onLoad={onLoad} />}
     </Card>

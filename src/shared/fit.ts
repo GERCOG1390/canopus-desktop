@@ -184,3 +184,37 @@ export interface SavedFit extends FitSpec {
   id: string
   updated: string
 }
+
+/** The numbers the fit optimizer compares. */
+export interface FitMetrics {
+  dps: number
+  ehp: number
+  activeTank: number
+  speed: number
+  align: number
+  lockRange: number
+  scanRes: number
+  signature: number
+  /** Weapons, DPS-weighted: reach (optimal + falloff, missile range), turret tracking, missile explosion radius and speed */
+  range: number
+  tracking: number
+  explosionRadius: number
+  explosionVelocity: number
+  capStable: boolean
+  /** Stable level 0..1, or seconds the capacitor lasts */
+  capLevel: number
+  capLasts: number
+  /** CPU, powergrid and calibration all fit */
+  fits: boolean
+}
+
+/** All modules (or drones) of one type swapped for another of the same family (T1, T2, faction...). */
+export interface FitVariant {
+  from: number
+  to: number
+  kind: 'module' | 'drone'
+  count: number
+  metrics: FitMetrics
+  /** The character lacks a skill for it */
+  missingSkills: boolean
+}
