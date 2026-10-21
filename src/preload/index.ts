@@ -127,6 +127,13 @@ const api: CanopusApi = {
     history: () => invoke('notify:history'),
     checkNow: () => invoke('notify:checkNow')
   },
+  assistant: {
+    hasKey: () => invoke('assistant:hasKey'),
+    setKey: (key) => invoke('assistant:setKey', key),
+    clearKey: () => invoke('assistant:clearKey'),
+    models: () => invoke('assistant:models'),
+    complete: (model, messages, tools) => invoke('assistant:complete', model, messages, tools)
+  },
   fitShot: {
     open: (pilot) => invoke('fitshot:open', pilot),
     get: () => invoke('fitshot:get'),

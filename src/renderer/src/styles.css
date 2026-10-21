@@ -4116,3 +4116,188 @@ button.danger-fill:hover:not(:disabled) {
   min-width: 18px;
   text-align: center;
 }
+
+/* ---------- Assistant panel ---------- */
+.assistant-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-weight: 500;
+}
+.assistant-toggle:hover:not(:disabled),
+.assistant-toggle.active {
+  background: var(--panel-2);
+  border-color: var(--accent);
+  color: var(--text, inherit);
+}
+.palette-trigger {
+  min-width: 44px;
+  flex-shrink: 1;
+}
+.palette-trigger .grow {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.palette-trigger kbd,
+.status-chip,
+.eve-clock,
+.crumbs h1 {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* With the assistant open the top bar is narrower: the search keeps only its icon and shortcut. */
+.app.with-assistant .palette-trigger .grow {
+  display: none;
+}
+.app.with-assistant .palette-trigger {
+  width: auto;
+}
+@media (max-width: 1500px) {
+  .app.with-assistant .status-chip {
+    display: none;
+  }
+}
+.assistant-dock {
+  width: 420px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  min-height: 0;
+}
+.assistant-head {
+  height: 52px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.assistant-setup {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.assistant-setup p {
+  margin: 0;
+}
+.assistant-log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.assistant-hello {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.assistant-hello .chip-btn {
+  text-align: left;
+}
+.assistant-msg {
+  line-height: 1.45;
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+.assistant-msg.user {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px 12px 2px 12px;
+  background: var(--panel-2);
+  white-space: pre-wrap;
+}
+.assistant-msg.bot p {
+  margin: 0 0 6px;
+}
+.assistant-msg.bot ul,
+.assistant-msg.bot ol {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+.assistant-h {
+  font-weight: 600;
+  margin: 8px 0 4px;
+}
+.assistant-msg code {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: var(--panel-2);
+}
+.assistant-code {
+  margin: 6px 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.assistant-code pre {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  overflow-x: auto;
+  background: var(--panel-2);
+}
+.assistant-code .row {
+  padding: 6px 8px;
+}
+.assistant-table {
+  margin: 6px 0;
+  font-size: 12.5px;
+}
+.assistant-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 6px;
+}
+.assistant-step summary {
+  cursor: pointer;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.assistant-step pre {
+  max-height: 200px;
+  overflow: auto;
+  font-size: 11px;
+  white-space: pre-wrap;
+  background: var(--panel-2);
+  padding: 6px;
+  border-radius: 4px;
+  margin: 4px 0;
+}
+.assistant-thinking {
+  animation: assistant-pulse 1.2s ease-in-out infinite;
+}
+@keyframes assistant-pulse {
+  50% {
+    opacity: 0.4;
+  }
+}
+.assistant-input {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+  align-items: flex-end;
+}
+.assistant-input textarea {
+  flex: 1;
+  resize: none;
+  font: inherit;
+}

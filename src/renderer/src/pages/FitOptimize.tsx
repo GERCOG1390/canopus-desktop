@@ -12,9 +12,9 @@ import { useAsync } from '../lib/useAsync'
 import { locale, translate } from '../i18n'
 
 type Mode = 'cheaper' | 'better'
-type Metric = 'dps' | 'ehp' | 'activeTank' | 'speed' | 'align' | 'lockRange' | 'cap' | 'range' | 'application'
+export type Metric = 'dps' | 'ehp' | 'activeTank' | 'speed' | 'align' | 'lockRange' | 'cap' | 'range' | 'application'
 
-const METRICS: [Metric, string][] = [
+export const METRICS: [Metric, string][] = [
   ['dps', 'Урон (DPS)'],
   ['ehp', 'EHP'],
   ['activeTank', 'Активный танк'],
@@ -52,7 +52,7 @@ const pct = (v: number) => `${v > 0 ? '+' : ''}${v.toLocaleString(locale(), { ma
 const capScore = (m: FitMetrics) => (m.capStable ? 100_000 + m.capLevel * 1000 : m.capLasts)
 
 /** Relative change of a metric, %, "better" positive (shorter align time is better). */
-function gain(m: FitMetrics, b: FitMetrics, k: Metric): number {
+export function gain(m: FitMetrics, b: FitMetrics, k: Metric): number {
   if (k === 'cap') {
     if (m.capStable && b.capStable) return (m.capLevel - b.capLevel) * 100
     if (m.capStable !== b.capStable) return m.capStable ? 100 : -100
@@ -66,7 +66,7 @@ function gain(m: FitMetrics, b: FitMetrics, k: Metric): number {
 }
 
 /** Nothing the optimizer watches got worse by more than `tol` (a fraction), and the fit still fits. */
-function keeps(m: FitMetrics, b: FitMetrics, tol: number): boolean {
+export function keeps(m: FitMetrics, b: FitMetrics, tol: number): boolean {
   const ge = (x: number, y: number, eps: number) => x >= y * (1 - tol) - eps
   const cap = b.capStable ? m.capStable && m.capLevel >= b.capLevel - tol - 0.001 : m.capStable || m.capLasts >= b.capLasts * (1 - tol) - 1
   return (
@@ -88,7 +88,7 @@ function keeps(m: FitMetrics, b: FitMetrics, tol: number): boolean {
 }
 
 /** Short list of what else changes noticeably: "EHP +4%, скорость −2%". */
-function sideEffects(m: FitMetrics, b: FitMetrics, skip?: Metric): string {
+export function sideEffects(m: FitMetrics, b: FitMetrics, skip?: Metric): string {
   return [
     ...METRICS.filter(([k]) => k !== skip).map(([k, label]) => [label, gain(m, b, k)] as const),
     ...EXTRA.map(([k, label, dir]) => [label, rel(m[k] as number, b[k] as number, dir)] as const)
@@ -98,10 +98,70 @@ function sideEffects(m: FitMetrics, b: FitMetrics, skip?: Metric): string {
     .join(' · ')
 }
 
-function swap(fit: FitSpec, v: FitVariant): FitSpec {
+export function swap(fit: FitSpec, v: FitVariant): FitSpec {
   return v.kind === 'module'
     ? { ...fit, modules: fit.modules.map((m) => (m.typeId === v.from ? { ...m, typeId: v.to } : m)) }
     : { ...fit, drones: fit.drones.map((d) => (d.typeId === v.from ? { ...d, typeId: v.to } : d)) }
+}
+
+export type Variants = Awaited<ReturnType<typeof loadVariants>>
+
+/** Every other version of each fitted module / drone type with its numbers, and Jita sell prices. */
+export async function loadVariants(fit: FitSpec, skills: SkillSource) {
+  const v = await window.api.fit.variants(fit, skills)
+  const ids = [...new Set([...v.options.flatMap((o) => [o.from, o.to])])]
+  const prices = ids.length ? await jitaPrices(ids) : new Map()
+  const price = (id: number): number | undefined => {
+    const p = prices.get(id)?.sell.best as number | undefined
+    return p && p > 0 ? p : undefined
+  }
+  return { ...v, price }
+}
+
+/** Per module type the biggest saving that keeps the numbers, then the picks checked together. */
+export async function findCheaper(d: Variants, fit: FitSpec, skills: SkillSource, tol: number) {
+  const best = new Map<number, { v: FitVariant; saving: number }>()
+  for (const v of d.options) {
+    const a = d.price(v.from)
+    const b = d.price(v.to)
+    if (a === undefined || b === undefined || v.missingSkills || b >= a || !keeps(v.metrics, d.base, tol)) continue
+    const saving = (a - b) * v.count
+    if ((best.get(v.from)?.saving ?? 0) < saving) best.set(v.from, { v, saving })
+  }
+  // Swaps can add up (two cheaper modules may not fit CPU together): drop the smallest savings until it holds.
+  let picks = [...best.values()].sort((x, y) => y.saving - x.saving)
+  let combined: FitMetrics | null = null
+  while (picks.length) {
+    combined = await window.api.fit.metrics(
+      picks.reduce((f, p) => swap(f, p.v), fit),
+      skills
+    )
+    if (keeps(combined, d.base, tol)) break
+    picks = picks.slice(0, -1)
+    combined = null
+  }
+  return { picks, combined }
+}
+
+/** Swaps that add the most to `metric` per million ISK, within `budget` per swap and without big losses elsewhere. */
+export function findUpgrades(d: Variants, metric: Metric, budget: number) {
+  return d.options
+    .map((v) => {
+      const a = d.price(v.from)
+      const b = d.price(v.to)
+      if (a === undefined || b === undefined || v.missingSkills || (!v.metrics.fits && d.base.fits)) return null
+      const g = gain(v.metrics, d.base, metric)
+      if (g < 0.5) return null
+      // A gain bought with a big loss elsewhere (Polarized weapons: no resists) is not an upgrade.
+      if (METRICS.some(([k]) => k !== metric && gain(v.metrics, d.base, k) < -3)) return null
+      const cost = (b - a) * v.count
+      if (cost > budget) return null
+      return { v, g, cost }
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x)
+    // Cheaper and better first, then the most gain per million ISK.
+    .sort((x, y) => (x.cost <= 0 || y.cost <= 0 ? x.cost - y.cost : y.g / (y.cost / 1e6) - x.g / (x.cost / 1e6)))
+    .slice(0, 25)
 }
 
 export function FitOptimize({ fit, skills, onChange }: { fit: FitSpec; skills: SkillSource; onChange: (f: FitSpec) => void }) {
@@ -111,69 +171,15 @@ export function FitOptimize({ fit, skills, onChange }: { fit: FitSpec; skills: S
   /** Most extra ISK for one swap in "better" mode */
   const [budget, setBudget] = useState(200e6)
 
-  const data = useAsync(async () => {
-    const v = await window.api.fit.variants(fit, skills)
-    const ids = [...new Set([...v.options.flatMap((o) => [o.from, o.to])])]
-    const prices = ids.length ? await jitaPrices(ids) : new Map()
-    const price = (id: number): number | undefined => {
-      const p = prices.get(id)?.sell.best as number | undefined
-      return p && p > 0 ? p : undefined
-    }
-    return { ...v, price }
-  }, [JSON.stringify(fit), JSON.stringify(skills)])
-
-  // Cheaper: per module type the biggest saving that keeps the numbers, then the picks checked together.
-  const cheaper = useAsync(async () => {
-    const d = data.data
-    if (!d || mode !== 'cheaper') return null
-    const best = new Map<number, { v: FitVariant; saving: number }>()
-    for (const v of d.options) {
-      const a = d.price(v.from)
-      const b = d.price(v.to)
-      if (a === undefined || b === undefined || v.missingSkills || b >= a || !keeps(v.metrics, d.base, tol)) continue
-      const saving = (a - b) * v.count
-      if ((best.get(v.from)?.saving ?? 0) < saving) best.set(v.from, { v, saving })
-    }
-    // Swaps can add up (two cheaper modules may not fit CPU together): drop the smallest savings until it holds.
-    let picks = [...best.values()].sort((x, y) => y.saving - x.saving)
-    let combined: FitMetrics | null = null
-    while (picks.length) {
-      combined = await window.api.fit.metrics(
-        picks.reduce((f, p) => swap(f, p.v), fit),
-        skills
-      )
-      if (keeps(combined, d.base, tol)) break
-      picks = picks.slice(0, -1)
-      combined = null
-    }
-    return { picks, combined }
-  }, [data.data, mode, tol])
+  const data = useAsync(() => loadVariants(fit, skills), [JSON.stringify(fit), JSON.stringify(skills)])
+  const cheaper = useAsync(async () => (data.data && mode === 'cheaper' ? findCheaper(data.data, fit, skills, tol) : null), [data.data, mode, tol])
 
   if (data.loading) return <Loading label="Перебираю версии модулей и цены в Jita…" />
   if (data.error) return <ErrorBox error={data.error} />
   const d = data.data
   if (!d) return null
 
-  const better =
-    mode === 'better'
-      ? d.options
-          .map((v) => {
-            const a = d.price(v.from)
-            const b = d.price(v.to)
-            if (a === undefined || b === undefined || v.missingSkills || (!v.metrics.fits && d.base.fits)) return null
-            const g = gain(v.metrics, d.base, metric)
-            if (g < 0.5) return null
-            // A gain bought with a big loss elsewhere (Polarized weapons: no resists) is not an upgrade.
-            if (METRICS.some(([k]) => k !== metric && gain(v.metrics, d.base, k) < -3)) return null
-            const cost = (b - a) * v.count
-            if (cost > budget) return null
-            return { v, g, cost }
-          })
-          .filter((x): x is NonNullable<typeof x> => !!x)
-          // Cheaper and better first, then the most gain per million ISK.
-          .sort((x, y) => (x.cost <= 0 || y.cost <= 0 ? x.cost - y.cost : y.g / (y.cost / 1e6) - x.g / (x.cost / 1e6)))
-          .slice(0, 25)
-      : []
+  const better = mode === 'better' ? findUpgrades(d, metric, budget) : []
   const skipped = d.options.filter((v) => v.missingSkills).length
 
   return (

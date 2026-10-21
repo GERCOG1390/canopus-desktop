@@ -8,6 +8,7 @@ import { InfoPanel } from './components/InfoPanel'
 import { ReloginGate } from './components/ReloginGate'
 import { LoginWaiting } from './components/LoginWaiting'
 import { ErrorBoundary } from './components/ErrorBoundary'
+import { AssistantPanel } from './components/AssistantPanel'
 import { imageUrl } from './lib/esi'
 import { fmtNum } from './lib/format'
 import { FittingProvider } from './lib/fitting'
@@ -202,6 +203,7 @@ function Shell() {
   const { active, characters, settings, page, navigate } = useApp()
   const { scan } = useIntel()
   const [palette, setPalette] = useState(false)
+  const [assistant, setAssistant] = useState(false)
   const needsSetup = settings !== null && characters.length === 0
   const current = PAGES.find((p) => p.id === page)!
   const dangerous = scan?.pilots.filter((p) => p.threat === 'hostile' || p.threat === 'high').length ?? 0
@@ -212,13 +214,17 @@ function Shell() {
         e.preventDefault()
         setPalette((v) => !v)
       }
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyJ') {
+        e.preventDefault()
+        setAssistant((v) => !v)
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
   return (
-    <div className="app">
+    <div className={assistant ? 'app with-assistant' : 'app'}>
       <nav className="sidebar" aria-label="Разделы">
         <div className="brand">
           <span className="brand-star">
@@ -271,6 +277,10 @@ function Shell() {
           <div className="grow" />
           <ServerStatus />
           <EveClock />
+          <button className={`assistant-toggle ${assistant ? 'active' : ''}`} title="Помощник (Ctrl+J)" onClick={() => setAssistant((v) => !v)}>
+            <Glyph name="assistant" size={16} />
+            Помощник
+          </button>
         </header>
         <main className="content">
           <SdeBanner />
@@ -279,6 +289,7 @@ function Shell() {
           <ErrorBoundary key={page}>{current.render()}</ErrorBoundary>
         </main>
       </div>
+      {assistant && <AssistantPanel onClose={() => setAssistant(false)} />}
       <InfoPanel />
       <CommandPalette pages={PAGES} open={palette} onClose={() => setPalette(false)} />
       <ReloginGate />

@@ -19,6 +19,8 @@ import * as updater from './updater'
 import * as stream from './stream'
 import * as widgets from './widgets'
 import * as previews from './previews'
+import * as assistant from './assistant'
+import type { ChatMessage, ToolDef } from '../shared/assistant'
 import type { ClientWindow, PreviewSettings } from '../shared/previews'
 import type { WidgetView } from '../shared/widgets'
 import { storeGet, storeSet } from './userstore'
@@ -323,6 +325,11 @@ function registerIpc(): void {
     combatAttacker = attacker
     if (combatWindow && !combatWindow.isDestroyed()) combatWindow.webContents.send('combat:attacker', attacker)
   })
+  ipcMain.handle('assistant:hasKey', () => assistant.hasKey())
+  ipcMain.handle('assistant:setKey', (_e, key: string) => assistant.setKey(key))
+  ipcMain.handle('assistant:clearKey', () => assistant.clearKey())
+  ipcMain.handle('assistant:models', () => assistant.listModels())
+  ipcMain.handle('assistant:complete', (_e, model: string, messages: ChatMessage[], tools: ToolDef[]) => assistant.complete(model, messages, tools))
   ipcMain.handle('fitshot:open', (_e, pilot: FitShotData) => openFitShot(pilot))
   ipcMain.handle('fitshot:get', () => fitShot)
   // The window fits itself around the card, so the picture has no empty margins or scrollbars.

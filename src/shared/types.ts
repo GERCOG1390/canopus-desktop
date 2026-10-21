@@ -1,6 +1,7 @@
 // Types shared between the main process, preload and renderer.
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
+import type { AssistantSettings, ChatMessage, CompletionResult, ToolDef } from './assistant'
 
 /** A fit for the snapshot window, with the name of the character whose skills it uses */
 export type FitShotData = CombatPilot & { pilotName?: string }
@@ -53,6 +54,7 @@ export interface Settings {
   freelance: FreelanceFilter
   widgets: WidgetSettings
   previews: PreviewSettings
+  assistant: AssistantSettings
 }
 
 export type ThemeId = 'canopus' | 'photon' | 'amarr' | 'caldari' | 'gallente' | 'minmatar'
@@ -184,6 +186,14 @@ export interface CanopusApi {
     /** Stargate jumps from a system to others (unreachable / far ones omitted). */
     jumpsFrom(fromId: number, ids: number[]): Promise<Record<number, number>>
     systemId(name: string): Promise<number | null>
+  }
+  assistant: {
+    hasKey(): Promise<boolean>
+    /** Checks and stores the OpenAI key (encrypted); returns the chat models it can use */
+    setKey(key: string): Promise<string[]>
+    clearKey(): Promise<void>
+    models(): Promise<string[]>
+    complete(model: string, messages: ChatMessage[], tools: ToolDef[]): Promise<CompletionResult>
   }
   fitShot: {
     /** Open the snapshot window (or show this fit in it): every module and the stats on one card. */

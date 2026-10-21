@@ -13,7 +13,7 @@ import { useAsync } from '../lib/useAsync'
 
 const SCOPE = 'esi-wallet.read_character_wallet.v1'
 
-interface Tx {
+export interface Tx {
   transaction_id: number
   date: string
   type_id: number
@@ -23,7 +23,7 @@ interface Tx {
   is_personal: boolean
 }
 
-interface Journal {
+export interface Journal {
   date: string
   ref_type: string
   amount?: number
@@ -44,7 +44,7 @@ interface ItemResult {
 }
 
 /** Older transactions: ESI gives the newest 2500 and pages back with from_id. */
-async function transactions(id: number): Promise<Tx[]> {
+export async function transactions(id: number): Promise<Tx[]> {
   const out: Tx[] = []
   let from: number | undefined
   for (let page = 0; page < 6; page++) {
@@ -58,7 +58,7 @@ async function transactions(id: number): Promise<Tx[]> {
 }
 
 /** Sells matched to earlier buys of the same item, oldest buys first. */
-function profitByItem(txs: Tx[], since: number): ItemResult[] {
+export function profitByItem(txs: Tx[], since: number): ItemResult[] {
   const byType = new Map<number, Tx[]>()
   for (const t of txs) (byType.get(t.type_id) ?? byType.set(t.type_id, []).get(t.type_id)!).push(t)
   const out: ItemResult[] = []
