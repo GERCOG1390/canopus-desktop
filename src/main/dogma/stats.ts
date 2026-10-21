@@ -441,5 +441,10 @@ function capacitorStability(capacity: number, rechargeSec: number, drains: { nee
       next[i] += mods[i].cycle
     }
   }
-  return { peakRecharge, stable: true, stableLevel: low / capacity }
+  // The level shown is the game's own: where the average drain meets the recharge curve,
+  // 10·C/T·(√s − s) = drain. The simulation's lowest dip after activations sits a few percent lower.
+  const drain = mods.reduce((sum, d) => sum + d.need / d.cycle, 0)
+  const k = 1 - (4 * drain * rechargeSec) / (10 * capacity)
+  const level = drain <= 0 ? 1 : k >= 0 ? 0.25 * (1 + Math.sqrt(k)) ** 2 : low / capacity
+  return { peakRecharge, stable: true, stableLevel: level }
 }
