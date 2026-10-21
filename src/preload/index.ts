@@ -128,11 +128,15 @@ const api: CanopusApi = {
     checkNow: () => invoke('notify:checkNow')
   },
   assistant: {
-    hasKey: () => invoke('assistant:hasKey'),
+    account: () => invoke('assistant:account'),
     setKey: (key) => invoke('assistant:setKey', key),
     clearKey: () => invoke('assistant:clearKey'),
-    models: () => invoke('assistant:models'),
-    complete: (model, messages, tools) => invoke('assistant:complete', model, messages, tools)
+    chatgptLogin: () => invoke('assistant:chatgptLogin'),
+    chatgptCancel: () => invoke('assistant:chatgptCancel'),
+    chatgptLogout: () => invoke('assistant:chatgptLogout'),
+    models: (mode) => invoke('assistant:models', mode),
+    respond: (requestId, mode, model, instructions, input, tools) => invoke('assistant:respond', requestId, mode, model, instructions, input, tools),
+    onDelta: (listener) => on<{ id: string; delta: string }>('assistant:delta', (p) => listener(p.id, p.delta))
   },
   fitShot: {
     open: (pilot) => invoke('fitshot:open', pilot),

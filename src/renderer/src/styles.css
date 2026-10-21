@@ -4301,3 +4301,25 @@ button.danger-fill:hover:not(:disabled) {
   resize: none;
   font: inherit;
 }
+.assistant-option {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.assistant-option .check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.button-link {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-decoration: none;
+}

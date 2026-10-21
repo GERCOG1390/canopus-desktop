@@ -532,7 +532,11 @@ const TOOLS: Tool[] = [
       const out = systems.map((s) => ({ system: s?.n, security: s ? sec(s.sec) : undefined, region: s?.region[0] }))
       if (a.check_danger) {
         const danger = await Promise.all(r.ids.slice(0, 40).map((id) => systemDanger(id).catch(() => null)))
-        danger.forEach((d, i) => d && d.kills.length && Object.assign(out[i], { kills_last_hour: d.kills.length, camps: d.camps.length, bubbles: d.bubbles, smartbombs: d.smartbombs }))
+        // Every checked system says so, also when nothing happened: no data is not the same as quiet.
+        danger.forEach((d, i) =>
+          Object.assign(out[i], d ? { player_kills_last_hour: d.kills.length, gate_camps: d.camps.length, bubbles: d.bubbles, smartbombs: d.smartbombs } : { danger_check: 'failed' })
+        )
+        out.slice(40).forEach((o) => Object.assign(o, { danger_check: 'not checked (route longer than 40 jumps)' }))
       }
       return { jumps: r.ids.length - 1, systems: out }
     }

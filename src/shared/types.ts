@@ -1,7 +1,7 @@
 // Types shared between the main process, preload and renderer.
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
-import type { AssistantSettings, ChatMessage, CompletionResult, ToolDef } from './assistant'
+import type { AssistantAccount, AssistantAuth, AssistantSettings, AssistantTurn, ResponseItem, ToolDef } from './assistant'
 
 /** A fit for the snapshot window, with the name of the character whose skills it uses */
 export type FitShotData = CombatPilot & { pilotName?: string }
@@ -188,12 +188,18 @@ export interface CanopusApi {
     systemId(name: string): Promise<number | null>
   }
   assistant: {
-    hasKey(): Promise<boolean>
-    /** Checks and stores the OpenAI key (encrypted); returns the chat models it can use */
+    account(): Promise<AssistantAccount>
+    /** Checks and stores an OpenAI API key (encrypted); returns the chat models it can use */
     setKey(key: string): Promise<string[]>
     clearKey(): Promise<void>
-    models(): Promise<string[]>
-    complete(model: string, messages: ChatMessage[], tools: ToolDef[]): Promise<CompletionResult>
+    /** Sign in with ChatGPT in the browser (the user's Plus/Pro plan pays) */
+    chatgptLogin(): Promise<AssistantAccount>
+    chatgptCancel(): Promise<void>
+    chatgptLogout(): Promise<void>
+    models(mode: AssistantAuth): Promise<string[]>
+    /** One model turn (Responses API); the text streams through onDelta */
+    respond(requestId: string, mode: AssistantAuth, model: string, instructions: string, input: ResponseItem[], tools: ToolDef[]): Promise<AssistantTurn>
+    onDelta(listener: (requestId: string, delta: string) => void): () => void
   }
   fitShot: {
     /** Open the snapshot window (or show this fit in it): every module and the stats on one card. */
