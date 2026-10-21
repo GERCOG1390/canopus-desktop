@@ -100,71 +100,58 @@ async function launchDrones(fit: FitSpec, skills: SkillSource): Promise<FitSpec>
 }
 
 function summarizeFit(fit: FitSpec, s: FitStats) {
-  const layer = (l: FitStats['defense']['shield']) => ({ hp: Math.round(l.hp), resist_em_th_ki_ex: l.resist.map(pct) })
   const d = s.defense
+  // "hp; resists EM/Th/Ki/Ex" in one short line per layer.
+  const layer = (l: FitStats['defense']['shield']) => `${Math.round(l.hp)} HP; ${l.resist.map((x) => Math.round(x * 100)).join('/')}%`
+  // Identical weapons (same module and charge) as one line with the count.
+  const weapons = new Map<string, FitStats['offense']['weapons'][number] & { n: number }>()
+  for (const w of s.offense.weapons) {
+    const key = `${w.typeId}|${w.chargeTypeId ?? 0}`
+    const g = weapons.get(key)
+    if (g) {
+      g.n += w.count
+      g.dps += w.dps
+    } else weapons.set(key, { ...w, n: w.count })
+  }
+  const nz = (v: number | undefined, f: (x: number) => unknown) => (v ? f(v) : undefined)
+  const sh = s.ship
   return {
     ship: en(fit.shipTypeId),
-    resources: {
-      cpu: `${r1(s.ship.cpu.used)}/${r1(s.ship.cpu.total)} tf`,
-      powergrid: `${r1(s.ship.power.used)}/${r1(s.ship.power.total)} MW`,
-      calibration: `${s.ship.calibration.used}/${s.ship.calibration.total}`,
-      slots: s.ship.slots,
-      turret_hardpoints: `${s.ship.turrets.used}/${s.ship.turrets.total}`,
-      launcher_hardpoints: `${s.ship.launchers.used}/${s.ship.launchers.total}`,
-      drone_bay_m3: `${s.ship.droneBay.used}/${s.ship.droneBay.total}`,
-      drone_bandwidth: `${s.ship.droneBandwidth.used}/${s.ship.droneBandwidth.total}`
-    },
-    offense: {
-      dps: r1(s.offense.totalDps),
-      dps_with_reload: r1(s.offense.totalDpsReload),
-      volley: Math.round(s.offense.totalVolley),
-      weapons: s.offense.weapons.map((w) => ({
-        weapon: en(w.typeId),
-        charge: w.chargeTypeId ? en(w.chargeTypeId) : undefined,
-        kind: w.kind,
-        count: w.count,
-        dps: r1(w.dps),
-        damage_em_th_ki_ex_per_volley: w.damage.map((x) => r1(x)),
-        optimal_m: w.optimal && Math.round(w.optimal),
-        falloff_m: w.falloff && Math.round(w.falloff),
-        tracking: w.tracking && r1(w.tracking, 4),
-        explosion_radius_m: w.explosionRadius && r1(w.explosionRadius),
-        explosion_velocity: w.explosionVelocity && r1(w.explosionVelocity)
-      }))
-    },
-    defense: {
-      ehp: Math.round(d.ehp),
-      shield: layer(d.shield),
-      armor: layer(d.armor),
-      hull: layer(d.hull),
-      shield_recharge_s: r1(d.shieldRechargeSec),
-      passive_shield_regen_hp_s: r1(d.passiveShieldRegen),
-      active_repair_hp_s: { shield: r1(d.shieldBoost), armor: r1(d.armorRepair), hull: r1(d.hullRepair) },
-      active_tank_ehp_s: r1(d.activeTankEhp)
-    },
-    capacitor: {
-      capacity_gj: Math.round(s.capacitor.capacity),
-      recharge_s: r1(s.capacitor.rechargeSec),
-      use_gj_s: r1(s.capacitor.usePerSecond, 2),
-      peak_recharge_gj_s: r1(s.capacitor.peakRecharge, 2),
-      stable: s.capacitor.stable,
-      stable_level: s.capacitor.stable ? pct(s.capacitor.stableLevel ?? 1) : undefined,
-      lasts_s: s.capacitor.stable ? undefined : Math.round(s.capacitor.lastsSec ?? 0)
-    },
-    navigation: {
-      max_velocity_m_s: r1(s.navigation.maxVelocity),
-      align_s: r1(s.navigation.alignSec, 2),
-      warp_au_s: r1(s.navigation.warpSpeed, 2),
-      signature_m: r1(s.navigation.signatureRadius),
-      mass_kg: Math.round(s.navigation.mass)
-    },
-    targeting: {
-      range_km: r1(s.targeting.maxRange / 1000),
-      scan_resolution_mm: Math.round(s.targeting.scanResolution),
-      max_targets: s.targeting.maxTargets,
-      sensor: `${r1(s.targeting.sensorStrength)} ${s.targeting.sensorType}`
-    },
-    problems: s.problems
+    cpu: `${r1(sh.cpu.used)}/${r1(sh.cpu.total)}`,
+    pg: `${r1(sh.power.used)}/${r1(sh.power.total)}`,
+    calibration: `${sh.calibration.used}/${sh.calibration.total}`,
+    drones: sh.droneBay.total ? `bay ${sh.droneBay.used}/${sh.droneBay.total} m3, bw ${sh.droneBandwidth.used}/${sh.droneBandwidth.total}` : undefined,
+    dps: r1(s.offense.totalDps),
+    dps_reload: r1(s.offense.totalDpsReload),
+    volley: Math.round(s.offense.totalVolley),
+    weapons: [...weapons.values()].map((w) => ({
+      w: `${w.n}x ${en(w.typeId)}${w.chargeTypeId ? ` / ${en(w.chargeTypeId)}` : ''}`,
+      dps: r1(w.dps),
+      dmg_em_th_ki_ex: w.damage.map((x) => Math.round(x)).join('/'),
+      range_m: nz(w.optimal, Math.round),
+      falloff_m: nz(w.falloff, Math.round),
+      tracking: nz(w.tracking, (x) => r1(x, 4)),
+      exp_radius: nz(w.explosionRadius, r1),
+      exp_velocity: nz(w.explosionVelocity, r1)
+    })),
+    ehp: Math.round(d.ehp),
+    shield: layer(d.shield),
+    armor: layer(d.armor),
+    hull: layer(d.hull),
+    shield_recharge_s: r1(d.shieldRechargeSec),
+    passive_regen_peak: nz(d.passiveShieldRegen, r1),
+    reps_hp_s: d.shieldBoost + d.armorRepair + d.hullRepair ? { shield: nz(d.shieldBoost, r1), armor: nz(d.armorRepair, r1), hull: nz(d.hullRepair, r1) } : undefined,
+    active_tank_ehp_s: nz(d.activeTankEhp, r1),
+    cap: s.capacitor.stable
+      ? `${Math.round(s.capacitor.capacity)} GJ, stable at ${pct(s.capacitor.stableLevel ?? 1)}`
+      : `${Math.round(s.capacitor.capacity)} GJ, lasts ${Math.round(s.capacitor.lastsSec ?? 0)} s`,
+    cap_use_vs_peak_recharge: `${r1(s.capacitor.usePerSecond, 2)}/${r1(s.capacitor.peakRecharge, 2)} GJ/s`,
+    speed: r1(s.navigation.maxVelocity),
+    align_s: r1(s.navigation.alignSec, 2),
+    warp: r1(s.navigation.warpSpeed, 2),
+    sig: r1(s.navigation.signatureRadius),
+    lock: `${r1(s.targeting.maxRange / 1000)} km, ${Math.round(s.targeting.scanResolution)} mm, ${s.targeting.maxTargets} targets, ${r1(s.targeting.sensorStrength)} ${s.targeting.sensorType}`,
+    problems: s.problems.length ? s.problems : undefined
   }
 }
 
@@ -179,11 +166,14 @@ async function missingSkills(ctx: ToolContext, typeIds: number[]) {
   return miss.map((m) => `${en(m.id)} ${m.have} → ${m.need}`)
 }
 
+/** Saved fits, optionally only those of one ship. */
+const byShip = (list: { name: string; ship: string }[], ship?: string) => (ship ? list.filter((f) => f.ship.toLowerCase() === ship.toLowerCase()) : list)
+
 const obj = (props: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties: props, required, additionalProperties: false })
 const str = (description: string, extra: Record<string, unknown> = {}) => ({ type: 'string', description, ...extra })
 const num = (description: string) => ({ type: 'number', description })
-const EFT = str('Fit in EFT format (first line "[Ship, Name]", one module per line, "Module, Charge", drones "Name xN"). Omit to use the fit open in the Canopus fitting tool.')
-const SKILLS = str('Skills to compute with: "character" (the active character, default) or "all5"', { enum: ['character', 'all5'] })
+const EFT = str('EFT text; omit = the fit open in Canopus')
+const SKILLS = str('default character', { enum: ['character', 'all5'] })
 
 interface Tool {
   def: ToolDef['function']
@@ -195,7 +185,7 @@ interface Tool {
 const tool = (name: string, description: string, parameters: Record<string, unknown>, run: Tool['run'], inGame = false): Tool => ({ def: { name, description, parameters }, run, inGame })
 
 const TOOLS: Tool[] = [
-  tool('app_state', 'What is on screen and who is logged in: current page, UI language, characters, the active one, and the fit open in the fitting tool (EFT).', obj({}), async (_a, ctx) => {
+  tool('app_state', 'Current page, characters, and the fit open in the fitting tool (EFT).', obj({}), async (_a, ctx) => {
     if (ctx.fit) await names([ctx.fit.shipTypeId, ...ctx.fit.modules.flatMap((m) => [m.typeId, m.chargeTypeId ?? 0]), ...ctx.fit.drones.map((d) => d.typeId), ...ctx.fit.implants])
     return {
       page: ctx.page,
@@ -207,8 +197,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'character_overview',
-    'A character right now: online, location (system, security, docked), ship, wallet, skill points, skill queue, implants, attributes, industry jobs and planetary extractors.',
-    obj({ character: str('Character name; omit for the active one') }),
+    'A character now: location, ship, wallet, SP, skill queue, implants, attributes, industry, PI.',
+    obj({ character: str('omit = active') }),
     async (a, ctx) => {
       const c = who(ctx, a.character)
       const row = await loadRow(c)
@@ -229,7 +219,7 @@ const TOOLS: Tool[] = [
         Object.assign(out, {
           total_sp: ch.totalSp,
           unallocated_sp: ch.unallocatedSp,
-          queue: (ch.queue ?? []).slice(0, 15).map((q) => ({ skill: en(q.skill_id), level: q.finished_level, finishes: q.finish_date })),
+          queue: (ch.queue ?? []).slice(0, 10).map((q) => `${en(q.skill_id)} ${q.finished_level}${q.finish_date ? ` → ${q.finish_date.slice(0, 16)}` : ''}`),
           implants: (ch.implants ?? []).map(en),
           attributes: ch.attributes
         })
@@ -241,8 +231,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'character_skills',
-    "The active character's skill levels: specific skills by name, or every skill of a group (e.g. 'Spaceship Command', 'Gunnery', 'Missiles'), or without arguments a per-group summary.",
-    obj({ skills: { type: 'array', items: { type: 'string' }, description: 'Skill names' }, group: str('Skill group name') }),
+    'Skill levels: named skills, a whole group (e.g. Missiles), or no args = per-group summary.',
+    obj({ skills: { type: 'array', items: { type: 'string' } }, group: { type: 'string' } }),
     async (a, ctx) => {
       if (!ctx.char.skills) throw new Error('Навыки персонажа недоступны: войдите персонажем')
       const cat = await window.api.sde.skillCatalog()
@@ -266,16 +256,16 @@ const TOOLS: Tool[] = [
     }
   ),
 
-  tool('search_items', 'Finds items, ships, modules, skills by name (English or Russian, partial).', obj({ query: str('Search text'), limit: num('Max results, default 15') }, ['query']), async (a) => {
-    const hits = await window.api.sde.search(a.query, { limit: a.limit ?? 15 })
+  tool('search_items', 'Find items by name (EN/RU, partial).', obj({ query: { type: 'string' }, limit: { type: 'number' } }, ['query']), async (a) => {
+    const hits = await window.api.sde.search(a.query, { limit: a.limit ?? 10 })
     const groups = await window.api.sde.groupNames([...new Set(hits.map((h) => h.g))])
-    return hits.map((h) => ({ id: h.id, name: h.n[0], name_ru: h.n[1], group: groups[h.g]?.[0] }))
+    return hits.map((h) => ({ name: h.n[0], ...(h.n[1] !== h.n[0] ? { ru: h.n[1] } : {}), group: groups[h.g]?.[0] }))
   }),
 
   tool(
     'item_info',
-    'Everything the game data says about one item: group, description, attributes, ship bonuses (traits), required skills, other versions (T1/T2/faction).',
-    obj({ item: str('Item name or id') }, ['item']),
+    'Game data for one item: attributes, ship bonuses, required skills, other versions.',
+    obj({ item: str('name or id'), description: { type: 'boolean', description: 'include the lore text' } }, ['item']),
     async (a, ctx) => {
       const id = await findType(a.item)
       if (!id) throw new Error(`Предмет «${a.item}» не найден`)
@@ -285,14 +275,16 @@ const TOOLS: Tool[] = [
       const bonus = (b: { b?: number; u?: number; t: [string, string] | string[] }) => `${b.b !== undefined ? `${b.b}${b.u === 105 ? '%' : ''} ` : ''}${b.t[0]}`
       const req = (nodes: typeof info.requirements): string[] => nodes.flatMap((n) => [`${en(n.skill)} ${n.level}`, ...req(n.children)])
       return {
-        id,
         name: info.type.n[0],
-        name_ru: info.type.n[1],
         group: info.group.n[0],
         category: info.category.n[0],
         meta: info.meta?.[0],
-        description: info.description?.[ctx.lang === 'ru' ? 1 : 0]?.replace(/<[^>]+>/g, '').slice(0, 1500),
-        attributes: info.attributes.filter((x) => x.value !== 0).slice(0, 120).map((x) => ({ name: x.n[0], value: r1(x.value, 4), unit: x.unit !== undefined ? info.units[x.unit]?.[0] : undefined })),
+        description: a.description ? info.description?.[ctx.lang === 'ru' ? 1 : 0]?.replace(/<[^>]+>/g, '').slice(0, 800) : undefined,
+        // "Name: value unit" lines are a third of the size of objects.
+        attributes: info.attributes
+          .filter((x) => x.value !== 0)
+          .slice(0, 80)
+          .map((x) => `${x.n[0]}: ${r1(x.value, 4)}${x.unit !== undefined && info.units[x.unit]?.[0] ? ` ${info.units[x.unit][0]}` : ''}`),
         traits: info.traits && {
           role: info.traits.role?.map(bonus),
           per_skill_level: info.traits.skills?.map((s) => ({ skill: en(s.skill), bonuses: s.bonuses.map(bonus) })),
@@ -306,8 +298,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'market_prices',
-    'Current market prices (best sell and buy orders, volume) for items at a trade hub.',
-    obj({ items: { type: 'array', items: { type: 'string' }, description: 'Item names' }, hub: str('Trade hub', { enum: HUBS.map((h) => h.name) }) }, ['items']),
+    'Best sell/buy prices and volumes at a trade hub (default Jita).',
+    obj({ items: { type: 'array', items: { type: 'string' } }, hub: { type: 'string', enum: HUBS.map((h) => h.name) } }, ['items']),
     async (a) => {
       const hub = HUBS.find((h) => h.name === a.hub) ?? HUBS[0]
       const ids = await Promise.all((a.items as string[]).map(findType))
@@ -316,14 +308,14 @@ const TOOLS: Tool[] = [
       return (a.items as string[]).map((n, i) => {
         const id = ids[i]
         const p = id ? prices.get(id) : undefined
-        return id && p ? { item: en(id), hub: hub.name, sell_min: p.sell.best, sell_volume: p.sell.volume, buy_max: p.buy.best, buy_volume: p.buy.volume } : { item: n, error: 'no price' }
+        return id && p ? { item: en(id), sell: p.sell.best, sell_vol: p.sell.volume, buy: p.buy.best, buy_vol: p.buy.volume } : { item: n, error: 'no price' }
       })
     }
   ),
 
   tool(
     'calculate_fit',
-    "Fits a ship with Canopus' dogma engine (the game's formulas) and returns all stats: DPS per weapon, EHP and resists, active tank, capacitor, speed, align, targeting, CPU/PG, problems, and skills the character is missing. Always use this instead of estimating numbers.",
+    'All stats of a fit by the game formulas (DPS, EHP/resists, tank, cap, speed, targeting, CPU/PG, problems, missing skills). Use instead of estimating.',
     obj({ eft: EFT, skills: SKILLS }),
     async (a, ctx) => {
       const fit = await parseFit(a.eft, ctx)
@@ -336,15 +328,15 @@ const TOOLS: Tool[] = [
 
   tool(
     'optimize_fit',
-    'Swaps modules for other versions of the same item using Jita prices. mode "cheaper": cheapest swaps keeping all stats (tolerance = allowed loss, 0-0.1). mode "better": swaps adding most to a metric per ISK within a budget per swap.',
+    'Swap modules for other versions by Jita price. cheaper: keep all stats (tolerance = allowed loss 0-0.1). better: most gain in metric per ISK within budget per swap.',
     obj(
       {
         eft: EFT,
         skills: SKILLS,
-        mode: str('cheaper or better', { enum: ['cheaper', 'better'] }),
-        tolerance: num('cheaper: allowed loss as a fraction, default 0'),
-        metric: str('better: what to improve', { enum: METRICS.map(([m]) => m) }),
-        budget_isk: num('better: max extra ISK per swap, default 200000000')
+        mode: { type: 'string', enum: ['cheaper', 'better'] },
+        tolerance: { type: 'number' },
+        metric: { type: 'string', enum: METRICS.map(([m]) => m) },
+        budget_isk: num('default 200M')
       },
       ['mode']
     ),
@@ -370,8 +362,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'what_to_learn',
-    "Which next skill levels improve a fit the most for the active character, with training time (hours), sorted by gain per hour of training.",
-    obj({ eft: EFT, metric: str('What to improve', { enum: ['dps', 'ehp', 'activeTank', 'speed', 'align', 'lockRange', 'capacitor'] }) }),
+    'Next skill levels that improve a fit most per hour of training.',
+    obj({ eft: EFT, metric: { type: 'string', enum: ['dps', 'ehp', 'activeTank', 'speed', 'align', 'lockRange', 'capacitor'] } }),
     async (a, ctx) => {
       const ch = ctx.char
       if (!ch.skills) throw new Error('Нужен персонаж с навыками')
@@ -399,8 +391,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'skill_plan',
-    'Skills (with prerequisites) the active character must train to use items, and the total training time.',
-    obj({ items: { type: 'array', items: { type: 'string' }, description: 'Item or skill names; a skill may end with a level, e.g. "Caldari Cruiser 5"' } }, ['items']),
+    'Skills to train (with prerequisites) to use items, with training time.',
+    obj({ items: { type: 'array', items: { type: 'string' }, description: 'items or skills, e.g. "Caldari Cruiser 5"' } }, ['items']),
     async (a, ctx) => {
       const goals = await Promise.all(
         (a.items as string[]).map(async (s) => {
@@ -428,16 +420,16 @@ const TOOLS: Tool[] = [
 
   tool(
     'simulate_combat',
-    'Two fits against each other (the Canopus combat simulator: turret/missile application, webs, painters, scram vs MWD, repairs through capacitor): applied DPS both ways and time to kill at a distance and speeds.',
+    'Combat simulator, two fits: applied DPS both ways and time to kill (application, webs, painters, scram vs MWD, cap-limited reps).',
     obj(
       {
         my_eft: EFT,
-        enemy_eft: str('Opponent fit in EFT'),
-        distance_km: num('Distance, default 10'),
-        my_speed: num('Your speed m/s; omit = top speed'),
-        enemy_speed: num('Opponent speed m/s; omit = top speed'),
-        enemy_heading_deg: num('Opponent heading relative to the line from you: 0 away, 90 orbit (default), 180 towards'),
-        my_heading_deg: num('Your heading: 0 towards the opponent (default), 90 sideways'),
+        enemy_eft: { type: 'string' },
+        distance_km: num('default 10'),
+        my_speed: num('m/s, omit = top'),
+        enemy_speed: num('m/s, omit = top'),
+        enemy_heading_deg: num('0 away, 90 orbit (default), 180 towards'),
+        my_heading_deg: num('0 towards (default), 90 sideways'),
         skills: SKILLS
       },
       ['enemy_eft']
@@ -472,14 +464,14 @@ const TOOLS: Tool[] = [
 
   tool(
     'list_fits',
-    'Saved fits: in Canopus, or in the game (the active character\'s fittings). Returns names and ships; pass a name to get that fit in EFT.',
-    obj({ source: str('canopus or game', { enum: ['canopus', 'game'] }), name: str('Fit name to return in EFT') }, ['source']),
+    'Saved fits in Canopus or in the game: names (filter by ship), or one fit as EFT by name.',
+    obj({ source: { type: 'string', enum: ['canopus', 'game'] }, ship: str('only fits of this ship'), name: str('return this fit as EFT') }, ['source']),
     async (a, ctx) => {
       if (a.source === 'canopus') {
         const fits = await window.api.fit.list()
         await names(fits.flatMap((f) => [f.shipTypeId, ...f.modules.flatMap((m) => [m.typeId, m.chargeTypeId ?? 0]), ...f.drones.map((d) => d.typeId), ...f.implants]))
         const one = !a.name ? undefined : fits.find((f) => f.name.toLowerCase() === String(a.name).toLowerCase())
-        return one ? { eft: toEft(one) } : fits.map((f) => ({ name: f.name, ship: en(f.shipTypeId) }))
+        return one ? { eft: toEft(one) } : byShip(fits.map((f) => ({ name: f.name, ship: en(f.shipTypeId) })), a.ship)
       }
       const c = who(ctx)
       const fits = await loadGameFits(c.id)
@@ -490,11 +482,11 @@ const TOOLS: Tool[] = [
         await names([fit.shipTypeId, ...fit.modules.flatMap((m) => [m.typeId, m.chargeTypeId ?? 0]), ...fit.drones.map((d) => d.typeId)])
         return { eft: toEft(fit) }
       }
-      return fits.map((f) => ({ name: f.name, ship: en(f.ship_type_id) }))
+      return byShip(fits.map((f) => ({ name: f.name, ship: en(f.ship_type_id) })), a.ship)
     }
   ),
 
-  tool('open_fit', 'Opens a fit in the Canopus fitting tool so the user sees and edits it.', obj({ eft: str('Fit in EFT') }, ['eft']), async (a, ctx) => {
+  tool('open_fit', 'Open a fit in the Canopus fitting tool.', obj({ eft: { type: 'string' } }, ['eft']), async (a, ctx) => {
     const fit = await parseFit(a.eft, ctx)
     ctx.openFit(fit)
     return { opened: true }
@@ -502,8 +494,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'navigate',
-    'Opens a Canopus section. market with item opens its prices; pvp with character opens their PvP stats.',
-    obj({ page: str('Section', { enum: PAGES }), item: str('market: item name'), character: str('pvp: character name') }, ['page']),
+    'Open a Canopus section; market+item opens its prices, pvp+character their stats.',
+    obj({ page: { type: 'string', enum: PAGES }, item: { type: 'string' }, character: { type: 'string' } }, ['page']),
     async (a, ctx) => {
       let arg: number | null = null
       if (a.page === 'market' && a.item) arg = await findType(a.item)
@@ -515,8 +507,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'route',
-    'Gate route between systems: every system with security, optionally recent player kills, gate camps, bubbles and smartbombs on the way (zKillboard, last hour).',
-    obj({ from: str('Start system; omit = where the active character is'), to: str('Destination system'), preference: str('secure, shortest or insecure', { enum: ['secure', 'shortest', 'insecure'] }), check_danger: { type: 'boolean', description: 'Look up recent kills on the route (slower)' } }, ['to']),
+    'Gate route with security per system; check_danger adds last-hour kills, camps, bubbles, smartbombs.',
+    obj({ from: str('omit = current location'), to: { type: 'string' }, preference: { type: 'string', enum: ['secure', 'shortest', 'insecure'] }, check_danger: { type: 'boolean' } }, ['to']),
     async (a, ctx) => {
       let fromId: number | null = null
       if (a.from) fromId = (await findSystem(a.from))?.id ?? null
@@ -529,20 +521,21 @@ const TOOLS: Tool[] = [
       const r = await window.api.sde.routeLocal(fromId, to.id, a.preference ?? 'shortest', [])
       if (!r) return { error: 'no route' }
       const systems = await Promise.all(r.ids.map((id) => window.api.sde.system(id)))
-      const out = systems.map((s) => ({ system: s?.n, security: s ? sec(s.sec) : undefined, region: s?.region[0] }))
+      // Region once per stretch instead of on every system.
+      const out = systems.map((s, i) => ({ system: s?.n, sec: s ? sec(s.sec) : undefined, ...(s && s.region[0] !== systems[i - 1]?.region[0] ? { region: s.region[0] } : {}) }))
       if (a.check_danger) {
         const danger = await Promise.all(r.ids.slice(0, 40).map((id) => systemDanger(id).catch(() => null)))
         // Every checked system says so, also when nothing happened: no data is not the same as quiet.
         danger.forEach((d, i) =>
-          Object.assign(out[i], d ? { player_kills_last_hour: d.kills.length, gate_camps: d.camps.length, bubbles: d.bubbles, smartbombs: d.smartbombs } : { danger_check: 'failed' })
+          Object.assign(out[i], d ? { kills_1h: d.kills.length, ...(d.camps.length ? { camps: d.camps.length } : {}), ...(d.bubbles ? { bubbles: true } : {}), ...(d.smartbombs ? { smartbombs: true } : {}) } : { danger_check: 'failed' })
         )
         out.slice(40).forEach((o) => Object.assign(o, { danger_check: 'not checked (route longer than 40 jumps)' }))
       }
-      return { jumps: r.ids.length - 1, systems: out }
+      return { jumps: r.ids.length - 1, ...(a.check_danger ? { note: 'kills_1h = player ship losses in the last hour (0 = none)' } : {}), systems: out }
     }
   ),
 
-  tool('system_info', 'A solar system: security, region, wormhole class, recent player kills and gate camps (last hour), NPC and ship kills.', obj({ system: str('System name') }, ['system']), async (a) => {
+  tool('system_info', 'A system: security, region, last-hour player kills, camps, NPC kills.', obj({ system: { type: 'string' } }, ['system']), async (a) => {
     const s = await findSystem(a.system)
     if (!s) throw new Error('Система не найдена')
     const full = await window.api.sde.system(s.id)
@@ -566,8 +559,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'trade_profit',
-    "Market trading results from the wallet: profit per item (sells matched to earlier buys), turnover, sales tax and broker fees over a period.",
-    obj({ days: num('Period, default 30'), all_characters: { type: 'boolean', description: 'All logged-in characters instead of the active one' } }),
+    'Trading profit from the wallet (sells matched to earlier buys), turnover, taxes, fees.',
+    obj({ days: num('default 30'), all_characters: { type: 'boolean' } }),
     async (a, ctx) => {
       const chars = a.all_characters ? ctx.characters : [who(ctx)]
       const per = await Promise.all(
@@ -598,8 +591,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'find_assets',
-    "Where the active character's items are: search assets by item name, with location and quantity.",
-    obj({ query: str('Item name or part of it') }, ['query']),
+    "Where the character's items are (asset search by name).",
+    obj({ query: { type: 'string' } }, ['query']),
     async (a, ctx) => {
       const c = who(ctx)
       const assets = await esi<{ item_id: number; type_id: number; location_id: number; quantity: number; location_flag: string }[]>(`/characters/${c.id}/assets/`, { characterId: c.id, allPages: true })
@@ -618,7 +611,7 @@ const TOOLS: Tool[] = [
     }
   ),
 
-  tool('all_characters', 'Every logged-in character at a glance: online, system, ship, wallet, skill queue end, industry jobs, planetary extractors, jump fatigue, jump clone.', obj({}), async (_a, ctx) => {
+  tool('all_characters', 'All characters: system, ship, wallet, queue end, industry, PI, fatigue, clone.', obj({}), async (_a, ctx) => {
     const rows = await Promise.all(ctx.characters.map(loadRow))
     await names(rows.flatMap((r) => (r.ship ? [r.ship.type] : [])))
     const t = (v?: number | null) => (v === undefined ? undefined : v === null ? null : new Date(v).toISOString())
@@ -638,8 +631,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'set_destination',
-    'IN-GAME action: sets the autopilot destination (or adds a waypoint) for the active character in the EVE client. The user is asked to confirm.',
-    obj({ system: str('Destination system'), add_waypoint: { type: 'boolean', description: 'Add as a waypoint instead of replacing the route' } }, ['system']),
+    'IN-GAME: set the autopilot destination or add a waypoint (user confirms).',
+    obj({ system: { type: 'string' }, add_waypoint: { type: 'boolean' } }, ['system']),
     async (a, ctx) => {
       const c = who(ctx)
       if (!hasScope(c, SCOPE.waypoint)) throw new Error('Нет разрешения на действия в игре: войдите с расширенными разрешениями в Настройках')
@@ -653,8 +646,8 @@ const TOOLS: Tool[] = [
 
   tool(
     'save_fit_to_game',
-    "IN-GAME action: saves a fit to the active character's fittings list in the game. The user is asked to confirm.",
-    obj({ eft: str('Fit in EFT') }, ['eft']),
+    'IN-GAME: save a fit to the game fittings list (user confirms).',
+    obj({ eft: { type: 'string' } }, ['eft']),
     async (a, ctx) => {
       const c = who(ctx)
       if (!hasScope(c, SCOPE.writeFits)) throw new Error('Нет разрешения сохранять фиты в игру: войдите с расширенными разрешениями')

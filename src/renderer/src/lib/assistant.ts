@@ -92,13 +92,47 @@ function textOf(items: ResponseItem[]): string {
     .join('')
 }
 
+/**
+ * Earlier questions of the conversation as the user saw them: the question and the final answer. Tool
+ * calls, their (often large) results and reasoning are dropped, so a long chat doesn't resend all the data
+ * of every earlier answer; the model calls a tool again when it needs fresh numbers.
+ */
+function compact(history: ResponseItem[]): ResponseItem[] {
+  const out: ResponseItem[] = []
+  for (const i of history) {
+    if (i.type === 'function_call' || i.type === 'function_call_output' || i.type === 'reasoning') continue
+    if (!('role' in i)) continue
+    if (i.role === 'user') out.push({ role: 'user', content: typeof i.content === 'string' ? i.content : textOf([i]) })
+    else if (i.role === 'assistant') {
+      const text = textOf([i])
+      // Several assistant messages of one answer (between tool rounds) become one.
+      const last = out[out.length - 1]
+      if (last && 'role' in last && last.role === 'assistant') last.content = `${last.content}\n\n${text}`
+      else if (text) out.push({ role: 'assistant', content: text })
+    }
+  }
+  return out
+}
+
+/**
+ * The previous question keeps its tool data (a follow-up like "and with other ammo?" needs the same fits),
+ * older ones are compacted to question and answer.
+ */
+function keepLastTurn(history: ResponseItem[]): ResponseItem[] {
+  let last = -1
+  history.forEach((i, k) => {
+    if ('role' in i && i.role === 'user') last = k
+  })
+  return last <= 0 ? history : [...compact(history.slice(0, last)), ...history.slice(last)]
+}
+
 /** Items go back to the model as received, minus ids: nothing is stored on OpenAI's side (store: false). */
 const resend = (i: ResponseItem): ResponseItem => (i.type === 'reasoning' || !('id' in i) ? i : (({ id: _id, ...rest }) => rest as ResponseItem)(i))
 
 export async function ask(text: string, mode: AssistantAuth, model: string, confirm: (t: string) => Promise<boolean>): Promise<void> {
   if (state.busy || !text.trim() || !currentCtx) return
   const entry: ChatEntry = { role: 'assistant', text: '', steps: [] }
-  const history: ResponseItem[] = [...state.history, { role: 'user', content: text.trim() }]
+  const history: ResponseItem[] = [...keepLastTurn(state.history), { role: 'user', content: text.trim() }]
   set({ busy: true, entries: [...state.entries, { role: 'user', text: text.trim() }, entry], history })
   const update = (patch: Partial<ChatEntry>) => {
     Object.assign(entry, patch)
