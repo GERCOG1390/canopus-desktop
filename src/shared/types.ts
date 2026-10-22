@@ -198,7 +198,7 @@ export interface CanopusApi {
     chatgptLogout(): Promise<void>
     models(mode: AssistantAuth): Promise<string[]>
     /** One model turn (Responses API); the text streams through onDelta */
-    respond(requestId: string, mode: AssistantAuth, model: string, instructions: string, input: ResponseItem[], tools: ToolDef[]): Promise<AssistantTurn>
+    respond(requestId: string, mode: AssistantAuth, model: string, instructions: string, input: ResponseItem[], tools: ToolDef[], web: boolean): Promise<AssistantTurn>
     onDelta(listener: (requestId: string, delta: string) => void): () => void
   }
   fitShot: {

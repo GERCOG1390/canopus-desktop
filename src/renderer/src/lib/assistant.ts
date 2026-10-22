@@ -3,12 +3,23 @@
 
 import type { AssistantAuth, ResponseItem } from '../../../shared/assistant'
 import { runTool, TOOL_DEFS, type ToolContext } from './assistantTools'
+import type { ToolDef } from '../../../shared/assistant'
+
+/** Turns on OpenAI's web search for the rest of the current answer. */
+const ENABLE_WEB: ToolDef = {
+  type: 'function',
+  function: {
+    name: 'enable_web_search',
+    description: 'Turn on web search for this answer, when Canopus tools cannot give what is needed (patch notes, news, guides, meta, mechanics).',
+    parameters: { type: 'object', properties: { reason: { type: 'string' } }, required: ['reason'], additionalProperties: false }
+  }
+}
 
 /** Rounds of tool calls in one answer before giving up (a loop guard). */
 const MAX_ROUNDS = 14
 const STORE_KEY = 'canopus.assistant.chat.v2'
 
-function systemPrompt(ctx: ToolContext): string {
+function systemPrompt(ctx: ToolContext, web: boolean): string {
   return [
     'You are the assistant built into Canopus, a desktop companion app for the game EVE Online.',
     `Answer in ${ctx.lang === 'ru' ? 'Russian' : 'English'} unless the user writes in another language; keep EVE item, ship and skill names in English as in the game.`,
@@ -22,6 +33,9 @@ function systemPrompt(ctx: ToolContext): string {
     '- Prices are Jita sell orders unless the user asks otherwise; give ISK with M/B suffixes.',
     '- You may open Canopus sections and fits (navigate, open_fit) when it helps the user see the result. Actions in the game client (set_destination, save_fit_to_game) need a clear request from the user; the app also asks them to confirm.',
     '- Canopus never sends keyboard or mouse input to the game and does not automate gameplay; do not offer to.',
+    web
+      ? '- Canopus tools come first. When you need the web, call enable_web_search, then search. Search only for what the tools cannot give: patch notes and recent changes, news and events, guides and tactics (missions, abyssal sites, exploration), the current meta, explanations of mechanics. Prefer official and well-known EVE sources (eveonline.com, support.eveonline.com, forums.eveonline.com, wiki.eveuniversity.org, r/Eve). Never take numbers from the web that a Canopus tool can compute or fetch (stats, prices, routes, skills); check web fits with calculate_fit. Cite the pages you used, and say when a source is old or may predate recent changes.'
+      : '- You have no web access: when the answer needs current information Canopus does not have (patch notes, news, guides), say so instead of guessing.',
     '- Be concise and practical: short paragraphs, lists, small tables. Put fits in ``` code blocks.'
   ].join('\n')
 }
@@ -37,6 +51,8 @@ export interface ChatEntry {
   role: 'user' | 'assistant' | 'error'
   text: string
   steps?: ToolStep[]
+  /** Web pages the answer cites */
+  sources?: { url: string; title?: string }[]
 }
 
 interface State {
@@ -100,7 +116,7 @@ function textOf(items: ResponseItem[]): string {
 function compact(history: ResponseItem[]): ResponseItem[] {
   const out: ResponseItem[] = []
   for (const i of history) {
-    if (i.type === 'function_call' || i.type === 'function_call_output' || i.type === 'reasoning') continue
+    if (i.type === 'function_call' || i.type === 'function_call_output' || i.type === 'reasoning' || i.type === 'web_search_call') continue
     if (!('role' in i)) continue
     if (i.role === 'user') out.push({ role: 'user', content: typeof i.content === 'string' ? i.content : textOf([i]) })
     else if (i.role === 'assistant') {
@@ -126,10 +142,21 @@ function keepLastTurn(history: ResponseItem[]): ResponseItem[] {
   return last <= 0 ? history : [...compact(history.slice(0, last)), ...history.slice(last)]
 }
 
+/** Web pages cited in a turn's messages (url_citation annotations), each once. */
+function citationsOf(items: ResponseItem[]): { url: string; title?: string }[] {
+  const out = new Map<string, { url: string; title?: string }>()
+  for (const i of items) {
+    if (i.type !== 'message' || typeof i.content === 'string') continue
+    for (const c of i.content as { annotations?: { type: string; url?: string; title?: string }[] }[])
+      for (const a of c.annotations ?? []) if (a.type === 'url_citation' && a.url && !out.has(a.url)) out.set(a.url, { url: a.url, title: a.title })
+  }
+  return [...out.values()]
+}
+
 /** Items go back to the model as received, minus ids: nothing is stored on OpenAI's side (store: false). */
 const resend = (i: ResponseItem): ResponseItem => (i.type === 'reasoning' || !('id' in i) ? i : (({ id: _id, ...rest }) => rest as ResponseItem)(i))
 
-export async function ask(text: string, mode: AssistantAuth, model: string, confirm: (t: string) => Promise<boolean>): Promise<void> {
+export async function ask(text: string, mode: AssistantAuth, model: string, web: boolean, confirm: (t: string) => Promise<boolean>): Promise<void> {
   if (state.busy || !text.trim() || !currentCtx) return
   const entry: ChatEntry = { role: 'assistant', text: '', steps: [] }
   const history: ResponseItem[] = [...keepLastTurn(state.history), { role: 'user', content: text.trim() }]
@@ -142,6 +169,8 @@ export async function ask(text: string, mode: AssistantAuth, model: string, conf
   let before = ''
   let live = ''
   let requestId = ''
+  /** The web search tool is attached (after the model called enable_web_search) */
+  let searching = false
   const off = window.api.assistant.onDelta((id, delta) => {
     if (id !== requestId) return
     live += delta
@@ -151,8 +180,23 @@ export async function ask(text: string, mode: AssistantAuth, model: string, conf
     for (let round = 0; round < MAX_ROUNDS; round++) {
       requestId = `${Date.now()}-${round}`
       live = ''
-      const turn = await window.api.assistant.respond(requestId, mode, model, systemPrompt(currentCtx), history.map(resend), TOOL_DEFS)
+      // Search results live on OpenAI's side only for this request: what was found is in the answer text.
+      // The web search tool costs thousands of tokens on every request, so it is attached only after the
+      // model asks for it (enable_web_search), for the rest of this answer.
+      const defs = web && !searching ? [...TOOL_DEFS, ENABLE_WEB] : TOOL_DEFS
+      const turn = await window.api.assistant.respond(requestId, mode, model, systemPrompt(currentCtx, web), history.filter((i) => i.type !== 'web_search_call').map(resend), defs, searching)
+      if (turn.webSearchUnavailable) {
+        web = false
+        searching = false
+      }
       history.push(...turn.output)
+      const searches = turn.output.filter((i): i is Extract<ResponseItem, { type: 'web_search_call' }> => i.type === 'web_search_call')
+      const sources = citationsOf(turn.output)
+      if (searches.length || sources.length)
+        update({
+          steps: [...(entry.steps ?? []), ...searches.map((w, k) => ({ id: w.id ?? `${requestId}-w${k}`, name: 'web_search', args: w.action?.query ?? w.action?.url ?? '', result: w.status ?? 'done' }))],
+          sources: [...(entry.sources ?? []), ...sources.filter((x) => !entry.sources?.some((y) => y.url === x.url))]
+        })
       state.tokens += turn.usage?.total_tokens ?? 0
       const said = textOf(turn.output)
       if (said) before = (before ? before + '\n\n' : '') + said
@@ -160,7 +204,13 @@ export async function ask(text: string, mode: AssistantAuth, model: string, conf
       const calls = turn.output.filter((i): i is Extract<ResponseItem, { type: 'function_call' }> => i.type === 'function_call')
       if (!calls.length) break
       update({ steps: [...(entry.steps ?? []), ...calls.map((c) => ({ id: c.call_id, name: c.name, args: c.arguments }))] })
-      const results = await Promise.all(calls.map((c) => runTool(c.name, c.arguments, currentCtx!, confirm)))
+      const results = await Promise.all(
+        calls.map((c) => {
+          if (c.name !== ENABLE_WEB.function.name) return runTool(c.name, c.arguments, currentCtx!, confirm)
+          searching = true
+          return Promise.resolve(JSON.stringify({ enabled: true, note: 'Web search is now available for this answer: use it.' }))
+        })
+      )
       calls.forEach((c, i) => {
         history.push({ type: 'function_call_output', call_id: c.call_id, output: results[i] })
         const step = entry.steps?.find((st) => st.id === c.call_id)

@@ -87,20 +87,33 @@ const saveChatGpt = (c: ChatGptCredential): void => writeSecret('assistant-chatg
 
 const b64url = (b: Buffer): string => b.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
-function decodeJwt(token: string): { header: Record<string, string>; payload: Record<string, unknown> } {
+function decodeJwt(token: string): {
+  header: Record<string, string>
+  payload: Record<string, unknown>
+} {
   const [h, p] = token.split('.')
-  return { header: JSON.parse(Buffer.from(h, 'base64url').toString('utf8')), payload: JSON.parse(Buffer.from(p, 'base64url').toString('utf8')) }
+  return {
+    header: JSON.parse(Buffer.from(h, 'base64url').toString('utf8')),
+    payload: JSON.parse(Buffer.from(p, 'base64url').toString('utf8'))
+  }
 }
 
 /** Checks the ID token: signature against OpenAI's published keys, issuer, audience, expiry and nonce. */
 async function validateIdToken(idToken: string, clientId: string, nonce: string): Promise<Record<string, unknown>> {
   const { header, payload } = decodeJwt(idToken)
   const config = (await (await fetch(`${AUTH}/.well-known/openid-configuration`)).json()) as { jwks_uri: string; issuer: string }
-  const jwks = (await (await fetch(config.jwks_uri)).json()) as { keys: (Record<string, string> & { kid: string })[] }
+  const jwks = (await (await fetch(config.jwks_uri)).json()) as {
+    keys: (Record<string, string> & { kid: string })[]
+  }
   const jwk = jwks.keys.find((k) => k.kid === header.kid)
   if (!jwk) throw new Error('Не найден ключ подписи OpenAI для токена')
   const [h, p, sig] = idToken.split('.')
-  const ok = verify('RSA-SHA256', Buffer.from(`${h}.${p}`), createPublicKey({ key: jwk, format: 'jwk' } as unknown as JsonWebKeyInput), Buffer.from(sig, 'base64url'))
+  const ok = verify(
+    'RSA-SHA256',
+    Buffer.from(`${h}.${p}`),
+    createPublicKey({ key: jwk, format: 'jwk' } as unknown as JsonWebKeyInput),
+    Buffer.from(sig, 'base64url')
+  )
   if (!ok) throw new Error('Подпись токена OpenAI не прошла проверку')
   const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud]
   if (payload.iss !== config.issuer) throw new Error('Токен выдан не OpenAI')
@@ -158,7 +171,11 @@ export async function chatGptLogin(): Promise<AssistantAccount> {
   const nonce = b64url(randomBytes(16))
   const host = hostId()
 
-  const { code, issuedClientId, redirectUri } = await new Promise<{ code: string; issuedClientId?: string; redirectUri: string }>((resolve, reject) => {
+  const { code, issuedClientId, redirectUri } = await new Promise<{
+    code: string
+    issuedClientId?: string
+    redirectUri: string
+  }>((resolve, reject) => {
     let redirectUri = ''
     const server = createServer((req, res) => {
       const url = new URL(req.url ?? '/', 'http://127.0.0.1')
@@ -183,7 +200,11 @@ export async function chatGptLogin(): Promise<AssistantAccount> {
         return
       }
       finish(true, 'Готово — можно закрыть эту вкладку и вернуться в Canopus.')
-      resolve({ code: url.searchParams.get('code') ?? '', issuedClientId: url.searchParams.get('client_id') ?? undefined, redirectUri })
+      resolve({
+        code: url.searchParams.get('code') ?? '',
+        issuedClientId: url.searchParams.get('client_id') ?? undefined,
+        redirectUri
+      })
     })
     pendingLogin = { server, reject }
     // OpenAI's example port first; any free port works for later sign-ins (same scheme, host and path).
@@ -219,7 +240,14 @@ export async function chatGptLogin(): Promise<AssistantAccount> {
 
   const clientId = saved?.client_id ?? issuedClientId
   if (!clientId || clientId === 'dynamic_agent_client') throw new Error('OpenAI не завершил регистрацию Canopus: попробуйте войти ещё раз')
-  const t = await tokenRequest({ grant_type: 'authorization_code', client_id: clientId, code, code_verifier: verifier, redirect_uri: redirectUri, resource: API })
+  const t = await tokenRequest({
+    grant_type: 'authorization_code',
+    client_id: clientId,
+    code,
+    code_verifier: verifier,
+    redirect_uri: redirectUri,
+    resource: API
+  })
   const claims = t.id_token ? await validateIdToken(t.id_token, clientId, nonce) : {}
   const scopes = (t.scope ?? '').split(/\s+/).filter(Boolean)
   saveChatGpt({
@@ -248,7 +276,12 @@ async function chatGptToken(): Promise<string> {
   if ((c.expires_at ?? 0) > Date.now() + 60_000) return c.access_token
   if (!c.refresh_token) throw new Error('Сессия ChatGPT истекла: войдите ещё раз')
   try {
-    const t = await tokenRequest({ grant_type: 'refresh_token', client_id: c.client_id, refresh_token: c.refresh_token, resource: API })
+    const t = await tokenRequest({
+      grant_type: 'refresh_token',
+      client_id: c.client_id,
+      refresh_token: c.refresh_token,
+      resource: API
+    })
     // The refresh token rotates: replace everything together.
     saveChatGpt({
       ...c,
@@ -301,29 +334,39 @@ function apiError(status: number, text: string): Error {
   // The usual cases in plain words; anything else as OpenAI wrote it.
   if (code === 'subscription_sharing_usage_limit_exceeded')
     return new Error('Лимит плана ChatGPT для Canopus исчерпан. Посмотреть и изменить лимит: ChatGPT → Настройки → Usage.')
-  if (code === 'subscription_sharing_user_not_eligible') return new Error('Этот аккаунт ChatGPT не может делиться планом с приложениями: нужна подписка Plus или Pro.')
+  if (code === 'subscription_sharing_user_not_eligible')
+    return new Error('Этот аккаунт ChatGPT не может делиться планом с приложениями: нужна подписка Plus или Pro.')
   if (status === 401) return new Error('OpenAI не принял вход или ключ: войдите заново или проверьте ключ')
   if (status === 429 && /credit|quota|billing/i.test(msg))
-    return new Error('На аккаунте OpenAI API закончились средства: пополните баланс на platform.openai.com/settings/organization/billing (API оплачивается отдельно от подписки ChatGPT).')
+    return new Error(
+      'На аккаунте OpenAI API закончились средства: пополните баланс на platform.openai.com/settings/organization/billing (API оплачивается отдельно от подписки ChatGPT).'
+    )
   if (status === 429) return new Error('OpenAI просит подождать: слишком много запросов. Попробуйте через минуту.')
   return new Error(`OpenAI ${status}: ${msg}`)
 }
 
 async function fetchModels(token: string): Promise<string[]> {
-  const res = await fetch(`${API}/models`, { headers: { Authorization: `Bearer ${token}` } })
+  const res = await fetch(`${API}/models`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
   const text = await res.text()
   if (!res.ok) {
     console.error(`[assistant] models ${res.status}: ${text.slice(0, 500)}`)
     throw apiError(res.status, text)
   }
-  const r = JSON.parse(text) as { data?: { id: string; created: number }[]; models?: { slug: string; visibility?: string }[] }
+  const r = JSON.parse(text) as {
+    data?: { id: string; created: number }[]
+    models?: { slug: string; visibility?: string }[]
+  }
   // The ChatGPT plan catalog: { models: [{ slug, visibility }] }; the API: { data: [{ id }] }.
   if (r.models) return r.models.filter((m) => !m.visibility || m.visibility === 'list').map((m) => m.slug)
-  return (r.data ?? [])
-    .filter((m) => /^(gpt|o\d|chatgpt)/.test(m.id) && !/(audio|realtime|transcribe|tts|image|search|embedding|moderation|instruct|codex)/.test(m.id))
-    // Main models ("gpt-5.5") before dated snapshots and mini/nano variants, newest first within each.
-    .sort((a, b) => Number(/^gpt-[\d.]+$/.test(b.id)) - Number(/^gpt-[\d.]+$/.test(a.id)) || b.created - a.created)
-    .map((m) => m.id)
+  return (
+    (r.data ?? [])
+      .filter((m) => /^(gpt|o\d|chatgpt)/.test(m.id) && !/(audio|realtime|transcribe|tts|image|search|embedding|moderation|instruct|codex)/.test(m.id))
+      // Main models ("gpt-5.5") before dated snapshots and mini/nano variants, newest first within each.
+      .sort((a, b) => Number(/^gpt-[\d.]+$/.test(b.id)) - Number(/^gpt-[\d.]+$/.test(a.id)) || b.created - a.created)
+      .map((m) => m.id)
+  )
 }
 
 export async function listModels(mode: 'chatgpt' | 'apikey'): Promise<string[]> {
@@ -341,26 +384,51 @@ export async function respond(
   model: string,
   instructions: string,
   input: ResponseItem[],
-  tools: ToolDef[]
+  tools: ToolDef[],
+  webSearch: boolean
 ): Promise<AssistantTurn> {
   const token = await bearer(mode)
-  const res = await fetch(`${API}/responses`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', Accept: 'text/event-stream' },
-    body: JSON.stringify({
-      model,
-      instructions,
-      input,
-      // Plan usage only takes function tools grouped in a namespace.
-      tools: [{ type: 'namespace', name: 'canopus', description: 'Canopus app: live EVE Online data, its engines and app actions', tools: tools.map((t) => ({ type: 'function', ...t.function })) }],
-      tool_choice: 'auto',
-      parallel_tool_calls: true,
-      store: false,
-      stream: true,
-      // Reasoning carried between turns without server-side storage.
-      include: ['reasoning.encrypted_content']
+  const send = (web: boolean) =>
+    fetch(`${API}/responses`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        Accept: 'text/event-stream'
+      },
+      body: JSON.stringify({
+        model,
+        instructions,
+        input,
+        tools: [
+          // Plan usage only takes function tools grouped in a namespace.
+          {
+            type: 'namespace',
+            name: 'canopus',
+            description: 'Canopus app: live EVE Online data, its engines and app actions',
+            tools: tools.map((t) => ({ type: 'function', ...t.function }))
+          },
+          // OpenAI's own web search, for what Canopus has no data on (patch notes, guides, news).
+          ...(web ? [{ type: 'web_search' }] : [])
+        ],
+        tool_choice: 'auto',
+        parallel_tool_calls: true,
+        store: false,
+        stream: true,
+        // Reasoning carried between turns without server-side storage.
+        include: ['reasoning.encrypted_content']
+      })
     })
-  })
+  let res = await send(webSearch)
+  let webSearchUnavailable = false
+  // Web search depends on the model and the account's policy: without it the assistant still works.
+  if (webSearch && res.status === 400) {
+    const text = await res.text()
+    if (!/web_search/i.test(text)) throw apiError(400, text)
+    console.error(`[assistant] web search unavailable: ${text.slice(0, 300)}`)
+    webSearchUnavailable = true
+    res = await send(false)
+  }
   if (!res.ok || !res.body) {
     const text = await res.text()
     console.error(`[assistant] responses ${res.status}: ${text.slice(0, 800)}`)
@@ -387,7 +455,19 @@ export async function respond(
         .map((l) => l.slice(5).trimStart())
         .join('\n')
       if (!data || data === '[DONE]') continue
-      const ev = JSON.parse(data) as { type: string; delta?: string; item?: ResponseItem; response?: { output?: ResponseItem[]; usage?: AssistantTurn['usage']; error?: { code?: string; message?: string } }; error?: { code?: string; message?: string }; code?: string; message?: string }
+      const ev = JSON.parse(data) as {
+        type: string
+        delta?: string
+        item?: ResponseItem
+        response?: {
+          output?: ResponseItem[]
+          usage?: AssistantTurn['usage']
+          error?: { code?: string; message?: string }
+        }
+        error?: { code?: string; message?: string }
+        code?: string
+        message?: string
+      }
       if (ev.type === 'response.output_text.delta' && ev.delta && !sender.isDestroyed()) sender.send('assistant:delta', { id: requestId, delta: ev.delta })
       else if (ev.type === 'response.output_item.done' && ev.item) output.push(ev.item)
       else if (ev.type === 'response.completed') {
@@ -400,5 +480,5 @@ export async function respond(
     }
   }
   if (!completed) throw new Error('Ответ OpenAI оборвался: попробуйте ещё раз')
-  return { output, usage }
+  return { output, usage, webSearchUnavailable }
 }

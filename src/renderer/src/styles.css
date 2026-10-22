@@ -4323,3 +4323,17 @@ button.danger-fill:hover:not(:disabled) {
   border-radius: 6px;
   text-decoration: none;
 }
+.assistant-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.assistant-sources a {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

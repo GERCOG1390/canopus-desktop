@@ -332,8 +332,8 @@ function registerIpc(): void {
   ipcMain.handle('assistant:chatgptCancel', () => assistant.cancelChatGptLogin())
   ipcMain.handle('assistant:chatgptLogout', () => assistant.chatGptLogout())
   ipcMain.handle('assistant:models', (_e, mode: AssistantAuth) => assistant.listModels(mode))
-  ipcMain.handle('assistant:respond', (e, requestId: string, mode: AssistantAuth, model: string, instructions: string, input: ResponseItem[], tools: ToolDef[]) =>
-    assistant.respond(e.sender, requestId, mode, model, instructions, input, tools)
+  ipcMain.handle('assistant:respond', (e, requestId: string, mode: AssistantAuth, model: string, instructions: string, input: ResponseItem[], tools: ToolDef[], web: boolean) =>
+    assistant.respond(e.sender, requestId, mode, model, instructions, input, tools, web)
   )
   ipcMain.handle('fitshot:open', (_e, pilot: FitShotData) => openFitShot(pilot))
   ipcMain.handle('fitshot:get', () => fitShot)

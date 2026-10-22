@@ -663,6 +663,8 @@ export const TOOL_DEFS: ToolDef[] = TOOLS.map((t) => ({ type: 'function', functi
 
 /** Short human description of a tool call for the chat log. */
 export const TOOL_LABELS: Record<string, string> = {
+  web_search: 'Ищу в интернете',
+  enable_web_search: 'Подключаю поиск в интернете',
   app_state: 'Смотрю, что открыто в Canopus',
   character_overview: 'Данные персонажа',
   character_skills: 'Навыки персонажа',

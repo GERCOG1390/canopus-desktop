@@ -9,6 +9,7 @@ export type ResponseItem =
   | { type: 'function_call'; call_id: string; name: string; namespace?: string; arguments: string; id?: string; status?: string }
   | { type: 'function_call_output'; call_id: string; output: string }
   | { type: 'reasoning'; id?: string; summary?: unknown[]; encrypted_content?: string }
+  | { type: 'web_search_call'; id?: string; status?: string; action?: { type?: string; query?: string; url?: string } }
 
 export interface ToolDef {
   type: 'function'
@@ -22,6 +23,8 @@ export interface AssistantSettings {
   model: string
   /** Who pays: the user's ChatGPT plan or their API key */
   auth: AssistantAuth
+  /** Let the model search the web for what Canopus has no data on */
+  web: boolean
 }
 
 export interface AssistantAccount {
@@ -33,4 +36,6 @@ export interface AssistantAccount {
 export interface AssistantTurn {
   output: ResponseItem[]
   usage?: { input_tokens: number; output_tokens: number; total_tokens: number }
+  /** Web search was asked for but this model / account can't use it */
+  webSearchUnavailable?: boolean
 }

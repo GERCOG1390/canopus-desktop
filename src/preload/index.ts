@@ -135,7 +135,7 @@ const api: CanopusApi = {
     chatgptCancel: () => invoke('assistant:chatgptCancel'),
     chatgptLogout: () => invoke('assistant:chatgptLogout'),
     models: (mode) => invoke('assistant:models', mode),
-    respond: (requestId, mode, model, instructions, input, tools) => invoke('assistant:respond', requestId, mode, model, instructions, input, tools),
+    respond: (requestId, mode, model, instructions, input, tools, web) => invoke('assistant:respond', requestId, mode, model, instructions, input, tools, web),
     onDelta: (listener) => on<{ id: string; delta: string }>('assistant:delta', (p) => listener(p.id, p.delta))
   },
   fitShot: {

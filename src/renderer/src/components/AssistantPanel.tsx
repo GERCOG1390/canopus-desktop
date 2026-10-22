@@ -53,7 +53,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
     if (!input.trim() || s.busy || !model) return
     const text = input
     setInput('')
-    void ask(text, mode, model, async (t) => window.confirm(`${translate('Помощник хочет выполнить действие в игре:')}\n\n${t}\n\n${translate('Разрешить?')}`))
+    void ask(text, mode, model, app.settings?.assistant?.web ?? true, async (t) => window.confirm(`${translate('Помощник хочет выполнить действие в игре:')}\n\n${t}\n\n${translate('Разрешить?')}`))
   }
   const limitHit = s.entries[s.entries.length - 1]?.role === 'error' && /Лимит плана ChatGPT/.test(s.entries[s.entries.length - 1].text)
 
@@ -140,7 +140,7 @@ function Setup({
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState<'chatgpt' | 'key' | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const setMode = (auth: AssistantAuth) => void updateSettings({ assistant: { model: settings?.assistant?.model ?? '', auth } })
+  const setMode = (auth: AssistantAuth) => void updateSettings({ assistant: { model: settings?.assistant?.model ?? '', web: settings?.assistant?.web ?? true, auth } })
   const run = (what: 'chatgpt' | 'key', p: Promise<unknown>, then?: () => void) => {
     setBusy(what)
     setError(null)
@@ -237,10 +237,19 @@ function Setup({
 
       {error && <div className="bad small">{error}</div>}
 
+      <label className="check small">
+        <input
+          type="checkbox"
+          checked={settings?.assistant?.web ?? true}
+          onChange={(e) => void updateSettings({ assistant: { auth: mode, model: settings?.assistant?.model ?? '', web: e.target.checked } })}
+        />
+        Искать в интернете, если в Canopus нет нужных данных (патчи, гайды, новости)
+      </label>
+
       {models.length > 0 && (
         <label className="row">
           <span className="small">Модель</span>
-          <select className="grow" value={model} onChange={(e) => void updateSettings({ assistant: { auth: mode, model: e.target.value } })}>
+          <select className="grow" value={model} onChange={(e) => void updateSettings({ assistant: { auth: mode, web: settings?.assistant?.web ?? true, model: e.target.value } })}>
             {models.map((m) => (
               <option key={m} value={m}>
                 {m}
@@ -288,6 +297,16 @@ function Entry({ e, onOpenFit }: { e: ChatEntry; onOpenFit: (eft: string) => voi
       {e.text && (
         <div translate="no">
           <Markdown text={e.text} onOpenFit={onOpenFit} />
+        </div>
+      )}
+      {!!e.sources?.length && (
+        <div className="assistant-sources small">
+          <span className="muted">Источники:</span>
+          {e.sources.map((src) => (
+            <a key={src.url} href={src.url} title={src.url} translate="no">
+              {src.title || new URL(src.url).hostname}
+            </a>
+          ))}
         </div>
       )}
     </div>
