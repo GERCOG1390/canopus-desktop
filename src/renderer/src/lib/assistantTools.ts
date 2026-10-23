@@ -21,6 +21,47 @@ import { profitByItem, transactions, type Journal, type Tx } from '../pages/Trad
 import { saveFitToGame, setDestinationInGame, SCOPE, hasScope } from './gameActions'
 import { spForLevel } from './dogma'
 import { roundSec } from './format'
+import { jitaPrices } from './market'
+import { NPC_FACTIONS, type NpcFaction, type NpcReport } from '../../../shared/npc'
+
+/** The fit on the ship the character is flying now: its assets inside the active ship, slot by slot. */
+async function currentShipFit(c: CharacterAuth, skills: SkillSource): Promise<FitSpec> {
+  const ship = await esi<{ ship_item_id: number; ship_type_id: number; ship_name: string }>(`/characters/${c.id}/ship/`, { characterId: c.id })
+  const assets = await esi<{ item_id: number; type_id: number; location_id: number; quantity: number; location_flag: string }[]>(`/characters/${c.id}/assets/`, {
+    characterId: c.id,
+    allPages: true
+  })
+  const inside = assets.filter((a) => a.location_id === ship.ship_item_id)
+  const fit = await fromEsiItems(
+    ship.ship_type_id,
+    ship.ship_name || 'Current ship',
+    inside.map((a) => ({ typeId: a.type_id, flag: a.location_flag, qty: a.quantity }))
+  )
+  return launchDrones(fit, skills)
+}
+
+const fmtTtk = (s: number) => (Number.isFinite(s) ? Math.round(s) : 'never')
+
+function npcSummary(r: NpcReport) {
+  return {
+    faction: r.faction,
+    paper_dps: r.paperDps && Math.round(r.paperDps),
+    per_class: r.classes.map((c) => ({
+      class: c.cls,
+      applied_share: `${Math.round(c.application * 100)}%`,
+      applied_dps: Math.round(c.appliedDps),
+      ttk_s_median: fmtTtk(c.ttkMedian),
+      range_s: `${fmtTtk(c.fastest.ttk)}–${fmtTtk(c.slowest.ttk)}`,
+      ...(c.unkillable ? { unkillable: c.unkillable } : {}),
+      ...(c.approach ? { must_approach: true } : {}),
+      ...(c.limits.length ? { limited_by: c.limits } : {}),
+      npc: `hp ${Math.round(c.typical.hp)}, sig ${Math.round(c.typical.sig)} m, ${Math.round(c.typical.speed)} m/s, orbit ${r1(c.typical.orbit / 1000)} km`
+    })),
+    weapon_reach_km: r1(r.weaponReach / 1000),
+    typical_room: { ...r.room.composition, clear_s: fmtTtk(r.room.seconds) },
+    note: r.note
+  }
+}
 
 /** Security as the game shows it (0.45 is 0.5, high-sec). */
 const sec = (v: number) => roundSec(v)
@@ -34,6 +75,8 @@ export interface ToolContext {
   fit: FitSpec | null
   navigate: (page: PageId, arg?: number | null) => void
   openFit: (fit: FitSpec) => void
+  /** The fit that was open before the assistant opened another one (the chat offers to bring it back) */
+  replaced?: (previous: FitSpec) => void
 }
 
 const PAGES: PageId[] = ['character', 'mail', 'fleet', 'intel', 'fitting', 'pvp', 'market', 'industry', 'map', 'activities', 'stream', 'settings']
@@ -500,8 +543,66 @@ const TOOLS: Tool[] = [
     }
   ),
 
-  tool('open_fit', 'Open a fit in the Canopus fitting tool.', obj({ eft: { type: 'string' } }, ['eft']), async (a, ctx) => {
+  tool(
+    'current_ship_fit',
+    'The fit of the ship the character is flying right now (modules, charges, rigs, drones, cargo from the game), as EFT. Use for "my ship" questions; ESI may lag by up to an hour after refits.',
+    obj({ character: str('omit = active') }),
+    async (a, ctx) => {
+      const c = who(ctx, a.character)
+      const fit = await currentShipFit(c, skillsFor(ctx))
+      await names([fit.shipTypeId, ...fit.modules.flatMap((m) => [m.typeId, m.chargeTypeId ?? 0]), ...fit.drones.map((d) => d.typeId), ...(fit.cargo ?? []).map((x) => x.typeId)])
+      return { eft: toEft(fit) }
+    }
+  ),
+
+  tool(
+    'npc_damage',
+    'How a fit kills mission NPCs of a faction: per class (frigate…battleship) the share of DPS that lands, applied DPS, seconds to kill through their resists and repairs, what limits it, and the time to clear a typical L4 room. The way to compare fits and ships for missions.',
+    obj({ eft: EFT, faction: { type: 'string', enum: NPC_FACTIONS }, distance_km: num('omit = each NPC at its orbit distance'), skills: SKILLS }, ['faction']),
+    async (a, ctx) => {
+      const fit = await parseFit(a.eft, ctx)
+      return npcSummary(await window.api.fit.npcDamage(fit, skillsFor(ctx, a.skills), a.faction as NpcFaction, a.distance_km ? a.distance_km * 1000 : undefined))
+    }
+  ),
+
+  tool(
+    'compare_fits',
+    'Several fits at once (one call instead of many): DPS, EHP, active tank, capacitor, speed, lock range, CPU/PG, missing skills, Jita price of hull + modules + drones, and with a faction the time to clear a typical L4 room of it.',
+    obj({ efts: { type: 'array', items: { type: 'string' } }, faction: { type: 'string', enum: NPC_FACTIONS }, skills: SKILLS }, ['efts']),
+    async (a, ctx) => {
+      const skills = skillsFor(ctx, a.skills)
+      const fits = await Promise.all((a.efts as string[]).slice(0, 6).map((e) => parseFit(e, ctx)))
+      const ids = [...new Set(fits.flatMap((f) => [f.shipTypeId, ...f.modules.map((m) => m.typeId), ...f.drones.map((d) => d.typeId)]))]
+      const [prices] = await Promise.all([jitaPrices(ids), names(ids)])
+      const price = (id: number) => (prices.get(id)?.sell.best as number | undefined) ?? 0
+      return Promise.all(
+        fits.map(async (f) => {
+          const s = await window.api.fit.calculate(f, skills)
+          const npc = a.faction ? await window.api.fit.npcDamage(f, skills, a.faction as NpcFaction) : null
+          const cost = price(f.shipTypeId) + f.modules.reduce((x, m) => x + price(m.typeId), 0) + f.drones.reduce((x, d) => x + price(d.typeId) * d.count, 0)
+          const miss = await missingSkills(ctx, [f.shipTypeId, ...f.modules.map((m) => m.typeId), ...f.drones.map((d) => d.typeId)])
+          return {
+            fit: `${en(f.shipTypeId)} — ${f.name}`,
+            dps: r1(s.offense.totalDps),
+            dps_reload: r1(s.offense.totalDpsReload),
+            ehp: Math.round(s.defense.ehp),
+            active_tank_ehp_s: r1(s.defense.activeTankEhp),
+            cap: s.capacitor.stable ? `stable ${pct(s.capacitor.stableLevel ?? 1)}` : `${Math.round(s.capacitor.lastsSec ?? 0)} s`,
+            speed: r1(s.navigation.maxVelocity),
+            lock_km: r1(s.targeting.maxRange / 1000),
+            fits_cpu_pg: s.ship.cpu.used <= s.ship.cpu.total && s.ship.power.used <= s.ship.power.total,
+            missing_skills: miss?.length ? miss : undefined,
+            jita_price_isk: Math.round(cost),
+            ...(npc ? { l4_room_clear_s: fmtTtk(npc.room.seconds), per_class_ttk_s: Object.fromEntries(npc.classes.map((c) => [c.cls, fmtTtk(c.ttkMedian)])) } : {})
+          }
+        })
+      )
+    }
+  ),
+
+  tool('open_fit', 'Open a fit in the Canopus fitting tool (the fit open before can be restored from the chat).', obj({ eft: { type: 'string' } }, ['eft']), async (a, ctx) => {
     const fit = await parseFit(a.eft, ctx)
+    if (ctx.fit) ctx.replaced?.(ctx.fit)
     ctx.openFit(fit)
     return { opened: true }
   }),
@@ -678,6 +779,9 @@ export const TOOL_DEFS: ToolDef[] = TOOLS.map((t) => ({ type: 'function', functi
 /** Short human description of a tool call for the chat log. */
 export const TOOL_LABELS: Record<string, string> = {
   web_search: 'Ищу в интернете',
+  current_ship_fit: 'Фит текущего корабля',
+  npc_damage: 'Урон по NPC миссий',
+  compare_fits: 'Сравниваю фиты',
   knowledge_search: 'Ищу в базе знаний',
   enable_web_search: 'Подключаю поиск в интернете',
   app_state: 'Смотрю, что открыто в Canopus',

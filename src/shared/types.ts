@@ -1,6 +1,7 @@
 // Types shared between the main process, preload and renderer.
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
+import type { NpcFaction, NpcReport } from './npc'
 import type { AssistantAccount, AssistantAuth, AssistantSettings, AssistantTurn, KnowledgeHit, KnowledgeStatus, ResponseItem, ToolDef } from './assistant'
 
 /** A fit for the snapshot window, with the name of the character whose skills it uses */
@@ -236,6 +237,8 @@ export interface CanopusApi {
     /** Every fitted module / drone type swapped for its other versions, with the resulting numbers */
     variants(spec: FitSpec, skills: SkillSource): Promise<{ base: FitMetrics; options: FitVariant[] }>
     metrics(spec: FitSpec, skills: SkillSource): Promise<FitMetrics>
+    /** Applied damage and time to kill against a faction's mission NPCs, per ship class */
+    npcDamage(spec: FitSpec, skills: SkillSource, faction: NpcFaction, distance?: number): Promise<NpcReport>
     skillGains(spec: FitSpec, levels: Record<number, number>): Promise<{ skill: number; from: number; dps: number; ehp: number; activeTank: number; speed: number; align: number; capacitor: number; lockRange: number }[]>
     calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>
     catalog(): Promise<FittableType[]>

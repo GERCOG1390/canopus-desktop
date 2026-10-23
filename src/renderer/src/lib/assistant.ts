@@ -4,6 +4,7 @@
 import type { AssistantAuth, ResponseItem } from '../../../shared/assistant'
 import { runTool, TOOL_DEFS, type ToolContext } from './assistantTools'
 import type { ToolDef } from '../../../shared/assistant'
+import type { FitSpec } from '../../../shared/fit'
 
 /** Turns on OpenAI's web search for the rest of the current answer. */
 const ENABLE_WEB: ToolDef = {
@@ -16,7 +17,9 @@ const ENABLE_WEB: ToolDef = {
 }
 
 /** Rounds of tool calls in one answer before giving up (a loop guard). */
-const MAX_ROUNDS = 14
+const MAX_ROUNDS = 12
+/** From this round on the model is asked to wrap up with what it has. */
+const WRAP_UP_ROUND = 8
 const STORE_KEY = 'canopus.assistant.chat.v2'
 
 function systemPrompt(ctx: ToolContext, web: boolean): string {
@@ -27,7 +30,10 @@ function systemPrompt(ctx: ToolContext, web: boolean): string {
     'You have tools that read live data from Canopus and the game (characters, skills, assets, wallet, fits, market prices, routes, kills) and that compute with Canopus\' own engines (the dogma fitting engine with the game formulas, the combat simulator, the price optimizer).',
     'Rules:',
     '- Never guess numbers that a tool can compute or fetch: fit stats, DPS, EHP, capacitor, prices, training times, routes, kills. Call the tool, then answer from its result. Your own knowledge of EVE may be outdated; the tools reflect the current game data.',
-    "- When the user mentions their ship or fit (\"my Cerberus\"), find it yourself: the fit open in the fitting tool, then list_fits in Canopus and in the game. If several match, take the most plausible, say which one you used, and go on; ask only when nothing fits. The same for other missing details: make a sensible assumption, state it, answer, and offer to recompute.",
+    '- For "my ship" / "my current fit" use current_ship_fit (what is fitted in the game now). For a named ship or fit ("my Cerberus") look in the fitting tool and list_fits (Canopus and game); if several match, take the most plausible, say which one you used, and go on; ask only when nothing fits. For other missing details make a sensible assumption, state it, answer, and offer to recompute.',
+    '- Before recommending fits or ships, know the pilot: check which tank (shield/armor) and weapon systems their skills and implants favour, and keep to that specialization unless the numbers show a clear gain worth the retraining or refit; say so when you depart from it.',
+    '- When asked for the best ship or fit for something, compare the realistic candidates of every class the pilot can fly (frigates to battleships, T2/T3, faction), not only the obvious class. For PvE use npc_damage / compare_fits with the faction (clear time of a typical room) so the comparison is in numbers. If the answer depends on how the user plays (full clear vs blitz, budget), ask that one question first.',
+    '- Plan your tool calls: batch independent calls in one step, use compare_fits for several fits, do not recompute what you already have. Aim to answer within about 8 steps.',
     '- When you propose a fit, write it in EFT, check it with calculate_fit (it must fit CPU/powergrid and the character should have the skills, or say which are missing), fix problems, and offer to open it with open_fit.',
     '- Use exact English item names in EFT; look names up with search_items when unsure.',
     '- Prices are Jita sell orders unless the user asks otherwise; give ISK with M/B suffixes.',
@@ -54,6 +60,10 @@ export interface ChatEntry {
   steps?: ToolStep[]
   /** Web pages the answer cites */
   sources?: { url: string; title?: string }[]
+  /** The fit that was open before the assistant opened its own (offered back in the chat) */
+  restore?: FitSpec
+  /** Tokens this answer used */
+  tokens?: number
 }
 
 interface State {
@@ -185,7 +195,10 @@ export async function ask(text: string, mode: AssistantAuth, model: string, web:
       // The web search tool costs thousands of tokens on every request, so it is attached only after the
       // model asks for it (enable_web_search), for the rest of this answer.
       const defs = web && !searching ? [...TOOL_DEFS, ENABLE_WEB] : TOOL_DEFS
-      const turn = await window.api.assistant.respond(requestId, mode, model, systemPrompt(currentCtx, web), history.filter((i) => i.type !== 'web_search_call').map(resend), defs, searching)
+      const input = history.filter((i) => i.type !== 'web_search_call').map(resend)
+      // A long chain of steps: ask the model to finish with what it has instead of digging further.
+      if (round >= WRAP_UP_ROUND) input.push({ role: 'developer', content: 'You have used many steps: answer now with what you have, and say what is still unchecked.' })
+      const turn = await window.api.assistant.respond(requestId, mode, model, systemPrompt(currentCtx, web), input, defs, searching)
       if (turn.webSearchUnavailable) {
         web = false
         searching = false
@@ -199,15 +212,17 @@ export async function ask(text: string, mode: AssistantAuth, model: string, web:
           sources: [...(entry.sources ?? []), ...sources.filter((x) => !entry.sources?.some((y) => y.url === x.url))]
         })
       state.tokens += turn.usage?.total_tokens ?? 0
+      entry.tokens = (entry.tokens ?? 0) + (turn.usage?.total_tokens ?? 0)
       const said = textOf(turn.output)
       if (said) before = (before ? before + '\n\n' : '') + said
       update({ text: before })
       const calls = turn.output.filter((i): i is Extract<ResponseItem, { type: 'function_call' }> => i.type === 'function_call')
       if (!calls.length) break
       update({ steps: [...(entry.steps ?? []), ...calls.map((c) => ({ id: c.call_id, name: c.name, args: c.arguments }))] })
+      const ctx: ToolContext = { ...currentCtx!, replaced: (prev) => (entry.restore ??= prev) }
       const results = await Promise.all(
         calls.map((c) => {
-          if (c.name !== ENABLE_WEB.function.name) return runTool(c.name, c.arguments, currentCtx!, confirm)
+          if (c.name !== ENABLE_WEB.function.name) return runTool(c.name, c.arguments, ctx, confirm)
           searching = true
           return Promise.resolve(JSON.stringify({ enabled: true, note: 'Web search is now available for this answer: use it.' }))
         })

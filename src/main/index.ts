@@ -7,6 +7,8 @@ import { request } from './http'
 import * as sde from './sde'
 import * as dogma from './dogma'
 import * as combat from './dogma/combat'
+import * as npc from './dogma/npc'
+import type { NpcFaction } from '../shared/npc'
 import type { CombatPilot, CombatScenario } from '../shared/combat'
 import { handleIconScheme, registerIconScheme } from './icons'
 import type { FitSpec, SkillSource } from '../shared/fit'
@@ -314,6 +316,7 @@ function registerIpc(): void {
   ipcMain.handle('sde:blueprintForProduct', (_e, id: number) => sde.blueprintForProduct(id))
 
   ipcMain.handle('fit:calculate', (_e, spec: FitSpec, skills: SkillSource) => dogma.calculateFit(spec, skills))
+  ipcMain.handle('fit:npcDamage', (_e, spec: FitSpec, skills: SkillSource, faction: NpcFaction, distance?: number) => npc.npcDamage(spec, skills, faction, distance))
   ipcMain.handle('fit:variants', (_e, spec: FitSpec, skills: SkillSource) => dogma.fitVariants(spec, skills))
   ipcMain.handle('fit:metrics', (_e, spec: FitSpec, skills: SkillSource) => dogma.fitMetrics(dogma.calculateFit(spec, skills)))
   ipcMain.handle('fit:skillGains', (_e, spec: FitSpec, levels: Record<number, number>) => dogma.skillGains(spec, levels))

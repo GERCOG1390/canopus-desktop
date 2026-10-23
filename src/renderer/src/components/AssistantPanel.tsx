@@ -10,6 +10,7 @@ import { TOOL_LABELS } from '../lib/assistantTools'
 import { fromEft, useFitting } from '../lib/fitting'
 import { fmtNum } from '../lib/format'
 import type { AssistantAccount, AssistantAuth, KnowledgeStatus } from '../../../shared/assistant'
+import type { FitSpec } from '../../../shared/fit'
 
 /** ChatGPT settings, where the user sees and limits what apps use from their plan. */
 const MANAGE_USAGE = 'https://chatgpt.com/#settings'
@@ -94,7 +95,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
           </div>
         )}
         {s.entries.map((e, i) => (
-          <Entry key={i} e={e} onOpenFit={async (eft) => openFit((await fromEft(eft)).fit)} />
+          <Entry key={i} e={e} onOpenFit={async (eft) => openFit((await fromEft(eft)).fit)} onRestore={(f) => openFit(f)} />
         ))}
         {limitHit && (
           <a className="button-link" href={MANAGE_USAGE}>
@@ -318,7 +319,7 @@ function KnowledgeRow() {
   )
 }
 
-function Entry({ e, onOpenFit }: { e: ChatEntry; onOpenFit: (eft: string) => void }) {
+function Entry({ e, onOpenFit, onRestore }: { e: ChatEntry; onOpenFit: (eft: string) => void; onRestore: (fit: FitSpec) => void }) {
   if (e.role === 'user')
     return (
       <div className="assistant-msg user" translate="no">
@@ -349,6 +350,16 @@ function Entry({ e, onOpenFit }: { e: ChatEntry; onOpenFit: (eft: string) => voi
       {e.text && (
         <div translate="no">
           <Markdown text={e.text} onOpenFit={onOpenFit} />
+        </div>
+      )}
+      {(e.restore || e.tokens) && (
+        <div className="row small assistant-foot">
+          {e.restore && (
+            <button className="ghost small" title="Помощник открыл свой фит поверх этого" onClick={() => onRestore(e.restore!)}>
+              ↩ {translate('Вернуть прежний фит')} «<span translate="no">{e.restore.name}</span>»
+            </button>
+          )}
+          {!!e.tokens && <span className="muted">{`${fmtNum(e.tokens)} ток.`}</span>}
         </div>
       )}
       {!!e.sources?.length && (

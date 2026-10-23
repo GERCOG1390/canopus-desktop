@@ -4337,3 +4337,7 @@ button.danger-fill:hover:not(:disabled) {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.assistant-foot {
+  margin-top: 4px;
+  gap: 10px;
+}

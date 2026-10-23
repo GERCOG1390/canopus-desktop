@@ -17,7 +17,7 @@ function turretMultiplier(chance: number): number {
   return normalPart + wrecking * 3
 }
 
-interface Geometry {
+export interface Geometry {
   distance: number
   /** Relative sideways speed, m/s */
   transversal: number
@@ -29,7 +29,7 @@ interface Geometry {
 }
 
 /** Share of a weapon's damage that lands, and what limits it. */
-function application(w: WeaponStats, g: Geometry): { factor: number; limit?: string } {
+export function application(w: WeaponStats, g: Geometry): { factor: number; limit?: string } {
   if (w.kind === 'turret') {
     const angular = g.transversal / Math.max(g.distance, 1)
     const trackingTerm = w.tracking && g.targetSig > 0 ? ((angular * TURRET_SIG_RESOLUTION) / (w.tracking * g.targetSig)) ** 2 : 0
