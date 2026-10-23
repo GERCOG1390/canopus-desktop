@@ -4,12 +4,12 @@
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useApp } from '../AppContext'
 import { useCharacter } from '../CharacterContext'
-import { translate } from '../i18n'
+import { locale, translate } from '../i18n'
 import { ask, assistantState, clearChat, setAssistantContext, subscribeAssistant, type ChatEntry } from '../lib/assistant'
 import { TOOL_LABELS } from '../lib/assistantTools'
 import { fromEft, useFitting } from '../lib/fitting'
 import { fmtNum } from '../lib/format'
-import type { AssistantAccount, AssistantAuth } from '../../../shared/assistant'
+import type { AssistantAccount, AssistantAuth, KnowledgeStatus } from '../../../shared/assistant'
 
 /** ChatGPT settings, where the user sees and limits what apps use from their plan. */
 const MANAGE_USAGE = 'https://chatgpt.com/#settings'
@@ -41,6 +41,11 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
 
   const reload = () => void window.api.assistant.account().then(setAccount)
   useEffect(reload, [])
+  const kb = useKnowledge()
+  // The knowledge base downloads in the background the first time and refreshes weekly.
+  useEffect(() => {
+    if (ready) void window.api.knowledge.refreshIfStale()
+  }, [ready])
   useEffect(() => {
     setModels([])
     if (ready) void window.api.assistant.models(mode).then(setModels).catch(() => {})
@@ -97,6 +102,7 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
           </a>
         )}
         {s.busy && <div className="assistant-thinking muted small">Думаю…</div>}
+        {kb?.updating && !kb.articles.uni && <div className="muted small">{knowledgeProgress(kb)}</div>}
       </div>
 
       <div className="assistant-input">
@@ -237,6 +243,8 @@ function Setup({
 
       {error && <div className="bad small">{error}</div>}
 
+      <KnowledgeRow />
+
       <label className="check small">
         <input
           type="checkbox"
@@ -262,6 +270,50 @@ function Setup({
         Вход и ключ хранятся зашифрованными на этом компьютере и отправляются только в OpenAI. OpenAI получает ваши вопросы и данные, которые помощник берёт из
         Canopus для ответа (фиты, навыки, цены, кошелёк, имущество). Токены EVE и пароли не передаются никогда.
       </p>
+    </div>
+  )
+}
+
+function useKnowledge(): KnowledgeStatus | null {
+  const [kb, setKb] = useState<KnowledgeStatus | null>(null)
+  useEffect(() => {
+    void window.api.knowledge.status().then(setKb)
+    return window.api.knowledge.onStatus(setKb)
+  }, [])
+  return kb
+}
+
+function knowledgeProgress(kb: KnowledgeStatus): string {
+  const p = kb.progress
+  if (!p) return translate('Обновляю базу знаний…')
+  return p.source === 'ccp' ? translate('Загружаю новости и патчноуты CCP…') : `${translate('Загружаю EVE University wiki:')} ${p.done}${p.total ? ` / ~${p.total}` : ''}`
+}
+
+/** What the knowledge base holds and when it was refreshed, with a button to refresh now. */
+function KnowledgeRow() {
+  const kb = useKnowledge()
+  if (!kb) return null
+  const when = (iso?: string) => (iso ? new Date(iso).toLocaleDateString(locale()) : '—')
+  return (
+    <div className="assistant-option">
+      <b className="small">База знаний</b>
+      <div className="small muted">
+        {kb.articles.uni
+          ? `EVE University wiki: ${fmtNum(kb.articles.uni)} ${translate('статей')} (${when(kb.updated.uni)}) · CCP: ${fmtNum(kb.articles.ccp)} (${when(kb.updated.ccp)}) · ${translate('заметки Canopus')}: ${kb.articles.notes}`
+          : translate('Ещё не загружена: статьи EVE University wiki и патчноуты CCP скачиваются на этот компьютер (около 40 МБ) и обновляются раз в неделю.')}
+      </div>
+      <div className="row">
+        {kb.updating ? (
+          <span className="small">{knowledgeProgress(kb)}</span>
+        ) : (
+          <button className="small" onClick={() => void window.api.knowledge.update()}>
+            {kb.articles.uni ? 'Обновить' : 'Загрузить'}
+          </button>
+        )}
+      </div>
+      <div className="small muted">
+        Тексты EVE University wiki — CC BY-SA 4.0, <a href="https://wiki.eveuniversity.org">wiki.eveuniversity.org</a>; помощник ссылается на источники в ответах.
+      </div>
     </div>
   )
 }

@@ -127,6 +127,13 @@ const api: CanopusApi = {
     history: () => invoke('notify:history'),
     checkNow: () => invoke('notify:checkNow')
   },
+  knowledge: {
+    status: () => invoke('knowledge:status'),
+    update: () => invoke('knowledge:update'),
+    refreshIfStale: () => invoke('knowledge:refreshIfStale'),
+    search: (query, limit, source) => invoke('knowledge:search', query, limit, source),
+    onStatus: (listener) => on('knowledge:status', listener)
+  },
   assistant: {
     account: () => invoke('assistant:account'),
     setKey: (key) => invoke('assistant:setKey', key),

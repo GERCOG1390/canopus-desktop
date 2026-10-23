@@ -39,3 +39,22 @@ export interface AssistantTurn {
   /** Web search was asked for but this model / account can't use it */
   webSearchUnavailable?: boolean
 }
+
+/** A passage found in the knowledge base */
+export interface KnowledgeHit {
+  source: string
+  title: string
+  section?: string
+  url: string
+  /** Date of the article / revision */
+  date?: string
+  text: string
+}
+
+export interface KnowledgeStatus {
+  /** Number of articles per source */
+  articles: { uni: number; ccp: number; notes: number }
+  updated: { uni?: string; ccp?: string }
+  updating: boolean
+  progress?: { source: 'uni' | 'ccp'; done: number; total?: number }
+}

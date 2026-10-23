@@ -1,7 +1,7 @@
 // Types shared between the main process, preload and renderer.
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
-import type { AssistantAccount, AssistantAuth, AssistantSettings, AssistantTurn, ResponseItem, ToolDef } from './assistant'
+import type { AssistantAccount, AssistantAuth, AssistantSettings, AssistantTurn, KnowledgeHit, KnowledgeStatus, ResponseItem, ToolDef } from './assistant'
 
 /** A fit for the snapshot window, with the name of the character whose skills it uses */
 export type FitShotData = CombatPilot & { pilotName?: string }
@@ -186,6 +186,15 @@ export interface CanopusApi {
     /** Stargate jumps from a system to others (unreachable / far ones omitted). */
     jumpsFrom(fromId: number, ids: number[]): Promise<Record<number, number>>
     systemId(name: string): Promise<number | null>
+  }
+  knowledge: {
+    status(): Promise<KnowledgeStatus>
+    /** Downloads the EVE University wiki and CCP news again */
+    update(): Promise<void>
+    /** Refreshes in the background when the base is a week old or missing */
+    refreshIfStale(): Promise<void>
+    search(query: string, limit?: number, source?: 'uni' | 'ccp' | 'notes'): Promise<KnowledgeHit[]>
+    onStatus(listener: (s: KnowledgeStatus) => void): () => void
   }
   assistant: {
     account(): Promise<AssistantAccount>

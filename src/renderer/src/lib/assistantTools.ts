@@ -256,6 +256,20 @@ const TOOLS: Tool[] = [
     }
   ),
 
+  tool(
+    'knowledge_search',
+    'Search the EVE knowledge base: EVE University wiki (mechanics, guides, missions, exploration, PvP), CCP news and patch notes, Canopus notes with formulas. Query in English with game terms.',
+    obj({ query: { type: 'string' }, source: { type: 'string', enum: ['uni', 'ccp', 'notes'] }, limit: num('default 6') }, ['query']),
+    async (a) => {
+      const hits = await window.api.knowledge.search(a.query, Math.min(10, a.limit ?? 6), a.source)
+      if (!hits.length) {
+        const st = await window.api.knowledge.status()
+        return { results: [], note: st.articles.uni ? 'nothing found: try other English terms' : 'the knowledge base is not downloaded yet' }
+      }
+      return hits.map((h) => ({ source: h.source, title: h.section ? `${h.title} — ${h.section}` : h.title, url: h.url, date: h.date, text: h.text }))
+    }
+  ),
+
   tool('search_items', 'Find items by name (EN/RU, partial).', obj({ query: { type: 'string' }, limit: { type: 'number' } }, ['query']), async (a) => {
     const hits = await window.api.sde.search(a.query, { limit: a.limit ?? 10 })
     const groups = await window.api.sde.groupNames([...new Set(hits.map((h) => h.g))])
@@ -664,6 +678,7 @@ export const TOOL_DEFS: ToolDef[] = TOOLS.map((t) => ({ type: 'function', functi
 /** Short human description of a tool call for the chat log. */
 export const TOOL_LABELS: Record<string, string> = {
   web_search: 'Ищу в интернете',
+  knowledge_search: 'Ищу в базе знаний',
   enable_web_search: 'Подключаю поиск в интернете',
   app_state: 'Смотрю, что открыто в Canopus',
   character_overview: 'Данные персонажа',

@@ -20,6 +20,7 @@ import * as stream from './stream'
 import * as widgets from './widgets'
 import * as previews from './previews'
 import * as assistant from './assistant'
+import * as knowledge from './knowledge'
 import type { AssistantAuth, ResponseItem, ToolDef } from '../shared/assistant'
 import type { ClientWindow, PreviewSettings } from '../shared/previews'
 import type { WidgetView } from '../shared/widgets'
@@ -325,6 +326,10 @@ function registerIpc(): void {
     combatAttacker = attacker
     if (combatWindow && !combatWindow.isDestroyed()) combatWindow.webContents.send('combat:attacker', attacker)
   })
+  ipcMain.handle('knowledge:status', () => knowledge.status())
+  ipcMain.handle('knowledge:update', (e) => knowledge.update(e.sender))
+  ipcMain.handle('knowledge:refreshIfStale', (e) => knowledge.refreshIfStale(e.sender))
+  ipcMain.handle('knowledge:search', (_e, query: string, limit?: number, source?: 'uni' | 'ccp' | 'notes') => knowledge.search(query, limit, source))
   ipcMain.handle('assistant:account', () => assistant.account())
   ipcMain.handle('assistant:setKey', (_e, key: string) => assistant.setKey(key))
   ipcMain.handle('assistant:clearKey', () => assistant.clearKey())
