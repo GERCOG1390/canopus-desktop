@@ -172,7 +172,25 @@ function Simulator() {
               </button>
             )}
           </div>
-          {defender && <ShipLabel id={defender.fit.shipTypeId} name={defender.fit.name} sub={`Навыки: все V · модулей: ${defender.fit.modules.length}`} />}
+          {defender && (
+            <ShipLabel
+              id={defender.fit.shipTypeId}
+              name={defender.fit.name}
+              sub={`${defender.skills.mode === 'all5' ? 'Навыки: все V' : 'Навыки: как у вас'} · модулей: ${defender.fit.modules.length}`}
+            />
+          )}
+          {defender && attacker && attacker.skills.mode !== 'all5' && !picking && (
+            <label className="row small">
+              <span className="muted">Навыки противника</span>
+              <select
+                value={defender.skills.mode === 'all5' ? 'all5' : 'mine'}
+                onChange={(e) => setDefender((d) => d && { ...d, skills: e.target.value === 'all5' ? { mode: 'all5' } : attacker.skills })}
+              >
+                <option value="all5">все V</option>
+                <option value="mine">как у вас</option>
+              </select>
+            </label>
+          )}
           {defender && !picking && (
             <AmmoPanel
               fit={defender.fit}
