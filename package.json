@@ -53,6 +53,10 @@
       "unpackDirName": true
     },
     "mac": {
+      "files": [
+        "!node_modules/koffi{,/**/*}",
+        "!node_modules/@koromix{,/**/*}"
+      ],
       "target": [
         {
           "target": "dmg",
