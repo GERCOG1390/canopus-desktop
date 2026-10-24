@@ -4,7 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FitMetrics, FitSpec, FitStats, FitVariant, SavedFit, SkillSource } from '../../shared/fit'
 import { fittableFor, requiredSkills, sdeForDogma, variantsOf } from '../sde'
-import { Dogma } from './engine'
+import { Dogma, shipModes } from './engine'
 import { calculate } from './stats'
 
 /** Explains one attribute of one item in a fit: target is 'ship', 'char', or `${kind}:${index}`. */
@@ -13,6 +13,8 @@ export function explainAttr(spec: FitSpec, skills: SkillSource, target: string, 
   spec.modules.forEach((m, i) => d.addModule(m.typeId, m.slot, m.state, m.chargeTypeId, i))
   spec.drones.forEach((x, i) => d.addDrone(x.typeId, x.count, Math.min(x.active, x.count), i))
   spec.implants.forEach((id) => d.addImplant(id))
+  const mode = spec.mode ?? shipModes(sdeForDogma(), spec.shipTypeId)[0]?.id
+  if (mode) d.setMode(mode)
   d.link()
   const [kind, idx] = target.split(':')
   const item =
@@ -20,6 +22,9 @@ export function explainAttr(spec: FitSpec, skills: SkillSource, target: string, 
   if (!item) throw new Error('Нет такого предмета')
   return d.explain(item, attrId)
 }
+
+/** A tactical destroyer's modes, Defense first (empty for other hulls). */
+export const modesOf = (shipTypeId: number) => shipModes(sdeForDogma(), shipTypeId)
 
 export function calculateFit(spec: FitSpec, skills: SkillSource, extraShipAttrs?: number[]): FitStats {
   return calculate(sdeForDogma(), spec, skills, extraShipAttrs)
@@ -90,10 +95,10 @@ export function fitMetrics(s: FitStats): FitMetrics {
     lockRange: s.targeting.maxRange,
     scanRes: s.targeting.scanResolution,
     signature: s.navigation.signatureRadius,
-    range: avg((w) => (w.kind === 'turret' ? (w.optimal ?? 0) + (w.falloff ?? 0) : w.kind === 'missile' ? w.optimal : undefined)),
+    range: avg((w) => (w.kind === 'turret' ? (w.optimal ?? 0) + (w.falloff ?? 0) : w.kind === 'missile' || w.kind === 'vorton' ? w.optimal : undefined)),
     tracking: avg((w) => (w.kind === 'turret' ? w.tracking : undefined)),
-    explosionRadius: avg((w) => (w.kind === 'missile' ? w.explosionRadius : undefined)),
-    explosionVelocity: avg((w) => (w.kind === 'missile' ? w.explosionVelocity : undefined)),
+    explosionRadius: avg((w) => (w.kind === 'missile' || w.kind === 'vorton' ? w.explosionRadius : undefined)),
+    explosionVelocity: avg((w) => (w.kind === 'missile' || w.kind === 'vorton' ? w.explosionVelocity : undefined)),
     capStable: s.capacitor.stable,
     capLevel: s.capacitor.stableLevel ?? 0,
     capLasts: s.capacitor.lastsSec ?? 0,

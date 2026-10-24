@@ -107,7 +107,7 @@ export function npcDamage(spec: FitSpec, skills: SkillSource, faction: NpcFactio
   const stats = calculateFit(spec, skills)
   const weapons = stats.offense.weapons
   // The pilot flies into their own weapons' reach (drones excluded: they fly to the target).
-  const reach = Math.max(0, ...weapons.map((w) => (w.kind === 'turret' ? (w.optimal ?? 0) + (w.falloff ?? 0) * 0.5 : w.kind === 'missile' ? (w.optimal ?? 0) : 0)))
+  const reach = Math.max(0, ...weapons.map((w) => (w.kind === 'turret' ? (w.optimal ?? 0) + (w.falloff ?? 0) * 0.5 : w.kind === 'missile' || w.kind === 'vorton' ? (w.optimal ?? 0) : 0)))
   const classes: NpcClassResult[] = []
   for (const cls of NPC_CLASSES) {
     const npcs = npcsOf(faction, cls)

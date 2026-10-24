@@ -237,6 +237,8 @@ export interface CanopusApi {
     /** Every fitted module / drone type swapped for its other versions, with the resulting numbers */
     variants(spec: FitSpec, skills: SkillSource): Promise<{ base: FitMetrics; options: FitVariant[] }>
     metrics(spec: FitSpec, skills: SkillSource): Promise<FitMetrics>
+    /** Tactical destroyer modes of a hull, Defense first (empty for other ships) */
+    modes(shipTypeId: number): Promise<{ id: number; name: string }[]>
     /** Applied damage and time to kill against a faction's mission NPCs, per ship class */
     npcDamage(spec: FitSpec, skills: SkillSource, faction: NpcFaction, distance?: number): Promise<NpcReport>
     skillGains(spec: FitSpec, levels: Record<number, number>): Promise<{ skill: number; from: number; dps: number; ehp: number; activeTank: number; speed: number; align: number; capacitor: number; lockRange: number }[]>

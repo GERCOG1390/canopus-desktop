@@ -8,6 +8,8 @@ export const CATEGORY = { SHIP: 6, MODULE: 7, CHARGE: 8, SKILL: 16, DRONE: 18, I
 /** Modifiers from these categories are never stacking-penalized. */
 const PENALTY_EXEMPT = new Set([CATEGORY.SHIP, CATEGORY.CHARGE, CATEGORY.SKILL, CATEGORY.IMPLANT, CATEGORY.SUBSYSTEM])
 const REQUIRED_SKILL_ATTRS = [182, 183, 184, 1285, 1289, 1290]
+/** Hull EM, thermal, kinetic, explosive resonance */
+const HULL_RESONANCES = new Set([113, 110, 109, 111])
 /** Base character attributes live on the "Character" type. */
 const CHARACTER_TYPE = 1373
 const SKILL_LEVEL_ATTR = 280
@@ -56,6 +58,8 @@ export class Dogma {
   readonly drones: Item[] = []
   readonly implants: Item[] = []
   readonly skills: Item[] = []
+  /** Tactical destroyer mode (Defense / Propulsion / Sharpshooter), applied like a passive module */
+  mode: Item | null = null
   private readonly evaluating = new Set<string>()
 
   constructor(
@@ -132,6 +136,10 @@ export class Dogma {
 
   addImplant(typeId: number): void {
     this.implants.push(this.makeItem('implant', typeId))
+  }
+
+  setMode(typeId: number): void {
+    this.mode = this.makeItem('module', typeId)
   }
 
   effect(id: number): DogmaEffect | undefined {
@@ -219,7 +227,7 @@ export class Dogma {
 
   /** Collects every running effect's modifiers onto their target items. */
   link(): void {
-    const all = [this.char, this.ship, ...this.skills, ...this.implants, ...this.modules, ...this.charges, ...this.drones]
+    const all = [this.char, this.ship, ...this.skills, ...this.implants, ...this.modules, ...this.charges, ...this.drones, ...(this.mode ? [this.mode] : [])]
     for (const item of all) {
       item.mods.clear()
       item.cache.clear()
@@ -229,7 +237,9 @@ export class Dogma {
         const e = this.db.effects[effectId]
         for (const mod of e.mods ?? []) {
           for (const target of this.targets(mod, source)) {
-            this.addModifier(target, mod.attr, { source, srcAttr: mod.src, op: mod.op })
+            // A Bastion's hull resistances aren't stacking-penalized (with a Damage Control), its shield and armor ones are.
+            const noPenalty = e.name === 'moduleBonusBastionModule' && HULL_RESONANCES.has(mod.attr)
+            this.addModifier(target, mod.attr, { source, srcAttr: mod.src, op: mod.op, noPenalty })
           }
         }
         this.specialEffect(source, e)
@@ -271,16 +281,23 @@ export class Dogma {
       this.addModifier(this.ship, 552, { source, srcAttr: 973, op: 6, noPenalty: true })
       return
     }
-        if (e.name === 'moduleBonusMicrowarpdrive' || e.name === 'moduleBonusAfterburner') {
+    // A reactive armor hardener multiplies the armor resonances by its own (0.85 each = 15% before it adapts),
+    // stacking-penalized with other pre-multiplying resist modules, like the game's fitting window shows it.
+    if (e.name === 'adaptiveArmorHardener') {
+      for (const attr of [267, 268, 269, 270]) this.addModifier(this.ship, attr, { source, srcAttr: attr, op: 0 })
+      return
+    }
+    if (e.name === 'moduleBonusMicrowarpdrive' || e.name === 'moduleBonusAfterburner') {
       this.addModifier(this.ship, 4, { source, srcAttr: 796, op: 2 })
-      if (e.name === 'moduleBonusMicrowarpdrive') this.addModifier(this.ship, 552, { source, srcAttr: 554, op: 6, noPenalty: true })
-      // Speed boost % = speedFactor × thrust / ship mass
+      // The signature bloom queues with other percentage signature changes (shield rig drawbacks) for the
+      // stacking penalty, as in the game and Pyfa.
+      if (e.name === 'moduleBonusMicrowarpdrive') this.addModifier(this.ship, 552, { source, srcAttr: 554, op: 6 })
+      // Speed boost % = speedFactor × thrust / ship mass, applied as a post-multiplier (its own penalty group).
       this.addModifier(this.ship, 37, {
         source,
         srcAttr: 20,
-        op: 6,
-        noPenalty: true,
-        value: () => (this.attr(source, 20) * this.attr(source, 567)) / this.attr(this.ship, 4)
+        op: 4,
+        value: () => 1 + (this.attr(source, 20) * this.attr(source, 567)) / this.attr(this.ship, 4) / 100
       })
     }
   }
@@ -366,4 +383,25 @@ export function stackingProduct(mults: number[]): number {
     })
   }
   return product
+}
+
+const SHIP_MODES_GROUP = 1306
+const modesCache = new WeakMap<SdeDb, Map<number, { id: number; name: string }[]>>()
+
+/** A tactical destroyer's modes (Defense first, the one a ship starts in), or none for other hulls. */
+export function shipModes(db: SdeDb, shipTypeId: number): { id: number; name: string }[] {
+  let byShip = modesCache.get(db)
+  if (!byShip) modesCache.set(db, (byShip = new Map()))
+  const cached = byShip.get(shipTypeId)
+  if (cached) return cached
+  const ship = db.types[shipTypeId]?.n[0]
+  const order = (n: string) => (/Defense/.test(n) ? 0 : /Propulsion/.test(n) ? 1 : 2)
+  const list = ship
+    ? Object.values(db.types)
+        .filter((t) => t.g === SHIP_MODES_GROUP && t.n[0].startsWith(`${ship} `))
+        .map((t) => ({ id: t.id, name: t.n[0] }))
+        .sort((a, b) => order(a.name) - order(b.name))
+    : []
+  byShip.set(shipTypeId, list)
+  return list
 }

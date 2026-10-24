@@ -49,7 +49,7 @@ export interface CombatEffect {
 export interface AppliedWeapon {
   typeId: number
   chargeTypeId?: number
-  kind: 'turret' | 'missile' | 'drone' | 'smartbomb'
+  kind: 'turret' | 'missile' | 'drone' | 'smartbomb' | 'vorton'
   count: number
   /** Paper DPS */
   dps: number

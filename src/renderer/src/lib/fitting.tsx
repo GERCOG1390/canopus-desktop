@@ -70,6 +70,8 @@ export function toEft(fit: FitSpec): string {
     }
     lines.push('')
   }
+  // Tactical destroyer mode on its own line, as Pyfa writes it.
+  if (fit.mode) lines.push(en(fit.mode), '')
   for (const d of fit.drones) lines.push(`${en(d.typeId)} x${d.count}`)
   if (fit.implants.length) {
     lines.push('')
@@ -100,8 +102,14 @@ export async function fromEft(text: string): Promise<{ fit: FitSpec; unknown: st
 
   const fit: FitSpec = { shipTypeId, name: head[2] || 'Импорт', modules: [], drones: [], implants: [], cargo: [] }
   const unknown: string[] = []
+  const modes = await window.api.fit.modes(shipTypeId)
   for (const line of lines.slice(lines.indexOf(head[0]) + 1)) {
     if (!line || /^\[empty .+ slot\]$/i.test(line)) continue
+    const mode = modes.find((m) => m.name.toLowerCase() === line.toLowerCase())
+    if (mode) {
+      fit.mode = mode.id
+      continue
+    }
     const offline = /\/offline$/i.test(line)
     const clean = line.replace(/\s*\/offline$/i, '')
     const qtyMatch = /^(.+?)\s+x(\d+)$/i.exec(clean)

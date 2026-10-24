@@ -165,6 +165,7 @@ const api: CanopusApi = {
     calculate: (spec, skills) => invoke('fit:calculate', spec, skills),
     skillGains: (spec, levels) => invoke('fit:skillGains', spec, levels),
     variants: (spec, skills) => invoke('fit:variants', spec, skills),
+    modes: (shipTypeId) => invoke('fit:modes', shipTypeId),
     npcDamage: (spec, skills, faction, distance) => invoke('fit:npcDamage', spec, skills, faction, distance),
     metrics: (spec, skills) => invoke('fit:metrics', spec, skills),
     catalog: () => invoke('fit:catalog'),

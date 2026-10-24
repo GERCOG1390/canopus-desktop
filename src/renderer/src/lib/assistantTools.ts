@@ -175,7 +175,8 @@ function summarizeFit(fit: FitSpec, s: FitStats) {
       falloff_m: nz(w.falloff, Math.round),
       tracking: nz(w.tracking, (x) => r1(x, 4)),
       exp_radius: nz(w.explosionRadius, r1),
-      exp_velocity: nz(w.explosionVelocity, r1)
+      exp_velocity: nz(w.explosionVelocity, r1),
+      spool_max: w.spoolMax ? `+${Math.round(w.spoolMax * 100)}% after spool-up` : undefined
     })),
     ehp: Math.round(d.ehp),
     shield: layer(d.shield),

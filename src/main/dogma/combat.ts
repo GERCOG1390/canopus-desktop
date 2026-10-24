@@ -39,7 +39,8 @@ export function application(w: WeaponStats, g: Geometry): { factor: number; limi
     const limit = factor > 0.98 ? undefined : rangeTerm > trackingTerm ? (rangeTerm === Infinity ? 'вне дальности' : 'фоллоф') : 'наводка'
     return { factor, limit }
   }
-  if (w.kind === 'missile') {
+  if (w.kind === 'smartbomb') return g.distance <= (w.optimal ?? 0) ? { factor: 1 } : { factor: 0, limit: 'вне радиуса смартбомбы' }
+  if (w.kind === 'missile' || w.kind === 'vorton') {
     // A missile chasing a target that moves away covers (speed − receding speed) × flight time;
     // against one coming closer it reaches farther.
     if (w.optimal !== undefined) {
@@ -182,8 +183,8 @@ function sideInfo(side: Side, st: SideState): CombatSideInfo {
 function weaponRanges(s: FitStats): CombatSideInfo['ranges'] {
   const out: CombatSideInfo['ranges'] = []
   for (const w of s.offense.weapons) {
-    if (w.kind !== 'turret' && w.kind !== 'missile') continue
-    const r = { kind: w.kind, typeId: w.typeId, optimal: w.optimal ?? 0, falloff: w.kind === 'turret' ? (w.falloff ?? 0) : undefined }
+    if (w.kind !== 'turret' && w.kind !== 'missile' && w.kind !== 'vorton') continue
+    const r = { kind: w.kind === 'turret' ? ('turret' as const) : ('missile' as const), typeId: w.typeId, optimal: w.optimal ?? 0, falloff: w.kind === 'turret' ? (w.falloff ?? 0) : undefined }
     if (!out.some((x) => x.kind === r.kind && Math.abs(x.optimal - r.optimal) < 1 && (x.falloff ?? 0) === (r.falloff ?? 0))) out.push(r)
   }
   return out
@@ -195,7 +196,7 @@ function chartRange(stats: FitStats[], current: number): number {
   for (const s of stats)
     for (const w of s.offense.weapons) {
       if (w.kind === 'turret') max = Math.max(max, (w.optimal ?? 0) + 2.5 * (w.falloff ?? 0))
-      else if (w.kind === 'missile') max = Math.max(max, (w.optimal ?? 0) * 1.1)
+      else if (w.kind === 'missile' || w.kind === 'vorton') max = Math.max(max, (w.optimal ?? 0) * 1.1)
     }
   return Math.min(300_000, Math.max(10_000, max, current * 1.25))
 }

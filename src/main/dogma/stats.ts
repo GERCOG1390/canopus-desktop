@@ -1,6 +1,6 @@
 import type { FitSpec, FitStats, LayerStats, ModuleResult, SkillSource, Slot, WeaponStats, TacticalModule } from '../../shared/fit'
 import type { SdeDb } from '../../shared/sde'
-import { Dogma, type Item } from './engine'
+import { Dogma, shipModes, type Item } from './engine'
 
 const A = {
   mass: 4,
@@ -78,7 +78,14 @@ const SENSORS: [number, string][] = [
 const CAN_FIT_GROUP = [1298, 1299, 1300, 1872, 1879, 1880, 1881, 2065, 2396, 2476, 2477, 2478, 2479, 2480, 2481, 2482, 2483, 2484]
 const CAN_FIT_TYPE = [1302, 1303, 1304, 1305, 1944, 2103, 2463, 2486, 2487, 2488, 2758]
 
-const EFFECT = { turretFitted: 42, launcherFitted: 40, targetAttack: 10, projectileFired: 34, useMissiles: 101 }
+const EFFECT = { turretFitted: 42, launcherFitted: 40, targetAttack: 10, projectileFired: 34, useMissiles: 101, disintegrator: 6995, vorton: 8037, smartbomb: 38 }
+/** Ancillary armor repairers: repair multiplier with nanite paste loaded; disintegrator spool-up */
+const ATTR_CHARGED_ARMOR_MULT = 1886
+const ATTR_SPOOL_MAX = 2734
+const ATTR_EMP_RANGE = 99
+const ATTR_AOE_VELOCITY = 653
+const ATTR_AOE_CLOUD = 654
+const ATTR_AOE_DRF = 1353
 
 const ATTR_FITS_TO_SHIP_TYPE = 1380
 const ATTR_SUBSYSTEM_SLOT = 1366
@@ -112,6 +119,9 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   spec.modules.forEach((m, i) => dogma.addModule(m.typeId, m.slot, m.state, m.chargeTypeId, i))
   spec.drones.forEach((d, i) => dogma.addDrone(d.typeId, d.count, Math.min(d.active, d.count), i))
   spec.implants.forEach((id) => dogma.addImplant(id))
+  // Tactical destroyers always fly in a mode: the chosen one, else Defense.
+  const mode = spec.mode ?? shipModes(db, spec.shipTypeId)[0]?.id
+  if (mode) dogma.setMode(mode)
   dogma.link()
 
   const ship = dogma.ship
@@ -215,7 +225,9 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
     const { cycle } = cycleAndCap(dogma, m)
     if (!cycle) continue
     if (e === 'shieldBoosting' || e === 'fueledShieldBoosting') shieldBoost += a(m, A.shieldBonus) / cycle
-    if (e === 'armorRepair' || e === 'fueledArmorRepair') armorRepair += a(m, A.armorDamageAmount) / cycle
+    if (e === 'armorRepair') armorRepair += a(m, A.armorDamageAmount) / cycle
+    // Ancillary armor repairers repair three times as much with nanite paste loaded.
+    if (e === 'fueledArmorRepair') armorRepair += (a(m, A.armorDamageAmount) * (m.other ? a(m, ATTR_CHARGED_ARMOR_MULT) || 1 : 1)) / cycle
     if (e === 'structureRepair') hullRepair += a(m, A.structureDamageAmount) / cycle
   }
   const avgRes = (l: LayerStats) => 1 - l.resist.reduce((s, x) => s + x, 0) / 4
@@ -246,10 +258,21 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
     return (volley * shots) / (shots * cycle + reload)
   }
   for (const m of dogma.modules.filter(activeState)) {
+    // Smartbombs: damage of their own, every cycle, to everything within their radius.
+    if (hasEffect(m, EFFECT.smartbomb)) {
+      const cycle = a(m, 73) / 1000
+      const damage = dmgAttrs.map((x) => a(m, x)) as WeaponStats['damage']
+      const volley = damage.reduce((s, x) => s + x, 0)
+      if (cycle && volley)
+        weapons.push({ moduleIndex: m.index!, typeId: m.typeId, kind: 'smartbomb', count: 1, volley, dps: volley / cycle, dpsReload: volley / cycle, damage, cycle, optimal: a(m, ATTR_EMP_RANGE) })
+      continue
+    }
     const charge = m.other
-    const isTurret = hasEffect(m, EFFECT.targetAttack) || hasEffect(m, EFFECT.projectileFired)
+    const isDisintegrator = hasEffect(m, EFFECT.disintegrator)
+    const isTurret = hasEffect(m, EFFECT.targetAttack) || hasEffect(m, EFFECT.projectileFired) || isDisintegrator
     const isMissile = hasEffect(m, EFFECT.useMissiles)
-    if (!charge || (!isTurret && !isMissile)) continue
+    const isVorton = hasEffect(m, EFFECT.vorton)
+    if (!charge || (!isTurret && !isMissile && !isVorton)) continue
     const cycle = a(m, A.speed) / 1000
     if (!cycle) continue
     if (isTurret) {
@@ -269,7 +292,29 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
         cycle,
         optimal: a(m, A.maxRange),
         falloff: a(m, A.falloff),
-        tracking: a(m, A.trackingSpeed)
+        tracking: a(m, A.trackingSpeed),
+        // The game's fitting window shows disintegrators before they spool up; the bonus comes with time on target.
+        spoolMax: isDisintegrator ? a(m, ATTR_SPOOL_MAX) || undefined : undefined
+      })
+    } else if (isVorton) {
+      // Vorton projectors: charge damage x the projector's multiplier, applied like missiles (explosion radius and speed).
+      const damage = dmgAttrs.map((x) => a(charge, x) * a(m, A.damageMultiplier)) as WeaponStats['damage']
+      const volley = damage.reduce((s, x) => s + x, 0)
+      weapons.push({
+        moduleIndex: m.index!,
+        typeId: m.typeId,
+        chargeTypeId: charge.typeId,
+        kind: 'vorton',
+        count: 1,
+        volley,
+        dps: volley / cycle,
+        dpsReload: withReload(m, charge, volley, cycle),
+        damage,
+        cycle,
+        optimal: a(m, A.maxRange),
+        explosionRadius: a(m, ATTR_AOE_CLOUD),
+        explosionVelocity: a(m, ATTR_AOE_VELOCITY),
+        drf: a(m, ATTR_AOE_DRF)
       })
     } else {
       const mult = a(dogma.char, A.missileDamageMultiplier) || 1
@@ -408,6 +453,8 @@ function cycleAndCap(dogma: Dogma, m: Item): { cycle: number; capPerSecond: numb
   let cap = e.dis ? dogma.attr(m, e.dis) : 0
   // Capacitor boosters inject charge instead of using it.
   if (e.name === 'powerBooster' && m.other) cap -= dogma.attr(m.other, A.capacitorBonus)
+  // Ancillary shield boosters burn cap booster charges instead of capacitor while they have them.
+  if (e.name === 'fueledShieldBoosting' && m.other) cap = 0
   // Modules with a reactivation delay (micro jump drives: 180 s) can only start again after it.
   const delay = dogma.attr(m, REACTIVATION_DELAY) / 1000
   const every = cycle + delay

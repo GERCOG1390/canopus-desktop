@@ -317,6 +317,7 @@ function registerIpc(): void {
 
   ipcMain.handle('fit:calculate', (_e, spec: FitSpec, skills: SkillSource) => dogma.calculateFit(spec, skills))
   ipcMain.handle('fit:npcDamage', (_e, spec: FitSpec, skills: SkillSource, faction: NpcFaction, distance?: number) => npc.npcDamage(spec, skills, faction, distance))
+  ipcMain.handle('fit:modes', (_e, shipTypeId: number) => dogma.modesOf(shipTypeId))
   ipcMain.handle('fit:variants', (_e, spec: FitSpec, skills: SkillSource) => dogma.fitVariants(spec, skills))
   ipcMain.handle('fit:metrics', (_e, spec: FitSpec, skills: SkillSource) => dogma.fitMetrics(dogma.calculateFit(spec, skills)))
   ipcMain.handle('fit:skillGains', (_e, spec: FitSpec, levels: Record<number, number>) => dogma.skillGains(spec, levels))

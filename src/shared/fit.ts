@@ -24,6 +24,8 @@ export interface FitSpec {
   drones: FitDrone[]
   implants: number[]
   cargo?: { typeId: number; qty: number }[]
+  /** Tactical destroyer mode (type id); undefined = Defense */
+  mode?: number
 }
 
 /** Skill levels to fit with: a map of skill → level, or every skill at V. */
@@ -45,7 +47,7 @@ export interface WeaponStats {
   moduleIndex: number
   typeId: number
   chargeTypeId?: number
-  kind: 'turret' | 'missile' | 'drone' | 'smartbomb'
+  kind: 'turret' | 'missile' | 'drone' | 'smartbomb' | 'vorton'
   count: number
   volley: number
   dps: number
@@ -65,6 +67,8 @@ export interface WeaponStats {
   missileVelocity?: number
   /** Drone speed, m/s */
   speed?: number
+  /** Triglavian disintegrators: the damage bonus reached after spooling up (2.125 = +212.5%) */
+  spoolMax?: number
 }
 
 export interface ModuleResult {

@@ -335,7 +335,8 @@ function Editor() {
               <div className="grow">
                 <TypeLink id={f.shipTypeId} icon={false} className="big" />
                 <div className="muted small">
-                  <ShipChanger onPick={(id) => updateFit((x) => ({ ...x, shipTypeId: id }))} />
+                  <ShipChanger onPick={(id) => updateFit((x) => ({ ...x, shipTypeId: id, mode: undefined }))} />
+                  <ModePicker shipTypeId={f.shipTypeId} mode={f.mode} onPick={(mode) => updateFit((x) => ({ ...x, mode }))} />
                 </div>
               </div>
             </div>
@@ -469,6 +470,26 @@ function Editor() {
             <Loading label="Считаю…" />
           )}</div>
       </div>
+    </div>
+  )
+}
+
+/** Tactical destroyers: Defense, Propulsion or Sharpshooter mode (the game always has one on). */
+function ModePicker({ shipTypeId, mode, onPick }: { shipTypeId: number; mode?: number; onPick: (mode: number) => void }) {
+  const modes = useAsync(() => window.api.fit.modes(shipTypeId), [shipTypeId])
+  const list = modes.data ?? []
+  if (!list.length) return null
+  const ship = list[0].name.replace(/ (Defense|Propulsion|Sharpshooter) Mode$/, '')
+  return (
+    <div className="row small">
+      <span className="muted">Режим</span>
+      <select value={mode ?? list[0].id} onChange={(e) => onPick(Number(e.target.value))}>
+        {list.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.name.replace(`${ship} `, '').replace(/ Mode$/, '')}
+          </option>
+        ))}
+      </select>
     </div>
   )
 }
