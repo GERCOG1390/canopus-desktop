@@ -35,6 +35,9 @@
 - Calculate with **all skills V** or with **your character's skills**: what to train and how long it takes.
 - Fit cost at Jita prices, side-by-side fit comparison and **popular fits from zKillboard** for the same hull.
 - Import / export EFT, open fits from your character, current ship, a killmail or Show Info — and **save a fit straight to your in-game fittings**.
+- **Price optimizer**: the same stats for less ISK (cheaper versions of your modules that keep every number), or the upgrades that add the most to a chosen stat per million ISK within a budget.
+- **Fit snapshot**: the whole fit and its stats on one picture, to copy or save as PNG.
+- Tactical destroyer modes, Triglavian disintegrators (with spool-up), Vorton projectors, smartbombs, Bastion and siege modules, ancillary repairers and the reactive armor hardener. The engine is checked against Pyfa fit by fit.
 
 | Fitting | Popular fits | Show Info |
 |---|---|---|
@@ -44,7 +47,21 @@
 A separate window that pits your fit against an opponent — any saved fit, one of your in-game fits, or a bare hull.
 Drag the ships and velocity vectors on an interactive map (or pick orbiting, head-on, kiting…), switch ammo for both sides,
 and see applied DPS for every weapon with the reason it's reduced (tracking, falloff, explosion velocity / radius),
-damage per tank layer against local repairs, and who dies first.
+damage per tank layer against local repairs, and who dies first. Webs, target painters (with falloff and stacking penalties),
+warp scramblers shutting off MWDs, and afterburners / MWDs with their signature bloom are taken from the fits.
+
+### AI assistant (optional)
+A chat panel (**Ctrl+J**) that answers from Canopus' own data instead of guessing: it looks at your characters, skills,
+current ship fit, assets, wallet and trades, computes fits with the same engine as the fitting tool, compares ships by how
+fast they clear a faction's mission rooms, plans skills, checks routes for recent kills, and opens fits and sections for you.
+For mechanics, missions and patch changes it searches a local knowledge base (the EVE University wiki and CCP's patch
+notes, downloaded to your computer), and the web only when that isn't enough, citing its sources.
+
+It runs on OpenAI: **sign in with ChatGPT** (Plus or Pro — your plan pays, no separate bill) or use your own API key.
+It is off until you set it up. The questions you ask and the data the assistant fetches to answer them (fits, skills,
+prices, wallet, assets) are sent to OpenAI; your EVE login tokens and passwords never are. Actions in the game client
+(setting a destination, saving a fit) always ask you first.
+
 
 ![Combat simulator](docs/screenshots/combat.png)
 
@@ -52,7 +69,8 @@ damage per tank layer against local repairs, and who dies first.
 - **Local scan** — press **Ctrl+A, Ctrl+C** in the Local window: every pilot is checked for corporation, alliance, age, kills and losses, danger ratio and favourite ships. Threat is shown as a meter with a word, not colour alone. New arrivals are highlighted, and when a dangerous pilot enters you get an alert in the app and a desktop notification.
 - **Intel channels** — Canopus follows your alliance's intel chat logs, recognises systems (including shorthand like "1DQ") and ships in every report and shows how many jumps away they are; reports within your range raise an alert, "clr" / "nv" mean all clear.
 - **D-scan and fleet window** analysis with warnings for interdictors, bombers, recons, logistics and capitals.
-- An always-on-top **overlay** for windowed / borderless mode (**Ctrl+Shift+L** show / hide, **Ctrl+Shift+K** click-through).
+- An always-on-top **overlay** for windowed / borderless mode (**Ctrl+Shift+L** show / hide, **Ctrl+Shift+K** click-through), and small **mini-windows** over the game: timers of every character, a Jita price lookup, wallets.
+- **Multi-client previews**: a live tile of every EVE client; click one or press a hotkey to bring that client to the front.
 - **Alerts in Discord** — the same Local and intel-channel alerts posted to your channel through a webhook.
 
 | Local scan | Intel channels | Overlay |
@@ -95,6 +113,7 @@ New Eden at the real coordinates from the SDE, rotate and zoom, region and syste
 - Market browser with the in-game category tree, prices in Jita, Amarr, Dodixie, Rens and Hek, the order book and 90-day history.
 - **Arbitrage between trade hubs** by market category, with taxes, margin, volume and profit per m³.
 - Loot appraisal (English or Russian names), LP store, your orders with outbid detection.
+- **My trades**: real profit per item from your wallet (sales matched to earlier purchases), sales tax and broker fees.
 - Manufacturing and reaction calculator (ME / TE, structure bonuses, system cost index, taxes), industry jobs and planetary colonies with extractor timers.
 - **Corporation structures** — fuel, state with timers and services; alerts for low fuel, attacks, lost shields / armor (with the out-of-reinforce time) and finished moon extractions, also to Discord.
 - **Moon mining** — refinery extraction timers and who mined what from your moons.
@@ -181,11 +200,11 @@ Canopus reads only what each section needs. Everything stays on your computer; n
 
 ## Fair play
 
-Canopus only uses official and player-visible data: CCP's ESI and SDE, the chat and game logs the client writes to your Documents folder, and what you copy to the clipboard yourself. It never reads the game client's memory or screen and never automates input — the same approach as Pyfa or RIFT.
+Canopus only uses official and player-visible data: CCP's ESI and SDE, the chat and game logs the client writes to your Documents folder, and what you copy to the clipboard yourself. It never reads the game client's memory and never automates input — the same approach as Pyfa or RIFT. The multi-client previews show the client windows the way the operating system's window switcher does and only bring a window to the front; no keys or clicks are sent to the game.
 
 ## Data sources
 
-[ESI](https://developers.eveonline.com/) and the Static Data Export (CCP Games) · [zKillboard](https://zkillboard.com/) · [EVE-Scout](https://www.eve-scout.com/) · [Fuzzwork Market](https://market.fuzzwork.co.uk/)
+[ESI](https://developers.eveonline.com/) and the Static Data Export (CCP Games) · [zKillboard](https://zkillboard.com/) · [EVE-Scout](https://www.eve-scout.com/) · [Fuzzwork Market](https://market.fuzzwork.co.uk/) · [EVE University wiki](https://wiki.eveuniversity.org/) (CC BY-SA 4.0, for the assistant's knowledge base) · CCP news and patch notes
 
 ## Building from source
 
