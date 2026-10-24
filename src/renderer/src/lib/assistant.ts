@@ -37,6 +37,7 @@ function systemPrompt(ctx: ToolContext, web: boolean): string {
     '- When you propose a fit, write it in EFT, check it with calculate_fit (it must fit CPU/powergrid and the character should have the skills, or say which are missing), fix problems, and offer to open it with open_fit.',
     '- Use exact English item names in EFT; look names up with search_items when unsure.',
     '- Prices are Jita sell orders unless the user asks otherwise; give ISK with M/B suffixes.',
+    '- Loyalty points: use loyalty_points and lp_store (the whole store priced at Jita, with daily traded volume) instead of searching the web or LP calculators; mind the market depth (jita_units_per_day) when advising how much to convert.',
     '- You may open Canopus sections and fits (navigate, open_fit) when it helps the user see the result. Actions in the game client (set_destination, save_fit_to_game) need a clear request from the user; the app also asks them to confirm.',
     '- Canopus never sends keyboard or mouse input to the game and does not automate gameplay; do not offer to.',
     '- For game mechanics, missions, sites, exploration, tactics and recent changes, search the knowledge base first (knowledge_search, in English): EVE University wiki, CCP patch notes and news, Canopus formula notes. Answer from the passages you found and cite them by title and link; mention the date when the change history matters.',
@@ -64,6 +65,8 @@ export interface ChatEntry {
   restore?: FitSpec
   /** Tokens this answer used */
   tokens?: number
+  /** What the model said between tool steps ("Checking your fits…"): shown small, not as the answer */
+  notes?: string[]
 }
 
 interface State {
@@ -176,8 +179,7 @@ export async function ask(text: string, mode: AssistantAuth, model: string, web:
     Object.assign(entry, patch)
     set({ entries: [...state.entries.slice(0, -1), { ...entry, steps: [...(entry.steps ?? [])] }] })
   }
-  // Text of earlier rounds of this answer, and the stream of the current one.
-  let before = ''
+  // The stream of the current round; only the last round's text is the answer, earlier ones are notes.
   let live = ''
   let requestId = ''
   /** The web search tool is attached (after the model called enable_web_search) */
@@ -185,7 +187,7 @@ export async function ask(text: string, mode: AssistantAuth, model: string, web:
   const off = window.api.assistant.onDelta((id, delta) => {
     if (id !== requestId) return
     live += delta
-    update({ text: before + live })
+    update({ text: live })
   })
   try {
     for (let round = 0; round < MAX_ROUNDS; round++) {
@@ -214,10 +216,13 @@ export async function ask(text: string, mode: AssistantAuth, model: string, web:
       state.tokens += turn.usage?.total_tokens ?? 0
       entry.tokens = (entry.tokens ?? 0) + (turn.usage?.total_tokens ?? 0)
       const said = textOf(turn.output)
-      if (said) before = (before ? before + '\n\n' : '') + said
-      update({ text: before })
       const calls = turn.output.filter((i): i is Extract<ResponseItem, { type: 'function_call' }> => i.type === 'function_call')
-      if (!calls.length) break
+      if (!calls.length) {
+        update({ text: said })
+        break
+      }
+      // Text written before more tool calls is a progress note (models often restate a draft there).
+      update({ text: '', notes: said ? [...(entry.notes ?? []), said] : entry.notes })
       update({ steps: [...(entry.steps ?? []), ...calls.map((c) => ({ id: c.call_id, name: c.name, args: c.arguments }))] })
       const ctx: ToolContext = { ...currentCtx!, replaced: (prev) => (entry.restore ??= prev) }
       const results = await Promise.all(

@@ -347,6 +347,16 @@ function Entry({ e, onOpenFit, onRestore }: { e: ChatEntry; onOpenFit: (eft: str
           ))}
         </div>
       )}
+      {!!e.notes?.length && (
+        <details className="assistant-notes" open={!e.text}>
+          <summary className="muted small">{`${translate('Промежуточные заметки')} (${e.notes.length})`}</summary>
+          {e.notes.map((n, i) => (
+            <div key={i} className="muted small" translate="no">
+              <Markdown text={n} onOpenFit={onOpenFit} />
+            </div>
+          ))}
+        </details>
+      )}
       {e.text && (
         <div translate="no">
           <Markdown text={e.text} onOpenFit={onOpenFit} />

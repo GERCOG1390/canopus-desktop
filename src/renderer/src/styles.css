@@ -4341,3 +4341,8 @@ button.danger-fill:hover:not(:disabled) {
   margin-top: 4px;
   gap: 10px;
 }
+.assistant-notes {
+  margin-bottom: 6px;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+}

@@ -8,7 +8,7 @@ import type { FitSpec, FitStats, SkillSource } from '../../../shared/fit'
 import type { CharacterAuth } from '../../../shared/types'
 import type { PageId } from '../AppContext'
 import type { CharacterData } from '../CharacterContext'
-import { esi, resolveLocations } from './esi'
+import { esi, resolveIds, resolveLocations, resolveNames } from './esi'
 import { fromEft, toEft } from './fitting'
 import { loadGameFits } from './gameFits'
 import { HUBS, hubPrices } from './market'
@@ -311,6 +311,72 @@ const TOOLS: Tool[] = [
         return { results: [], note: st.articles.uni ? 'nothing found: try other English terms' : 'the knowledge base is not downloaded yet' }
       }
       return hits.map((h) => ({ source: h.source, title: h.section ? `${h.title} — ${h.section}` : h.title, url: h.url, date: h.date, text: h.text }))
+    }
+  ),
+
+  tool('loyalty_points', "The character's loyalty points per corporation.", obj({ character: str('omit = active') }), async (a, ctx) => {
+    const c = who(ctx, a.character)
+    const lp = await esi<{ corporation_id: number; loyalty_points: number }[]>(`/characters/${c.id}/loyalty/points/`, { characterId: c.id })
+    const corpNames = await resolveNames(lp.map((x) => x.corporation_id))
+    return lp.sort((x, y) => y.loyalty_points - x.loyalty_points).map((x) => ({ corporation: corpNames.get(x.corporation_id) ?? x.corporation_id, lp: x.loyalty_points }))
+  }),
+
+  tool(
+    'lp_store',
+    "A corporation's whole LP store priced at Jita: per offer the ISK and items it needs, the net ISK per LP when sold by sell order and instantly to buy orders (sales tax from the character's Accounting skill), and how many units Jita actually trades a day (30-day history) for the best offers. Also the character's LP balance there. Use this instead of web calculators.",
+    obj({ corporation: str('e.g. Caldari Navy'), include_blueprints: { type: 'boolean' }, limit: num('offers to return, default 20') }, ['corporation']),
+    async (a, ctx) => {
+      const ids = await resolveIds([a.corporation])
+      const corp = ids.corporations?.[0]
+      if (!corp) throw new Error(`Корпорация «${a.corporation}» не найдена: нужно точное название`)
+      const offers = await esi<{ type_id: number; quantity: number; lp_cost: number; isk_cost: number; required_items: { type_id: number; quantity: number }[] }[]>(`/loyalty/stores/${corp.id}/offers/`)
+      const typeIds = [...new Set(offers.flatMap((o) => [o.type_id, ...o.required_items.map((r) => r.type_id)]))]
+      const [prices, basics] = await Promise.all([jitaPrices(typeIds), window.api.sde.basics(typeIds)])
+      primeBasics(basics)
+      // Sales tax 7.5% less 11% per level of Accounting (the character's, else all V).
+      const accounting = ctx.char.skills ? ctx.char.level(16622) : 5
+      const tax = 0.075 * (1 - 0.11 * accounting)
+      const rows = offers
+        .filter((o) => o.lp_cost > 0 && (a.include_blueprints || basics[o.type_id]?.c !== 9))
+        .map((o) => {
+          const p = prices.get(o.type_id)
+          const required = o.required_items.reduce((s, r) => s + ((prices.get(r.type_id)?.sell.best as number | undefined) ?? 0) * r.quantity, 0)
+          const cost = o.isk_cost + required
+          const net = (unit: number) => (unit * o.quantity * (1 - tax) - cost) / o.lp_cost
+          return { o, sell: (p?.sell.best as number | undefined) ?? 0, buy: (p?.buy.best as number | undefined) ?? 0, required, perLpSell: net((p?.sell.best as number | undefined) ?? 0), perLpBuy: net((p?.buy.best as number | undefined) ?? 0) }
+        })
+        .filter((r) => r.sell > 0)
+        .sort((x, y) => y.perLpSell - x.perLpSell)
+        .slice(0, Math.min(40, a.limit ?? 20))
+      // Real liquidity of the best offers: units traded a day in Jita over the last 30 days.
+      const history = await Promise.all(
+        rows.slice(0, 15).map((r) =>
+          esi<{ date: string; volume: number }[]>(`/markets/10000002/history/?type_id=${r.o.type_id}`)
+            .then((h) => h.slice(-30).reduce((s, d) => s + d.volume, 0) / Math.max(1, Math.min(30, h.length)))
+            .catch(() => undefined)
+        )
+      )
+      let balance: number | undefined
+      if (ctx.active)
+        balance = (await esi<{ corporation_id: number; loyalty_points: number }[]>(`/characters/${ctx.active.id}/loyalty/points/`, { characterId: ctx.active.id }).catch(() => []))
+          .find((x) => x.corporation_id === corp.id)?.loyalty_points
+      await names(rows.flatMap((r) => [r.o.type_id, ...r.o.required_items.map((x) => x.type_id)]))
+      return {
+        corporation: corp.name,
+        your_lp: balance,
+        sales_tax: `${r1(tax * 100, 2)}% (Accounting ${accounting})`,
+        note: 'isk_per_lp_sell: listing by sell order at the lowest Jita sell (no broker fee counted); isk_per_lp_instant: selling at once to the best buy order. Required items bought at Jita sell.',
+        offers: rows.map((r, i) => ({
+          item: `${r.o.quantity}x ${en(r.o.type_id)}`,
+          lp: r.o.lp_cost,
+          isk: r.o.isk_cost,
+          required_items: r.o.required_items.length ? r.o.required_items.map((x) => `${x.quantity}x ${en(x.type_id)}`).join(', ') : undefined,
+          required_cost: r.required ? Math.round(r.required) : undefined,
+          isk_per_lp_sell: Math.round(r.perLpSell),
+          isk_per_lp_instant: Math.round(r.perLpBuy),
+          jita_units_per_day: history[i] !== undefined ? Math.round(history[i]!) : undefined
+        }))
+      }
     }
   ),
 
@@ -780,6 +846,8 @@ export const TOOL_DEFS: ToolDef[] = TOOLS.map((t) => ({ type: 'function', functi
 /** Short human description of a tool call for the chat log. */
 export const TOOL_LABELS: Record<string, string> = {
   web_search: 'Ищу в интернете',
+  loyalty_points: 'Очки лояльности',
+  lp_store: 'LP-магазин',
   current_ship_fit: 'Фит текущего корабля',
   npc_damage: 'Урон по NPC миссий',
   compare_fits: 'Сравниваю фиты',

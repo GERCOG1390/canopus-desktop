@@ -1482,6 +1482,8 @@ export const EXACT: Record<string, string> = {
   'Тексты EVE University wiki — CC BY-SA 4.0,': 'EVE University wiki texts: CC BY-SA 4.0,',
   'помощник ссылается на источники в ответах.': 'the assistant cites its sources.',
   'Ищу в интернете': 'Searching the web',
+  'Промежуточные заметки': 'Notes along the way',
+  'Очки лояльности': 'Loyalty points',
   'Вернуть прежний фит': 'Restore the previous fit',
   'Помощник открыл свой фит поверх этого': 'The assistant opened its fit over this one',
   'Фит текущего корабля': 'Current ship fit',
