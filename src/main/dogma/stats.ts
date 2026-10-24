@@ -179,9 +179,10 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
     if (maxActive && activeState(m) && dogma.modules.filter((x) => x.group === m.group && activeState(x)).length > maxActive) {
       p.push(`Активным может быть не больше ${maxActive} модулей этой группы`)
     }
-    const { cycle, capPerSecond } = cycleAndCap(dogma, m)
+    const { cycle, capPerSecond, occasional } = cycleAndCap(dogma, m)
     return {
       index: m.index!,
+      occasional: occasional || undefined,
       cpu: a(m, A.cpu),
       power: a(m, A.power),
       cycle,
@@ -225,7 +226,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   const rechargeSec = a(ship, A.rechargeRate) / 1000
   const usePerSecond = moduleResults.reduce((s, r) => s + r.capPerSecond, 0)
   // Each active module takes its whole cost when it cycles, like the game (and Pyfa) count it.
-  const drains = moduleResults.filter((r) => r.capPerSecond && r.cycle).map((r) => ({ need: r.capPerSecond * r.cycle, cycle: r.cycle }))
+  const drains = moduleResults.filter((r) => r.capPerSecond && r.cycle).map((r) => ({ need: r.capPerSecond * r.cycle, cycle: r.cycle, occasional: r.occasional }))
   const capacitor = capacitorStability(capacity, rechargeSec, drains)
 
   // ---------- Offense ----------
@@ -396,7 +397,10 @@ function tacticalOf(dogma: Dogma, m: Item): TacticalModule | undefined {
   return undefined
 }
 
-function cycleAndCap(dogma: Dogma, m: Item): { cycle: number; capPerSecond: number } {
+/** moduleReactivationDelay, ms */
+const REACTIVATION_DELAY = 669
+
+function cycleAndCap(dogma: Dogma, m: Item): { cycle: number; capPerSecond: number; occasional?: boolean } {
   const e = dogma.defaultEffect(m)
   if (!e?.dur) return { cycle: 0, capPerSecond: 0 }
   const cycle = dogma.attr(m, e.dur) / 1000
@@ -404,7 +408,10 @@ function cycleAndCap(dogma: Dogma, m: Item): { cycle: number; capPerSecond: numb
   let cap = e.dis ? dogma.attr(m, e.dis) : 0
   // Capacitor boosters inject charge instead of using it.
   if (e.name === 'powerBooster' && m.other) cap -= dogma.attr(m.other, A.capacitorBonus)
-  return { cycle, capPerSecond: cap / cycle }
+  // Modules with a reactivation delay (micro jump drives: 180 s) can only start again after it.
+  const delay = dogma.attr(m, REACTIVATION_DELAY) / 1000
+  const every = cycle + delay
+  return { cycle: every, capPerSecond: cap / every, occasional: delay > 0 }
 }
 
 /**
@@ -414,9 +421,17 @@ function cycleAndCap(dogma: Dogma, m: Item): { cycle: number; capPerSecond: numb
  * pay for its next cycle; surviving six hours counts as stable, at the lowest level reached
  * after the first hour (just before an activation, as the game shows it).
  */
-function capacitorStability(capacity: number, rechargeSec: number, drains: { need: number; cycle: number }[]): { peakRecharge: number; stable: boolean; stableLevel?: number; lastsSec?: number } {
+function capacitorStability(capacity: number, rechargeSec: number, drains: { need: number; cycle: number; occasional?: boolean }[]): { peakRecharge: number; stable: boolean; stableLevel?: number; lastsSec?: number } {
   const peakRecharge = rechargeSec ? (2.5 * capacity) / rechargeSec : 0
-  const mods = drains.filter((d) => d.need && d.cycle > 0)
+  // Occasional modules (micro jump drives) are spread over their window as the game's fitting window
+  // averages them, instead of one big bite at the start of every window.
+  const mods = drains
+    .filter((d) => d.need && d.cycle > 0)
+    .map((d) => {
+      if (!d.occasional) return d
+      const parts = Math.max(1, Math.ceil(d.cycle / 10))
+      return { ...d, need: d.need / parts, cycle: d.cycle / parts }
+    })
   if (!mods.some((d) => d.need > 0) || !capacity || !rechargeSec) return { peakRecharge, stable: true, stableLevel: 1 }
   const regen = (c: number, dt: number) => {
     const r = 1 + (Math.sqrt(Math.max(0, c) / capacity) - 1) * Math.exp((-5 * dt) / rechargeSec)
@@ -435,7 +450,14 @@ function capacitorStability(capacity: number, rechargeSec: number, drains: { nee
     for (let i = 0; i < mods.length; i++) {
       if (next[i] > t + 1e-9) continue
       if (t >= 3600) low = Math.min(low, c)
-      if (mods[i].need > 0 && c < mods[i].need) return { peakRecharge, stable: false, lastsSec: t }
+      if (mods[i].need > 0 && c < mods[i].need) {
+        // A micro jump drive that can't jump yet waits; the capacitor is out when the modules that run all the time can't cycle.
+        if (mods[i].occasional) {
+          next[i] += mods[i].cycle
+          continue
+        }
+        return { peakRecharge, stable: false, lastsSec: t }
+      }
       // Capacitor boosters (negative need) can't fill past the maximum.
       c = Math.min(capacity, c - mods[i].need)
       next[i] += mods[i].cycle

@@ -266,7 +266,12 @@ export class Dogma {
       this.addModifier(this.ship, 101, { source, srcAttr: 1369, op: 2 })
       return
     }
-    if (e.name === 'moduleBonusMicrowarpdrive' || e.name === 'moduleBonusAfterburner') {
+    // A micro jump drive blooms the signature while it spools up (the game's fitting window counts it when active).
+    if (e.name === 'microJumpDrive') {
+      this.addModifier(this.ship, 552, { source, srcAttr: 973, op: 6, noPenalty: true })
+      return
+    }
+        if (e.name === 'moduleBonusMicrowarpdrive' || e.name === 'moduleBonusAfterburner') {
       this.addModifier(this.ship, 4, { source, srcAttr: 796, op: 2 })
       if (e.name === 'moduleBonusMicrowarpdrive') this.addModifier(this.ship, 552, { source, srcAttr: 554, op: 6, noPenalty: true })
       // Speed boost % = speedFactor × thrust / ship mass

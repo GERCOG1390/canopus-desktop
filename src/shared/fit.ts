@@ -75,6 +75,8 @@ export interface ModuleResult {
   cycle: number
   /** Problems that prevent fitting/onlining this module. */
   problems: string[]
+  /** Used now and then (a reactivation delay, like a micro jump drive), not cycled all the time */
+  occasional?: boolean
   optimal?: number
   falloff?: number
   /** What the module does to a target or to its own ship's movement, for the combat simulator */
