@@ -318,27 +318,31 @@ export class Dogma {
     const preAssign = byOp(-1)
     if (preAssign.length) v = valueOf(preAssign[preAssign.length - 1])
 
-    const penalized: number[] = []
-    const multiply = (mult: number, m: Modifier) => {
-      if (!stackable && !m.noPenalty && !PENALTY_EXEMPT.has(m.source.category)) penalized.push(mult)
-      else v *= mult
+    // Each operation is its own stage with its own stacking penalty, as in the game: a Bastion's -50% rate
+    // of fire (post-percent) doesn't push Ballistic Control Systems (post-multiply) down the penalty list,
+    // and its x0.7 resists (pre-multiply) don't queue with hardeners (post-percent).
+    const stage = (op: number, factor: (m: Modifier) => number | null) => {
+      const penalized: number[] = []
+      for (const m of byOp(op)) {
+        const mult = factor(m)
+        if (mult === null) continue
+        if (!stackable && !m.noPenalty && !PENALTY_EXEMPT.has(m.source.category)) penalized.push(mult)
+        else v *= mult
+      }
+      if (penalized.length) v *= stackingProduct(penalized)
+    }
+    const divide = (m: Modifier) => {
+      const d = valueOf(m)
+      return d ? 1 / d : null
     }
 
-    for (const m of byOp(0)) multiply(valueOf(m), m)
-    for (const m of byOp(1)) {
-      const d = valueOf(m)
-      if (d) multiply(1 / d, m)
-    }
+    stage(0, valueOf)
+    stage(1, divide)
     for (const m of byOp(2)) v += valueOf(m)
     for (const m of byOp(3)) v -= valueOf(m)
-    for (const m of byOp(4)) multiply(valueOf(m), m)
-    for (const m of byOp(5)) {
-      const d = valueOf(m)
-      if (d) multiply(1 / d, m)
-    }
-    for (const m of byOp(6)) multiply(1 + valueOf(m) / 100, m)
-
-    if (penalized.length) v *= stackingProduct(penalized)
+    stage(4, valueOf)
+    stage(5, divide)
+    stage(6, (m) => 1 + valueOf(m) / 100)
 
     const postAssign = byOp(7)
     if (postAssign.length) v = valueOf(postAssign[postAssign.length - 1])
