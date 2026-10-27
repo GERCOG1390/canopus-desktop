@@ -2,6 +2,7 @@
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
 import type { NpcFaction, NpcReport } from './npc'
+import type { AbyssFaction, AbyssReport, AbyssWeather } from './abyss'
 import type { RadarKill, RadarSettings, RadarStatus } from './radar'
 import type { AssistantAccount, AssistantAuth, AssistantSettings, AssistantTurn, KnowledgeHit, KnowledgeStatus, ResponseItem, ToolDef } from './assistant'
 
@@ -253,6 +254,8 @@ export interface CanopusApi {
     modes(shipTypeId: number): Promise<{ id: number; name: string }[]>
     /** Applied damage and time to kill against a faction's mission NPCs, per ship class */
     npcDamage(spec: FitSpec, skills: SkillSource, faction: NpcFaction, distance?: number): Promise<NpcReport>
+    /** The fit in an abyssal weather (penalty strength 30/50/70) against the abyssal NPCs, per faction */
+    abyss(spec: FitSpec, skills: SkillSource, weather: AbyssWeather, strength: number, faction?: AbyssFaction): Promise<AbyssReport>
     skillGains(spec: FitSpec, levels: Record<number, number>): Promise<{ skill: number; from: number; dps: number; ehp: number; activeTank: number; speed: number; align: number; capacitor: number; lockRange: number }[]>
     calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>
     catalog(): Promise<FittableType[]>

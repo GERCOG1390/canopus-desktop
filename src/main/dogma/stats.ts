@@ -122,6 +122,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   // Tactical destroyers always fly in a mode: the chosen one, else Defense.
   const mode = spec.mode ?? shipModes(db, spec.shipTypeId)[0]?.id
   if (mode) dogma.setMode(mode)
+  if (spec.environment) dogma.setEnvironment(spec.environment)
   dogma.link()
 
   const ship = dogma.ship

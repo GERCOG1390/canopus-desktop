@@ -4375,3 +4375,14 @@ button.danger-fill:hover:not(:disabled) {
   color: var(--danger, #e5533d);
   font-weight: 600;
 }
+
+/* Abyss planner */
+.row.wrap {
+  flex-wrap: wrap;
+}
+.abyss .table {
+  margin-top: 10px;
+}
+.abyss .tabs {
+  margin-top: 14px;
+}

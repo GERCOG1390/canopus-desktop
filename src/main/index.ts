@@ -8,7 +8,9 @@ import * as sde from './sde'
 import * as dogma from './dogma'
 import * as combat from './dogma/combat'
 import * as npc from './dogma/npc'
+import * as abyss from './dogma/abyss'
 import type { NpcFaction } from '../shared/npc'
+import type { AbyssFaction, AbyssWeather } from '../shared/abyss'
 import type { CombatPilot, CombatScenario } from '../shared/combat'
 import { handleIconScheme, registerIconScheme } from './icons'
 import type { FitSpec, SkillSource } from '../shared/fit'
@@ -353,6 +355,7 @@ function registerIpc(): void {
 
   ipcMain.handle('fit:calculate', (_e, spec: FitSpec, skills: SkillSource) => dogma.calculateFit(spec, skills))
   ipcMain.handle('fit:npcDamage', (_e, spec: FitSpec, skills: SkillSource, faction: NpcFaction, distance?: number) => npc.npcDamage(spec, skills, faction, distance))
+  ipcMain.handle('fit:abyss', (_e, spec: FitSpec, skills: SkillSource, weather: AbyssWeather, strength: number, faction?: AbyssFaction) => abyss.abyssPlan(spec, skills, weather, strength, faction))
   ipcMain.handle('fit:modes', (_e, shipTypeId: number) => dogma.modesOf(shipTypeId))
   ipcMain.handle('fit:variants', (_e, spec: FitSpec, skills: SkillSource) => dogma.fitVariants(spec, skills))
   ipcMain.handle('fit:metrics', (_e, spec: FitSpec, skills: SkillSource) => dogma.fitMetrics(dogma.calculateFit(spec, skills)))

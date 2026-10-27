@@ -1,5 +1,5 @@
-// Fitting tools: which skills pay off most for a fit, side-by-side fit comparison,
-// and the fits people actually fly (recent losses on zKillboard).
+// Fitting tools: which skills pay off most for a fit, price optimizer, the abyss planner, side-by-side fit
+// comparison, and the fits people actually fly (recent losses on zKillboard).
 
 import { useMemo, useState } from 'react'
 import type { FitSpec, FitStats, SavedFit, SkillSource } from '../../../shared/fit'
@@ -15,9 +15,10 @@ import { loadGameFits } from '../lib/gameFits'
 import { getBasic, primeBasics, tn, useTypeBasics } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 import { locale } from '../i18n'
+import { FitAbyss } from './FitAbyss'
 import { FitOptimize } from './FitOptimize'
 
-export type FitTool = 'learn' | 'compare' | 'popular' | 'optimize'
+export type FitTool = 'learn' | 'compare' | 'popular' | 'optimize' | 'abyss'
 
 const n1 = (v: number, d = 1) => v.toLocaleString(locale(), { maximumFractionDigits: d })
 
@@ -49,6 +50,7 @@ export function FitTools({
         tabs={[
           { id: 'learn', label: 'Что выучить' },
           { id: 'optimize', label: 'Оптимизация по цене' },
+          { id: 'abyss', label: 'Бездна' },
           { id: 'compare', label: 'Сравнить фиты' },
           { id: 'popular', label: 'Популярные фиты (zKillboard)' }
         ]}
@@ -57,6 +59,7 @@ export function FitTools({
       />
       {tool === 'learn' && <WhatToLearn fit={fit} />}
       {tool === 'optimize' && <FitOptimize fit={fit} skills={skills} onChange={onChange} />}
+      {tool === 'abyss' && <FitAbyss fit={fit} skills={skills} />}
       {tool === 'compare' && <CompareFits fit={fit} skills={skills} />}
       {tool === 'popular' && <PopularFits shipTypeId={fit.shipTypeId} onLoad={onLoad} />}
     </Card>

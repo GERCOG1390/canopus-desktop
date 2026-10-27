@@ -23,6 +23,7 @@ import { spForLevel } from './dogma'
 import { roundSec } from './format'
 import { jitaPrices } from './market'
 import { NPC_FACTIONS, type NpcFaction, type NpcReport } from '../../../shared/npc'
+import { ABYSS_FACTIONS, ABYSS_WEATHERS, tierStrengths, type AbyssFaction, type AbyssFitSide, type AbyssReport, type AbyssWeather } from '../../../shared/abyss'
 
 /** The fit on the ship the character is flying now: its assets inside the active ship, slot by slot. */
 async function currentShipFit(c: CharacterAuth, skills: SkillSource): Promise<FitSpec> {
@@ -59,6 +60,41 @@ function npcSummary(r: NpcReport) {
     })),
     weapon_reach_km: r1(r.weaponReach / 1000),
     typical_room: { ...r.room.composition, clear_s: fmtTtk(r.room.seconds) },
+    note: r.note
+  }
+}
+
+function abyssSummary(r: AbyssReport) {
+  const side = (x: AbyssFitSide) => ({
+    resists: x.resist.map((v) => `${Math.round(v * 100)}%`).join('/'),
+    ehp: Math.round(x.ehp),
+    repair_hp_s: r1(x.repair),
+    cap: x.capStable ? `stable ${pct(x.capLevel ?? 1)}` : `${Math.round(x.capLasts ?? 0)} s`,
+    dps: Math.round(x.dps),
+    reach_km: r1(x.reach / 1000),
+    speed: Math.round(x.speed)
+  })
+  return {
+    weather: r.weather,
+    penalty: `${r.strength}%`,
+    tank_layer: r.layer,
+    normal_space: side(r.normal),
+    in_weather: side(r.inWeather),
+    factions: r.factions.map((f) => ({
+      faction: f.faction,
+      ttk_s_median: fmtTtk(f.ttkMedian),
+      worst_dps_taken: Math.round(f.worstTaken),
+      ...(f.npcs.some((n) => !Number.isFinite(n.ttk)) ? { unkillable: f.npcs.filter((n) => !Number.isFinite(n.ttk)).map((n) => n.name) } : {}),
+      most_dangerous: f.npcs.slice(0, 5).map((n) => ({
+        name: n.name,
+        dps_taken: Math.round(n.taken),
+        ttk_s: fmtTtk(n.ttk),
+        applied: `${Math.round(n.application * 100)}%`,
+        ...(n.neut ? { neut_gj_s: r1(n.neut) } : {}),
+        ...(n.ewar.length ? { ewar: n.ewar } : {})
+      })),
+      heavy_neuts: f.npcs.filter((n) => n.neut >= 10).map((n) => `${n.name} ${r1(n.neut)} GJ/s`)
+    })),
     note: r.note
   }
 }
@@ -633,6 +669,18 @@ const TOOLS: Tool[] = [
   ),
 
   tool(
+    'abyss_plan',
+    'A fit in Abyssal Deadspace: the filament weather applied (resist hole, HP/speed/capacitor bonus, turret range penalty) next to normal space, and per abyssal faction (Triglavian, Drifter, Sleeper, rogue drones, Sansha, Angel, EDENCOM) kill times, the DPS each NPC lands through the fit\'s resists, neuts and e-war. Per NPC (room spawn tables are not in the game data). Penalty strength: tiers 0-3 roll 30 or 50%, tiers 4-6 roll 50 or 70%; omit = the worse roll.',
+    obj({ eft: EFT, weather: { type: 'string', enum: ABYSS_WEATHERS }, tier: num('0 Tranquil … 6 Cataclysmic'), strength: num('30, 50 or 70; omit = worse roll of the tier'), faction: { type: 'string', enum: ABYSS_FACTIONS }, skills: SKILLS }, ['weather', 'tier']),
+    async (a, ctx) => {
+      const fit = await parseFit(a.eft, ctx)
+      const strengths = tierStrengths(Math.max(0, Math.min(6, Number(a.tier) || 0)))
+      const strength = strengths.includes(Number(a.strength)) ? Number(a.strength) : strengths[1]
+      return abyssSummary(await window.api.fit.abyss(fit, skillsFor(ctx, a.skills), a.weather as AbyssWeather, strength, a.faction as AbyssFaction | undefined))
+    }
+  ),
+
+  tool(
     'compare_fits',
     'Several fits at once (one call instead of many): DPS, EHP, active tank, capacitor, speed, lock range, CPU/PG, missing skills, Jita price of hull + modules + drones, and with a faction the time to clear a typical L4 room of it.',
     obj({ efts: { type: 'array', items: { type: 'string' } }, faction: { type: 'string', enum: NPC_FACTIONS }, skills: SKILLS }, ['efts']),
@@ -850,6 +898,7 @@ export const TOOL_LABELS: Record<string, string> = {
   lp_store: 'LP-магазин',
   current_ship_fit: 'Фит текущего корабля',
   npc_damage: 'Урон по NPC миссий',
+  abyss_plan: 'Планировщик Бездны',
   compare_fits: 'Сравниваю фиты',
   knowledge_search: 'Ищу в базе знаний',
   enable_web_search: 'Подключаю поиск в интернете',

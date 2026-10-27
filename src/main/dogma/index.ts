@@ -15,6 +15,7 @@ export function explainAttr(spec: FitSpec, skills: SkillSource, target: string, 
   spec.implants.forEach((id) => d.addImplant(id))
   const mode = spec.mode ?? shipModes(sdeForDogma(), spec.shipTypeId)[0]?.id
   if (mode) d.setMode(mode)
+  if (spec.environment) d.setEnvironment(spec.environment)
   d.link()
   const [kind, idx] = target.split(':')
   const item =

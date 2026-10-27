@@ -26,6 +26,8 @@ export interface FitSpec {
   cargo?: { typeId: number; qty: number }[]
   /** Tactical destroyer mode (type id); undefined = Defense */
   mode?: number
+  /** Abyssal weather celestial (type id) the fit flies in; undefined = normal space */
+  environment?: number
 }
 
 /** Skill levels to fit with: a map of skill → level, or every skill at V. */

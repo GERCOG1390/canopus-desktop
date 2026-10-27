@@ -175,6 +175,7 @@ const api: CanopusApi = {
     variants: (spec, skills) => invoke('fit:variants', spec, skills),
     modes: (shipTypeId) => invoke('fit:modes', shipTypeId),
     npcDamage: (spec, skills, faction, distance) => invoke('fit:npcDamage', spec, skills, faction, distance),
+    abyss: (spec, skills, weather, strength, faction) => invoke('fit:abyss', spec, skills, weather, strength, faction),
     metrics: (spec, skills) => invoke('fit:metrics', spec, skills),
     catalog: () => invoke('fit:catalog'),
     fittableFor: (shipTypeId) => invoke('fit:fittableFor', shipTypeId),

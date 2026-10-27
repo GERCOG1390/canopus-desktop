@@ -10,6 +10,26 @@ const PENALTY_EXEMPT = new Set([CATEGORY.SHIP, CATEGORY.CHARGE, CATEGORY.SKILL, 
 const REQUIRED_SKILL_ATTRS = [182, 183, 184, 1285, 1289, 1290]
 /** Hull EM, thermal, kinetic, explosive resonance */
 const HULL_RESONANCES = new Set([113, 110, 109, 111])
+/**
+ * Attributes the game caps by another attribute (maxAttributeID, not in the SDE export): resonances at 1
+ * (a resistance can't go below 0%, as under an abyssal weather penalty), velocity and lock range limits.
+ */
+const CAPPED_BY: Record<number, number> = {
+  113: 2768,
+  110: 2769,
+  109: 2770,
+  111: 2771,
+  267: 1527,
+  268: 1527,
+  269: 1527,
+  270: 1527,
+  271: 1528,
+  272: 1528,
+  273: 1528,
+  274: 1528,
+  37: 2033,
+  76: 797
+}
 /** Base character attributes live on the "Character" type. */
 const CHARACTER_TYPE = 1373
 const SKILL_LEVEL_ATTR = 280
@@ -60,6 +80,8 @@ export class Dogma {
   readonly skills: Item[] = []
   /** Tactical destroyer mode (Defense / Propulsion / Sharpshooter), applied like a passive module */
   mode: Item | null = null
+  /** System-wide effect source (abyssal weather celestial), its warfare buffs applied in link() */
+  environment: Item | null = null
   private readonly evaluating = new Set<string>()
 
   constructor(
@@ -140,6 +162,13 @@ export class Dogma {
 
   setMode(typeId: number): void {
     this.mode = this.makeItem('module', typeId)
+  }
+
+  /** An abyssal weather celestial (or another warfare-buff source) affecting the whole fit. */
+  setEnvironment(typeId: number): void {
+    this.environment = this.makeItem('ship', typeId)
+    // Not a ship: penalized like a module unless the buff says otherwise.
+    this.environment.category = 0
   }
 
   effect(id: number): DogmaEffect | undefined {
@@ -245,6 +274,39 @@ export class Dogma {
         this.specialEffect(source, e)
       }
     }
+    if (this.environment) this.linkEnvironment(this.environment)
+  }
+
+  /**
+   * Warfare buffs of a system-wide effect, as the game (and Pyfa) apply them. Abyssal weather: resistance
+   * penalties and HP / velocity bonuses unpenalized, capacitor recharge, scan resolution and turret range
+   * stacking-penalized. Drones get the ship's changes too.
+   */
+  private linkEnvironment(env: Item): void {
+    const GUNNERY = 3300
+    const DRONES = 3436
+    const drones = this.drones.filter((d) => d.reqSkills.has(DRONES))
+    const add = (targets: Item[], attrs: number[], value: number, noPenalty: boolean) => {
+      for (const t of targets) for (const attr of attrs) this.addModifier(t, attr, { source: env, srcAttr: 0, op: 6, value: () => value, noPenalty })
+    }
+    const RES: Record<number, number[]> = { 90: [271, 267, 113], 93: [272, 268, 111], 95: [274, 270, 110], 99: [273, 269, 109] }
+    for (const [idAttr, valueAttr] of [
+      [2468, 2469],
+      [2470, 2471],
+      [2472, 2473],
+      [2536, 2537]
+    ]) {
+      const buff = env.base[idAttr]
+      const value = env.base[valueAttr]
+      if (!buff || value === undefined) continue
+      if (RES[buff]) add([this.ship, ...drones], RES[buff], value, true)
+      else if (buff === 92) add([this.ship], [55], value, false)
+      else if (buff === 94) add([this.ship, ...drones], [263], value, true)
+      else if (buff === 96) add([this.ship, ...drones], [265], value, true)
+      else if (buff === 97) add([...this.modules.filter((m) => m.reqSkills.has(GUNNERY)), ...drones], [54, 158], value, false)
+      else if (buff === 98) add([this.ship, ...drones], [37], value, true)
+      else if (buff === 100) add([this.ship], [564], value, false)
+    }
   }
 
   /** Effects whose behaviour isn't described by modifiers in the SDE (the client implements them in code). */
@@ -324,7 +386,9 @@ export class Dogma {
     this.evaluating.add(key)
     try {
       const mods = item.mods.get(attrId)
-      const value = mods?.length ? this.apply(base, mods, meta?.stack ?? true) : base
+      const raw = mods?.length ? this.apply(base, mods, meta?.stack ?? true) : base
+      const cap = CAPPED_BY[attrId]
+      const value = cap ? Math.min(raw, this.attr(item, cap)) : raw
       item.cache.set(attrId, value)
       return value
     } finally {
