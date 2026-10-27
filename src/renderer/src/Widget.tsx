@@ -4,6 +4,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { CharacterAuth } from '../../shared/types'
 import type { WidgetView } from '../../shared/widgets'
+import type { RadarStatus } from '../../shared/radar'
 import { setUiLang, translate } from './i18n'
 import { esi } from './lib/esi'
 import { fmtDuration, fmtIsk } from './lib/format'
@@ -11,7 +12,7 @@ import { jitaPrices } from './lib/market'
 import { searchTypesSde, type Lang } from './lib/sde'
 import { loadRow, type Row } from './pages/character/AllCharacters'
 
-const TITLES: Record<WidgetView, string> = { timers: 'Таймеры', price: 'Цена в Jita', wallet: 'Кошелёк' }
+const TITLES: Record<WidgetView, string> = { timers: 'Таймеры', price: 'Цена в Jita', wallet: 'Кошелёк', radar: 'Радар убийств' }
 
 export default function Widget({ view }: { view: WidgetView }) {
   const [lang, setLang] = useState<Lang>(1)
@@ -38,6 +39,7 @@ export default function Widget({ view }: { view: WidgetView }) {
         {view === 'timers' && <Timers chars={chars} />}
         {view === 'price' && <Price lang={lang} />}
         {view === 'wallet' && <Wallet chars={chars} />}
+        {view === 'radar' && <Radar />}
       </div>
     </div>
   )
@@ -161,6 +163,52 @@ function Price({ lang }: { lang: Lang }) {
             </>
           )}
         </div>
+      )}
+    </>
+  )
+}
+
+/** Kills near the pilot and on the route, newest first; camps, bubbles and smartbombs highlighted. */
+function Radar() {
+  const [status, setStatus] = useState<RadarStatus | null>(null)
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    const load = () => void window.api.radar.status().then(setStatus)
+    load()
+    const offKill = window.api.radar.onKill(load)
+    const offStatus = window.api.radar.onStatus(setStatus)
+    const t = setInterval(() => setNow(Date.now()), 30_000)
+    return () => {
+      offKill()
+      offStatus()
+      clearInterval(t)
+    }
+  }, [])
+  if (!status) return <div className="muted">…</div>
+  if (!status.enabled) return <div className="muted">{translate('Радар выключен: Разведка → Радар убийств')}</div>
+  const kills = status.kills.filter((k) => now - Date.parse(k.time) < 30 * 60_000)
+  return (
+    <>
+      <div className="muted small" translate="no">
+        {status.here ? `${status.here.name} · ${status.watched}` : '—'}
+        {status.error ? ` · ${status.error}` : ''}
+      </div>
+      {!kills.length ? (
+        <div className="muted">{translate('Рядом тихо')}</div>
+      ) : (
+        <ul className="widget-list radar-widget">
+          {kills.slice(0, 12).map((k) => {
+            const min = Math.max(0, Math.floor((now - Date.parse(k.time)) / 60_000))
+            const flags = [k.camp && translate('кемп'), k.bubbles && translate('бубли'), k.smartbombs && translate('смартбомбы')].filter(Boolean).join(', ')
+            return (
+              <li key={k.id} className={flags ? 'bad' : ''} title={k.attackerShips.join(', ')} translate="no">
+                <b>{k.system}</b> {k.jumps === undefined ? '↦' : k.jumps === 0 ? translate('здесь') : `${k.jumps}j`}
+                {k.gate ? ` → ${k.gate.toName}` : ''} · {flags ? `${flags} · ` : ''}
+                {k.victimShipName} · {min < 1 ? translate('сейчас') : `${min}m`}
+              </li>
+            )
+          })}
+        </ul>
       )}
     </>
   )

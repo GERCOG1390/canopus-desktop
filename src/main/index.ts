@@ -218,12 +218,14 @@ function radarAlert(k: RadarKill): void {
 
 function startRadar(): void {
   radar.apply({
+    // Every window: the main one, the intel overlay and the radar mini-window.
     kill: (k) => {
-      sendToMain('radar:kill', k)
-      intel.sendToOverlay('radar:kill', k)
+      for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('radar:kill', k)
       radarAlert(k)
     },
-    status: (st) => sendToMain('radar:status', st)
+    status: (st) => {
+      for (const w of BrowserWindow.getAllWindows()) if (!w.isDestroyed()) w.webContents.send('radar:status', st)
+    }
   })
 }
 

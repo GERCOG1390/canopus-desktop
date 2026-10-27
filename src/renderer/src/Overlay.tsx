@@ -24,7 +24,13 @@ export default function Overlay() {
   // Live kills from the radar (runs in the main process): the last few near the pilot.
   useEffect(() => {
     void window.api.radar.status().then((st) => setRadar(st.kills))
-    return window.api.radar.onKill((k) => setRadar((list) => [k, ...list.filter((x) => x.id !== k.id)].slice(0, 20)))
+    const offKill = window.api.radar.onKill((k) => setRadar((list) => [k, ...list.filter((x) => x.id !== k.id)].slice(0, 20)))
+    // The watched area changed (the pilot jumped): the list is rebuilt from the last hour.
+    const offStatus = window.api.radar.onStatus((st) => setRadar(st.kills))
+    return () => {
+      offKill()
+      offStatus()
+    }
   }, [])
 
   useEffect(() => {

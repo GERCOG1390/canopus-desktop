@@ -878,7 +878,8 @@ function DiscordCard() {
 const WIDGET_LABEL: Record<WidgetView, string> = {
   timers: 'Таймеры: навыки, планетарка, работы всех персонажей',
   price: 'Цена в Jita: быстрый поиск предмета с копированием цены',
-  wallet: 'Кошелёк: ISK всех персонажей'
+  wallet: 'Кошелёк: ISK всех персонажей',
+  radar: 'Радар убийств: кемпы, бубли и смартбомбы рядом и на маршруте'
 }
 
 /** Mini-windows over the game besides the intel overlay. */

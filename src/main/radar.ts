@@ -55,6 +55,7 @@ function rewatch(): void {
   watched = here && isLoaded() ? systemsWithin(here.id, Math.max(0, Math.min(10, s.radius))) : new Map()
   routeSet = s.route ? new Set(route) : new Set()
   onStatus?.(status())
+  void rebuild()
 }
 
 /** The pilot moved (from the game log): watch the systems around the new one. */
@@ -103,14 +104,28 @@ async function getJson<T>(url: string): Promise<{ status: number; data?: T }> {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+/**
+ * Every player kill of the last hour across New Eden (a few hundred): when the pilot jumps somewhere new,
+ * what happened around there during the last hour shows at once.
+ */
+let recent: R2z2Kill[] = []
+
 async function handle(k: R2z2Kill): Promise<void> {
   seen++
   // Killmails reach zKillboard late now and then (hours or days): only the last hour is news.
   if (k.zkb.npc || Date.now() - Date.parse(k.esi.killmail_time) > KEEP_MS) return
+  recent.push(k)
+  if (recent.length > 2000 || recent.length % 50 === 0) recent = recent.filter((x) => Date.now() - Date.parse(x.esi.killmail_time) <= KEEP_MS).slice(-2000)
+  const kill = await build(k)
+  if (kill) onKill?.(kill, status())
+}
+
+/** The radar entry for a kill in a watched system or on the route (null otherwise); added to the list. */
+async function build(k: R2z2Kill): Promise<RadarKill | null> {
   const sys = k.esi.solar_system_id
   const jumps = watched.get(sys)
   const onRoute = routeSet.has(sys)
-  if (jumps === undefined && !onRoute) return
+  if (jumps === undefined && !onRoute) return null
   const info = sdeSystem(sys)
   const attackers = k.esi.attackers
   const ships = new Map<number, number>()
@@ -141,8 +156,20 @@ async function handle(k: R2z2Kill): Promise<void> {
   }
   // A camp found now marks the earlier kill at the same gate too.
   if (kill.camp && gate) for (const x of kills) if (x.systemId === sys && x.gate?.to === gate.to) x.camp = true
-  kills = [kill, ...kills].slice(0, 200)
-  onKill?.(kill, status())
+  kills = [kill, ...kills.filter((x) => x.id !== kill.id)].slice(0, 200)
+  return kill
+}
+
+let rebuilding = 0
+/** The watched area changed: the list is rebuilt from the last hour of kills (no alerts for them). */
+async function rebuild(): Promise<void> {
+  const run = ++rebuilding
+  kills = []
+  for (const k of [...recent].sort((a, b) => Date.parse(a.esi.killmail_time) - Date.parse(b.esi.killmail_time))) {
+    if (run !== rebuilding) return
+    await build(k)
+  }
+  onStatus?.(status())
 }
 
 async function loop(): Promise<void> {
