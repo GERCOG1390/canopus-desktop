@@ -45,7 +45,8 @@ const settings = (): RadarSettings => loadSettings().radar
 
 export function status(): RadarStatus {
   const cutoff = Date.now() - KEEP_MS
-  kills = kills.filter((k) => Date.parse(k.time) >= cutoff)
+  // Newest kill first by when it happened (late killmails arrive out of order).
+  kills = kills.filter((k) => Date.parse(k.time) >= cutoff).sort((a, b) => Date.parse(b.time) - Date.parse(a.time))
   return { enabled: settings().enabled, running, here, watched: watched.size, routeSystems: routeSet.size, seen, error, kills }
 }
 
