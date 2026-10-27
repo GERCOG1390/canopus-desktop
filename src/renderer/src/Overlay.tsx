@@ -6,6 +6,7 @@ import { THREAT_LABEL } from './lib/intel'
 import { secColor, roundSec } from './lib/format'
 import { useTypeBasic } from './lib/sde'
 import { setUiLang, translate } from './i18n'
+import { RadarCard } from './components/RadarCard'
 
 const SHOWN: Threat[] = ['hostile', 'high', 'medium', 'unknown', 'low', 'friendly']
 
@@ -66,24 +67,15 @@ export default function Overlay() {
   const radarShown = radar
     .filter((k) => Date.now() - Date.parse(k.time) < 30 * 60_000)
     .sort((a, b) => Number(b.camp || b.bubbles || b.smartbombs) - Number(a.camp || a.bubbles || a.smartbombs) || Date.parse(b.time) - Date.parse(a.time))
-    .slice(0, 4)
+    .slice(0, 3)
   const radarDanger = radarShown.some((k) => (k.camp || k.bubbles || k.smartbombs) && (k.jumps ?? 99) <= 2)
   const danger = (s?.counts.hostile ?? 0) + (s?.counts.high ?? 0) + (nearReport ? 1 : 0) + (radarDanger ? 1 : 0)
   const radarList = radarShown.length > 0 && (
-    <ul className="ov-reports ov-radar">
-      {radarShown.map((k) => {
-        const min = Math.floor((Date.now() - Date.parse(k.time)) / 60_000)
-        const flags = [k.camp && translate('кемп'), k.bubbles && translate('бубли'), k.smartbombs && translate('смартбомбы')].filter(Boolean).join(', ')
-        return (
-          <li key={k.id} className={flags ? 'danger' : ''} title={k.attackerShips.join(', ')} translate="no">
-            <span className="ov-report-sys">{k.system}</span>
-            <span className="ov-report-jumps">{k.jumps === undefined ? '↦' : k.jumps === 0 ? translate('здесь') : `${k.jumps}j`}</span>
-            <span className="ov-report-text">{`${flags ? flags + ' · ' : ''}${k.gate ? `→ ${k.gate.toName} · ` : ''}${k.victimShipName}`}</span>
-            <span className="ov-report-ago">{min < 1 ? translate('сейчас') : `${min}m`}</span>
-          </li>
-        )
-      })}
-    </ul>
+    <div className="ov-radar">
+      {radarShown.map((k) => (
+        <RadarCard key={k.id} k={k} compact />
+      ))}
+    </div>
   )
   const reportList = reports.length > 0 && (
     <ul className="ov-reports">

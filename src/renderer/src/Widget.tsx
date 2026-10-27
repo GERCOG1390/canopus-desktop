@@ -6,6 +6,7 @@ import type { CharacterAuth } from '../../shared/types'
 import type { WidgetView } from '../../shared/widgets'
 import type { RadarStatus } from '../../shared/radar'
 import { setUiLang, translate } from './i18n'
+import { RadarCard } from './components/RadarCard'
 import { esi } from './lib/esi'
 import { fmtDuration, fmtIsk } from './lib/format'
 import { jitaPrices } from './lib/market'
@@ -196,19 +197,11 @@ function Radar() {
       {!kills.length ? (
         <div className="muted">{translate('Рядом тихо')}</div>
       ) : (
-        <ul className="widget-list radar-widget">
-          {kills.slice(0, 12).map((k) => {
-            const min = Math.max(0, Math.floor((now - Date.parse(k.time)) / 60_000))
-            const flags = [k.camp && translate('кемп'), k.bubbles && translate('бубли'), k.smartbombs && translate('смартбомбы')].filter(Boolean).join(', ')
-            return (
-              <li key={k.id} className={flags ? 'bad' : ''} title={k.attackerShips.join(', ')} translate="no">
-                <b>{k.system}</b> {k.jumps === undefined ? '↦' : k.jumps === 0 ? translate('здесь') : `${k.jumps}j`}
-                {k.gate ? ` → ${k.gate.toName}` : ''} · {flags ? `${flags} · ` : ''}
-                {k.victimShipName} · {min < 1 ? translate('сейчас') : `${min}m`}
-              </li>
-            )
-          })}
-        </ul>
+        <div className="radar-widget">
+          {kills.slice(0, 12).map((k) => (
+            <RadarCard key={k.id} k={k} now={now} compact />
+          ))}
+        </div>
       )}
     </>
   )

@@ -1571,6 +1571,11 @@ export const EXACT: Record<string, string> = {
   'Маршрут в игре': 'In-game route',
   'Сохраняю фит в игру': 'Saving the fit to the game',
   'Оптимизация по цене': 'Price optimizer',
+  ЗДЕСЬ: 'HERE',
+  'КЕМП НА ГЕЙТЕ': 'GATE CAMP',
+  БУБЛИ: 'BUBBLES',
+  СМАРТБОМБЫ: 'SMARTBOMBS',
+  Атакующие: 'Attackers',
   'Бездна': 'Abyss',
   'Электрическая — дыра в ЭМ': 'Electrical — EM hole',
   'Тёмная — дальность турелей': 'Dark — turret range',
@@ -1766,6 +1771,9 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^(\d+) мин$/, '$1 min'],
+  [/^(\d+) пр\.$/, '$1 j'],
+  [/^(\d+) пил\.$/, '$1 pilots'],
   [/^гейт → (.+)$/, 'gate → $1'],
   [/^(\d+) пр\.$/, '$1 j'],
   [/^(\d+) мин назад$/, '$1 min ago'],

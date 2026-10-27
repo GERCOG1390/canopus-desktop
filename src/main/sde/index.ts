@@ -926,6 +926,7 @@ export function systemsWithin(fromId: number, radius: number): Map<number, numbe
 /** A type's group id (0 if unknown). */
 export const groupOf = (typeId: number): number => need().types[typeId]?.g ?? 0
 export const typeName = (typeId: number): string => need().types[typeId]?.n[0] ?? `#${typeId}`
+export const groupName = (typeId: number): string => need().groups[groupOf(typeId)]?.n[0] ?? ''
 
 export function jumpsFrom(fromId: number, targets: number[], max = 40): Record<number, number> {
   const d = need()

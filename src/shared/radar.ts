@@ -37,6 +37,22 @@ export interface RadarKill {
   camp: boolean
   /** Attackers' ships, most common first */
   attackerShips: string[]
+  /** The victim's ship class ("Battleship") */
+  victimGroup?: string
+  /** The victim's alliance, else corporation */
+  victimOrg?: RadarOrg
+  /** The attackers' alliances / corporations, most pilots first (up to 2) */
+  killers?: (RadarOrg & { n: number })[]
+  /** Attackers' ship types with how many flew each, most common first */
+  attackerTypes?: { id: number; n: number; name: string }[]
+  /** Weapons used (by attackers with a weapon other than their ship), most common first */
+  weapons?: { id: number; n: number; name: string }[]
+}
+
+export interface RadarOrg {
+  id: number
+  kind: 'alliance' | 'corporation'
+  name: string
 }
 
 export interface RadarStatus {

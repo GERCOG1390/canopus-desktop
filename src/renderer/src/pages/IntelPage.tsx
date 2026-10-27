@@ -5,6 +5,7 @@ import { PREVIEW_KEYS, type PreviewSettings } from '../../../shared/previews'
 import type { IntelReport, Threat } from '../../../shared/intel'
 import { useApp } from '../AppContext'
 import { REPORT_FRESH_MS, useIntel } from '../IntelContext'
+import { RadarCard } from '../components/RadarCard'
 import { TypeLink } from '../components/TypeLink'
 import { GameButton } from '../components/GameButton'
 import { addContacts, SCOPE } from '../lib/gameActions'
@@ -712,27 +713,9 @@ function RadarTab() {
 }
 
 function RadarRow({ k }: { k: RadarKill }) {
-  const min = Math.max(0, Math.floor((Date.now() - Date.parse(k.time)) / 60_000))
-  const danger = k.camp || k.bubbles || k.smartbombs
   return (
-    <li className={`radar-kill ${danger ? 'danger' : ''}`}>
-      <div className="row">
-        <Sec value={k.security} />
-        <b translate="no">{k.system}</b>
-        {k.gate && <span className="muted small" translate="no">{`гейт → ${k.gate.toName}`}</span>}
-        <span className="muted small">{k.jumps !== undefined ? (k.jumps === 0 ? 'здесь' : `${k.jumps} пр.`) : 'на маршруте'}</span>
-        <span className="grow" />
-        <span className="muted small">{min < 1 ? 'сейчас' : `${min} мин назад`}</span>
-      </div>
-      <div className="row small">
-        {k.camp && <span className="radar-flag">Кемп</span>}
-        {k.bubbles && <span className="radar-flag">Бубли</span>}
-        {k.smartbombs && <span className="radar-flag">Смартбомбы</span>}
-        <TypeLink id={k.victimShip} size={18} />
-        <span className="muted">{`${fmtIsk(k.value, true)} · ${k.attackers} атак.`}</span>
-        {!!k.attackerShips.length && <span className="muted" translate="no">{k.attackerShips.join(', ')}</span>}
-        <a href={`https://zkillboard.com/kill/${k.id}/`}>zKillboard</a>
-      </div>
+    <li className="radar-kill">
+      <RadarCard k={k} />
     </li>
   )
 }

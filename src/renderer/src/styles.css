@@ -4357,9 +4357,7 @@ button.danger-fill:hover:not(:disabled) {
   gap: 8px;
 }
 .radar-kill {
-  padding: 6px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--border);
+  list-style: none;
 }
 .radar-kill.danger {
   border-color: var(--danger, #e5533d);
@@ -4371,10 +4369,6 @@ button.danger-fill:hover:not(:disabled) {
   background: var(--danger, #e5533d);
   color: #fff;
 }
-.ov-radar li.danger .ov-report-text {
-  color: var(--danger, #e5533d);
-  font-weight: 600;
-}
 
 /* Abyss planner */
 .row.wrap {
@@ -4385,4 +4379,176 @@ button.danger-fill:hover:not(:disabled) {
 }
 .abyss .tabs {
   margin-top: 14px;
+}
+
+/* Radar kill card (overlay, mini-window, Intel page) */
+.rk {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  margin: 4px 0;
+  border-radius: 6px;
+  background: var(--panel-2);
+  border-left: 3px solid var(--line-strong);
+  font-size: 12px;
+  line-height: 1.35;
+}
+.rk-danger {
+  border-left-color: var(--bad-fill);
+  background: color-mix(in srgb, var(--bad-fill) 13%, var(--panel-2));
+}
+.rk-victim img {
+  display: block;
+  border-radius: 4px;
+  outline: 2px solid color-mix(in srgb, var(--bad-fill) 70%, transparent);
+  outline-offset: -2px;
+}
+.rk-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rk-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.rk-line .grow {
+  flex: 1;
+}
+.rk-ship {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rk-dim {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rk-isk {
+  color: var(--star);
+  font-weight: 600;
+}
+.rk-ago {
+  color: var(--muted);
+  min-width: 42px;
+  text-align: right;
+}
+.rk-ago.fresh {
+  color: var(--bad);
+  font-weight: 600;
+}
+.rk-jumps {
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--hover);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 600;
+}
+.rk-jumps.here {
+  background: var(--bad-fill);
+  color: #fff;
+}
+.rk-jumps.near {
+  background: color-mix(in srgb, var(--warn) 30%, var(--hover));
+  color: var(--warn);
+}
+.rk-jumps.route {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.rk-gate {
+  color: var(--warn);
+  font-weight: 600;
+}
+.rk-flag {
+  padding: 0 6px;
+  border-radius: 3px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+}
+.rk-flag.camp {
+  background: var(--bad-fill);
+}
+.rk-flag.bubble {
+  background: #8a5cd6;
+}
+.rk-flag.bomb {
+  background: #d9822b;
+}
+.rk-sword {
+  color: var(--bad);
+}
+.rk-org {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+.rk-org img {
+  border-radius: 2px;
+}
+.rk-org-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+.rk-icons {
+  gap: 3px;
+  margin-top: 2px;
+}
+.rk-icon {
+  position: relative;
+  display: inline-block;
+}
+.rk-icon img {
+  display: block;
+  border-radius: 3px;
+  background: var(--bg);
+}
+.rk-badge {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  min-width: 13px;
+  padding: 0 2px;
+  border-radius: 7px;
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  font-size: 9px;
+  line-height: 11px;
+  text-align: center;
+  color: var(--text);
+}
+.rk-sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--line-strong);
+}
+.rk-compact .rk-org-name {
+  max-width: 110px;
+}
+.ov-radar {
+  padding: 2px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.radar-widget .rk:first-child {
+  margin-top: 0;
+}
+.rk-killers > span:not(.rk-org),
+.rk-org > .rk-dim,
+.rk-org > img {
+  flex-shrink: 0;
+}
+.rk-org {
+  flex-shrink: 1;
 }

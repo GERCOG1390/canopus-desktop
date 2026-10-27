@@ -15,5 +15,5 @@ export const WIDGET_SIZE: Record<WidgetView, { width: number; height: number }> 
   timers: { width: 320, height: 260 },
   price: { width: 300, height: 200 },
   wallet: { width: 260, height: 200 },
-  radar: { width: 340, height: 240 }
+  radar: { width: 380, height: 460 }
 }

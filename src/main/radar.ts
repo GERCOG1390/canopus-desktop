@@ -2,9 +2,9 @@
 // near the pilot or on the route planned in Canopus, marking gate camps, bubbles and smartbombs.
 // Polling follows zKillboard's rules: the next file every ~100 ms while there are kills, 6 s after a 404.
 
-import type { RadarKill, RadarSettings, RadarStatus } from '../shared/radar'
+import type { RadarKill, RadarOrg, RadarSettings, RadarStatus } from '../shared/radar'
 import { request } from './http'
-import { groupOf, isLoaded, system as sdeSystem, systemsWithin, typeName } from './sde'
+import { groupName, groupOf, isLoaded, system as sdeSystem, systemsWithin, typeName } from './sde'
 import { loadSettings } from './storage'
 
 const FEED = 'https://r2z2.zkillboard.com/ephemeral'
@@ -21,8 +21,8 @@ interface R2z2Kill {
   esi: {
     killmail_time: string
     solar_system_id: number
-    victim: { ship_type_id: number }
-    attackers: { ship_type_id?: number; weapon_type_id?: number }[]
+    victim: { ship_type_id: number; corporation_id?: number; alliance_id?: number }
+    attackers: { ship_type_id?: number; weapon_type_id?: number; corporation_id?: number; alliance_id?: number }[]
   }
   zkb: { locationID?: number; totalValue?: number; npc?: boolean }
 }
@@ -94,6 +94,31 @@ function gateLeadsTo(gate: number): Promise<number | null> {
   return p
 }
 
+// ---------- Names of alliances and corporations ----------
+
+const orgNames = new Map<number, string>()
+
+async function nameOrgs(ids: number[]): Promise<void> {
+  const missing = [...new Set(ids)].filter((id) => id && !orgNames.has(id))
+  if (!missing.length) return
+  try {
+    const rows = (await request('https://esi.evetech.net/latest/universe/names/', { method: 'POST', body: missing.slice(0, 500) })) as { id: number; name: string }[]
+    for (const r of rows) orgNames.set(r.id, r.name)
+  } catch {
+    // Names are a nicety: the logos still show.
+  }
+}
+
+const org = (alliance?: number, corp?: number): RadarOrg | undefined =>
+  alliance ? { id: alliance, kind: 'alliance', name: orgNames.get(alliance) ?? '' } : corp ? { id: corp, kind: 'corporation', name: orgNames.get(corp) ?? '' } : undefined
+
+/** Counts of values, most common first. */
+function tally(values: (number | undefined)[]): { id: number; n: number }[] {
+  const m = new Map<number, number>()
+  for (const v of values) if (v) m.set(v, (m.get(v) ?? 0) + 1)
+  return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([id, n]) => ({ id, n }))
+}
+
 // ---------- Feed ----------
 
 async function getJson<T>(url: string): Promise<{ status: number; data?: T }> {
@@ -135,6 +160,14 @@ async function build(k: R2z2Kill): Promise<RadarKill | null> {
     const to = await gateLeadsTo(k.zkb.locationID)
     if (to) gate = { to, toName: sdeSystem(to)?.n ?? String(to) }
   }
+  const v = k.esi.victim
+  // Who did it: each attacker's alliance, else corporation.
+  const killerOrgs = tally(attackers.map((a) => a.alliance_id || a.corporation_id)).slice(0, 2)
+  await nameOrgs([v.alliance_id ?? v.corporation_id ?? 0, ...killerOrgs.map((o) => o.id)])
+  const killers = killerOrgs.map(({ id, n }) => {
+    const a = attackers.find((x) => (x.alliance_id || x.corporation_id) === id)
+    return { ...org(a?.alliance_id, a?.alliance_id ? undefined : a?.corporation_id)!, n }
+  })
   const recentAtGate = gate ? kills.filter((x) => x.systemId === sys && x.gate?.to === gate!.to && Date.now() - Date.parse(x.time) < CAMP_WINDOW_MS).length : 0
   const kill: RadarKill = {
     id: k.killmail_id,
@@ -152,6 +185,11 @@ async function build(k: R2z2Kill): Promise<RadarKill | null> {
     bubbles: attackers.some((a) => a.ship_type_id && BUBBLE_GROUPS.has(groupOf(a.ship_type_id))),
     smartbombs: attackers.some((a) => a.weapon_type_id && groupOf(a.weapon_type_id) === SMARTBOMB_GROUP),
     camp: !!gate && (recentAtGate >= 1 || attackers.length >= 5),
+    victimGroup: groupName(v.ship_type_id),
+    victimOrg: org(v.alliance_id, v.corporation_id),
+    killers,
+    attackerTypes: tally(attackers.map((a) => a.ship_type_id)).slice(0, 6).map((x) => ({ ...x, name: typeName(x.id) })),
+    weapons: tally(attackers.map((a) => (a.weapon_type_id && a.weapon_type_id !== a.ship_type_id ? a.weapon_type_id : undefined))).slice(0, 4).map((x) => ({ ...x, name: typeName(x.id) })),
     attackerShips: [...ships.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([id, n]) => (n > 1 ? `${n}× ${typeName(id)}` : typeName(id)))
   }
   // A camp found now marks the earlier kill at the same gate too.
