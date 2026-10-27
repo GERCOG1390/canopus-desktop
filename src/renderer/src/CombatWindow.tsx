@@ -450,6 +450,10 @@ function TacticalMap({
         <marker id="arrow-b" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" className="arrowhead-b" />
         </marker>
+        {/* Ship icons are square: cropped to the marker's circle. */}
+        <clipPath id="ship-icon-clip" clipPathUnits="objectBoundingBox">
+          <circle cx={0.5} cy={0.5} r={0.5} />
+        </clipPath>
       </defs>
       <rect x={0} y={0} width={W} height={H} className="map-bg" />
       {[0.25, 0.5, 0.75, 1].map((f) => (
@@ -467,11 +471,13 @@ function TacticalMap({
       <line x1={bx} y1={by} x2={tb.x} y2={tb.y} className="vec vec-b" markerEnd="url(#arrow-b)" />
       <g className="ship ship-a">
         <circle cx={cx} cy={cy} r={17} />
-        <image href={imageUrl.typeIcon(r.a.shipTypeId, 64)} x={cx - 14} y={cy - 14} width={28} height={28} />
+        <image href={imageUrl.typeIcon(r.a.shipTypeId, 64)} x={cx - 16} y={cy - 16} width={32} height={32} clipPath="url(#ship-icon-clip)" />
+        <circle cx={cx} cy={cy} r={17} className="ship-ring" />
       </g>
       <g className="ship ship-b draggable" onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('b'))}>
         <circle cx={bx} cy={by} r={17} />
-        <image href={imageUrl.typeIcon(r.b.shipTypeId, 64)} x={bx - 14} y={by - 14} width={28} height={28} />
+        <image href={imageUrl.typeIcon(r.b.shipTypeId, 64)} x={bx - 16} y={by - 16} width={32} height={32} clipPath="url(#ship-icon-clip)" />
+        <circle cx={bx} cy={by} r={17} className="ship-ring" />
       </g>
       <circle cx={ta.x} cy={ta.y} r={8} className="handle handle-a" onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('va'))} />
       <circle cx={tb.x} cy={tb.y} r={8} className="handle handle-b" onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('vb'))} />

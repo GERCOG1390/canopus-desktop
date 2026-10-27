@@ -2627,6 +2627,9 @@ html.overlay-mode body {
   fill: var(--bg);
   stroke-width: 2;
 }
+.combat-map .ship circle.ship-ring {
+  fill: none;
+}
 .combat-map .ship-a circle {
   stroke: var(--accent);
 }
