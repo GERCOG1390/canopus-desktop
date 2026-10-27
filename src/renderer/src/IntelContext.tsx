@@ -260,6 +260,19 @@ export function IntelProvider({ children }: { children: ReactNode }) {
     }
   }, [scanText, setDscanText, setFleetText, addSpeaker])
 
+  // The kill radar watches the systems around the one the pilot is in.
+  useEffect(() => {
+    void window.api.radar.setHere(system?.id ?? null)
+  }, [system?.id])
+  useEffect(
+    () =>
+      window.api.radar.onKill((k) => {
+        const r = settingsRef.current?.radar
+        if (r?.sound && (k.camp || k.bubbles || k.smartbombs) && Date.now() - Date.parse(k.time) < 10 * 60_000) beep()
+      }),
+    []
+  )
+
   // Keep the overlay in sync.
   useEffect(() => {
     const pilots = scan ? sortPilots(scan.pilots) : []

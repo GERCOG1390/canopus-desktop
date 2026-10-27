@@ -4346,3 +4346,32 @@ button.danger-fill:hover:not(:disabled) {
   padding-left: 8px;
   border-left: 2px solid var(--border);
 }
+
+/* ---------- Kill radar ---------- */
+.radar-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.radar-kill {
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.radar-kill.danger {
+  border-color: var(--danger, #e5533d);
+}
+.radar-flag {
+  padding: 0 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  background: var(--danger, #e5533d);
+  color: #fff;
+}
+.ov-radar li.danger .ov-report-text {
+  color: var(--danger, #e5533d);
+  font-weight: 600;
+}

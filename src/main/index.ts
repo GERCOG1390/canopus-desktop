@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, screen, shell, Tray } from 'electron'
+import { app, BrowserWindow, clipboard, ClipboardItem, dialog, ipcMain, Menu, nativeImage, Notification, screen, shell, Tray } from 'electron'
 import { writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import type { FitShotData, RequestOptions, Settings } from '../shared/types'
@@ -23,6 +23,8 @@ import * as widgets from './widgets'
 import * as previews from './previews'
 import * as assistant from './assistant'
 import * as knowledge from './knowledge'
+import * as radar from './radar'
+import type { RadarKill, RadarSettings } from '../shared/radar'
 import type { AssistantAuth, ResponseItem, ToolDef } from '../shared/assistant'
 import type { ClientWindow, PreviewSettings } from '../shared/previews'
 import type { WidgetView } from '../shared/widgets'
@@ -193,6 +195,38 @@ function openFitShot(pilot: FitShotData): void {
   loadRenderer(fitShotWindow, 'fitshot')
 }
 
+// ---------- Kill radar ----------
+
+const isk = (v: number) => (v >= 1e9 ? `${(v / 1e9).toFixed(1)}B` : `${Math.round(v / 1e6)}M`)
+
+/** Desktop and Discord alert for a radar kill, as the settings ask. */
+function radarAlert(k: RadarKill): void {
+  const s = loadSettings()
+  const danger = k.camp || k.bubbles || k.smartbombs
+  if (s.radar.notify === 'off' || (s.radar.notify === 'danger' && !danger)) return
+  // Older kills (from the feed's backlog when the radar starts) are listed, not announced.
+  if (Date.now() - Date.parse(k.time) > 10 * 60_000) return
+  const ru = s.lang !== 'en'
+  const where = `${k.system}${k.gate ? ` → ${k.gate.toName}` : ''}`
+  const dist = k.jumps !== undefined ? (ru ? ` (${k.jumps} пр.)` : ` (${k.jumps} j)`) : ru ? ' (на маршруте)' : ' (on route)'
+  const kind = k.camp ? (ru ? 'Кемп' : 'Gate camp') : k.smartbombs ? (ru ? 'Смартбомбы' : 'Smartbombs') : k.bubbles ? (ru ? 'Бубли' : 'Bubbles') : ru ? 'Убийство' : 'Kill'
+  const title = `${kind}: ${where}${dist}`
+  const body = `${k.victimShipName} · ${isk(k.value)} ISK · ${k.attackers} ${ru ? 'атак.' : 'attackers'}${k.attackerShips.length ? `\n${k.attackerShips.join(', ')}` : ''}\nhttps://zkillboard.com/kill/${k.id}/`
+  if (Notification.isSupported()) new Notification({ title, body, silent: true }).show()
+  if (s.radar.discord && s.intel.discord.webhook) intel.postDiscord(s.intel.discord.webhook, title, body, 'channel')
+}
+
+function startRadar(): void {
+  radar.apply({
+    kill: (k) => {
+      sendToMain('radar:kill', k)
+      intel.sendToOverlay('radar:kill', k)
+      radarAlert(k)
+    },
+    status: (st) => sendToMain('radar:status', st)
+  })
+}
+
 const sendToMain = (channel: string, payload: unknown): void => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send(channel, payload)
 }
@@ -330,6 +364,17 @@ function registerIpc(): void {
     combatAttacker = attacker
     if (combatWindow && !combatWindow.isDestroyed()) combatWindow.webContents.send('combat:attacker', attacker)
   })
+  ipcMain.handle('radar:status', () => radar.status())
+  ipcMain.handle('radar:set', (_e, patch: Partial<RadarSettings>) => {
+    const s = loadSettings()
+    s.radar = { ...s.radar, ...patch }
+    saveSettings(s)
+    startRadar()
+    sendToMain('intel:settingsChanged', null)
+    return s.radar
+  })
+  ipcMain.handle('radar:setHere', (_e, id: number | null) => radar.setHere(id))
+  ipcMain.handle('radar:setRoute', (_e, ids: number[]) => radar.setRoute(ids))
   ipcMain.handle('knowledge:status', () => knowledge.status())
   ipcMain.handle('knowledge:update', (e) => knowledge.update(e.sender))
   ipcMain.handle('knowledge:refreshIfStale', (e) => knowledge.refreshIfStale(e.sender))
@@ -429,6 +474,7 @@ app.whenReady().then(() => {
   combatlog.initCombatLog(sendToMain)
   updater.initUpdater((status) => sendToMain('update:status', status))
   stream.initStream((s) => sendToMain('stream:status', s))
+  startRadar()
   // macOS: clicking the Dock icon brings back a window hidden to the tray (menu bar).
   app.on('activate', showMain)
 })

@@ -120,6 +120,11 @@ function RoutePlanner() {
 
   // Recent kills from zKillboard for systems where ESI saw ship kills in the last hour.
   const routeKey = rows.map((r) => r.system_id).join(',')
+  // The kill radar also watches this route.
+  useEffect(() => {
+    void window.api.radar.setRoute(rows.map((r) => r.system_id))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey])
   useEffect(() => {
     setDanger(new Map())
     setOpen(null)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { OverlaySummary, Threat } from '../../shared/intel'
 import type { Settings } from '../../shared/types'
+import type { RadarKill } from '../../shared/radar'
 import { THREAT_LABEL } from './lib/intel'
 import { secColor, roundSec } from './lib/format'
 import { useTypeBasic } from './lib/sde'
@@ -19,6 +20,12 @@ export default function Overlay() {
   const [s, setS] = useState<OverlaySummary | null>(null)
   const [settings, setSettings] = useState<Settings | null>(null)
   const [, tick] = useState(0)
+  const [radar, setRadar] = useState<RadarKill[]>([])
+  // Live kills from the radar (runs in the main process): the last few near the pilot.
+  useEffect(() => {
+    void window.api.radar.status().then((st) => setRadar(st.kills))
+    return window.api.radar.onKill((k) => setRadar((list) => [k, ...list.filter((x) => x.id !== k.id)].slice(0, 20)))
+  }, [])
 
   useEffect(() => {
     document.documentElement.classList.add('overlay-mode')
@@ -49,7 +56,29 @@ export default function Overlay() {
   const alertJumps = settings?.intel.channelJumps ?? -1
   const reports = s?.reports ?? []
   const nearReport = reports.some((r) => !r.clear && r.jumps <= alertJumps)
-  const danger = (s?.counts.hostile ?? 0) + (s?.counts.high ?? 0) + (nearReport ? 1 : 0)
+  // Radar kills of the last 30 minutes, dangerous ones (camps, bubbles, smartbombs) first.
+  const radarShown = radar
+    .filter((k) => Date.now() - Date.parse(k.time) < 30 * 60_000)
+    .sort((a, b) => Number(b.camp || b.bubbles || b.smartbombs) - Number(a.camp || a.bubbles || a.smartbombs) || Date.parse(b.time) - Date.parse(a.time))
+    .slice(0, 4)
+  const radarDanger = radarShown.some((k) => (k.camp || k.bubbles || k.smartbombs) && (k.jumps ?? 99) <= 2)
+  const danger = (s?.counts.hostile ?? 0) + (s?.counts.high ?? 0) + (nearReport ? 1 : 0) + (radarDanger ? 1 : 0)
+  const radarList = radarShown.length > 0 && (
+    <ul className="ov-reports ov-radar">
+      {radarShown.map((k) => {
+        const min = Math.floor((Date.now() - Date.parse(k.time)) / 60_000)
+        const flags = [k.camp && translate('кемп'), k.bubbles && translate('бубли'), k.smartbombs && translate('смартбомбы')].filter(Boolean).join(', ')
+        return (
+          <li key={k.id} className={flags ? 'danger' : ''} title={k.attackerShips.join(', ')} translate="no">
+            <span className="ov-report-sys">{k.system}</span>
+            <span className="ov-report-jumps">{k.jumps === undefined ? '↦' : k.jumps === 0 ? translate('здесь') : `${k.jumps}j`}</span>
+            <span className="ov-report-text">{`${flags ? flags + ' · ' : ''}${k.gate ? `→ ${k.gate.toName} · ` : ''}${k.victimShipName}`}</span>
+            <span className="ov-report-ago">{min < 1 ? translate('сейчас') : `${min}m`}</span>
+          </li>
+        )
+      })}
+    </ul>
+  )
   const reportList = reports.length > 0 && (
     <ul className="ov-reports">
       {reports.map((r) => {
@@ -82,6 +111,7 @@ export default function Overlay() {
           </button>
         </span>
       </div>
+      {radarList}
       {reportList}
       {!s || !s.total ? (
         <div className="ov-empty">

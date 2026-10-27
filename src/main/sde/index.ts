@@ -905,6 +905,28 @@ export function parseIntelMessage(text: string): { systems: number[]; ships: num
 const distanceCache = new Map<number, Map<number, number>>()
 
 /** Jumps by stargate from one system to others (breadth-first, up to `max` jumps; farther ones are omitted). */
+/** Every system within `radius` jumps by stargate, with its distance (the start at 0). */
+export function systemsWithin(fromId: number, radius: number): Map<number, number> {
+  const d = need()
+  const dist = new Map([[fromId, 0]])
+  let frontier = [fromId]
+  for (let depth = 1; depth <= radius && frontier.length; depth++) {
+    const next: number[] = []
+    for (const s of frontier)
+      for (const n of d.jumps?.[s] ?? []) {
+        if (dist.has(n)) continue
+        dist.set(n, depth)
+        next.push(n)
+      }
+    frontier = next
+  }
+  return dist
+}
+
+/** A type's group id (0 if unknown). */
+export const groupOf = (typeId: number): number => need().types[typeId]?.g ?? 0
+export const typeName = (typeId: number): string => need().types[typeId]?.n[0] ?? `#${typeId}`
+
 export function jumpsFrom(fromId: number, targets: number[], max = 40): Record<number, number> {
   const d = need()
   if (!d.jumps) return {}

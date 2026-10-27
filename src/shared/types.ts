@@ -2,6 +2,7 @@
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
 import type { NpcFaction, NpcReport } from './npc'
+import type { RadarKill, RadarSettings, RadarStatus } from './radar'
 import type { AssistantAccount, AssistantAuth, AssistantSettings, AssistantTurn, KnowledgeHit, KnowledgeStatus, ResponseItem, ToolDef } from './assistant'
 
 /** A fit for the snapshot window, with the name of the character whose skills it uses */
@@ -56,6 +57,7 @@ export interface Settings {
   widgets: WidgetSettings
   previews: PreviewSettings
   assistant: AssistantSettings
+  radar: RadarSettings
 }
 
 export type ThemeId = 'canopus' | 'photon' | 'amarr' | 'caldari' | 'gallente' | 'minmatar'
@@ -187,6 +189,16 @@ export interface CanopusApi {
     /** Stargate jumps from a system to others (unreachable / far ones omitted). */
     jumpsFrom(fromId: number, ids: number[]): Promise<Record<number, number>>
     systemId(name: string): Promise<number | null>
+  }
+  radar: {
+    status(): Promise<RadarStatus>
+    set(patch: Partial<RadarSettings>): Promise<RadarSettings>
+    /** The system the pilot is in (from the game log) */
+    setHere(systemId: number | null): Promise<void>
+    /** The route planned in Canopus */
+    setRoute(ids: number[]): Promise<void>
+    onKill(listener: (k: RadarKill) => void): () => void
+    onStatus(listener: (s: RadarStatus) => void): () => void
   }
   knowledge: {
     status(): Promise<KnowledgeStatus>

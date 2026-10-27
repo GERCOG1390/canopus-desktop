@@ -490,6 +490,11 @@ export function publish(summary: OverlaySummary): void {
 
 export const getLastSummary = (): OverlaySummary | null => lastSummary
 
+/** Passes a live event (the kill radar) to the overlay window when it is open. */
+export function sendToOverlay(channel: string, payload: unknown): void {
+  if (overlay && !overlay.isDestroyed()) overlay.webContents.send(channel, payload)
+}
+
 export function notify(title: string, body: string, kind?: 'local' | 'channel'): void {
   if (Notification.isSupported()) new Notification({ title, body, silent: true }).show()
   const d = loadSettings().intel.discord

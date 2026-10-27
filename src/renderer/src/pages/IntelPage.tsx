@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import type { RadarKill, RadarStatus } from '../../../shared/radar'
 import { WIDGET_VIEWS, type WidgetView } from '../../../shared/widgets'
 import { PREVIEW_KEYS, type PreviewSettings } from '../../../shared/previews'
 import type { IntelReport, Threat } from '../../../shared/intel'
@@ -9,13 +10,13 @@ import { GameButton } from '../components/GameButton'
 import { addContacts, SCOPE } from '../lib/gameActions'
 import { Card, Empty, Sec, Stat, Tabs } from '../components/ui'
 import { imageUrl } from '../lib/esi'
-import { fmtNum } from '../lib/format'
+import { fmtIsk, fmtNum } from '../lib/format'
 import { ON_GRID_KM, sortPilots, THREAT_LABEL, THREAT_ORDER, type PilotIntel } from '../lib/intel'
 import { getBasic, tn, useTypeBasics } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
 import { useLang } from '../AppContext'
 
-type Tab = 'local' | 'dscan' | 'fleet' | 'channels' | 'settings'
+type Tab = 'local' | 'dscan' | 'fleet' | 'channels' | 'radar' | 'settings'
 
 export default function IntelPage() {
   const [tab, setTab] = useState<Tab>('local')
@@ -28,6 +29,7 @@ export default function IntelPage() {
           { id: 'dscan', label: 'D-scan' },
           { id: 'fleet', label: 'Флот' },
           { id: 'channels', label: 'Каналы разведки' },
+          { id: 'radar', label: 'Радар убийств' },
           { id: 'settings', label: 'Настройки разведки' }
         ]}
         value={tab}
@@ -42,6 +44,7 @@ export default function IntelPage() {
       {tab === 'dscan' && <DscanTab />}
       {tab === 'fleet' && <FleetTab />}
       {tab === 'channels' && <ChannelsTab />}
+      {tab === 'radar' && <RadarTab />}
       {tab === 'settings' && <IntelSettingsTab />}
     </div>
   )
@@ -627,6 +630,112 @@ function ChannelsTab() {
 }
 
 // ---------------- Settings ----------------
+
+/** Live player kills from zKillboard near the pilot and on the route planned in Canopus. */
+function RadarTab() {
+  const { settings, updateSettings } = useApp()
+  const [status, setStatus] = useState<RadarStatus | null>(null)
+  useEffect(() => {
+    void window.api.radar.status().then(setStatus)
+    const offStatus = window.api.radar.onStatus(setStatus)
+    const offKill = window.api.radar.onKill(() => void window.api.radar.status().then(setStatus))
+    return () => {
+      offStatus()
+      offKill()
+    }
+  }, [])
+  useTick(30_000)
+  if (!settings) return null
+  const r = settings.radar
+  const set = (patch: Partial<typeof r>) => void window.api.radar.set(patch).then(() => updateSettings({}))
+  const kills = status?.kills ?? []
+  return (
+    <div className="two-col radar">
+      <Card title="Радар убийств">
+        <p className="muted small">
+          Убийства игроков из живой ленты zKillboard рядом с вами и на маршруте, проложенном в Canopus (раздел «Карта»): кемпы на гейтах, бубли, смартбомбы.
+          Где вы, Canopus знает из лога игры — как в разделе «Локал».
+        </p>
+        <label className="check">
+          <input type="checkbox" checked={r.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
+          <b>Включить радар</b>
+        </label>
+        <div className="row">
+          <label>
+            Радиус от вас, прыжков
+            <input type="number" min={0} max={10} value={r.radius} onChange={(e) => set({ radius: Math.max(0, Math.min(10, Number(e.target.value) || 0)) })} />
+          </label>
+          <label>
+            Уведомления
+            <select value={r.notify} onChange={(e) => set({ notify: e.target.value as typeof r.notify })}>
+              <option value="danger">Кемпы, бубли, смартбомбы</option>
+              <option value="all">Каждое убийство рядом</option>
+              <option value="off">Без уведомлений</option>
+            </select>
+          </label>
+        </div>
+        <label className="check">
+          <input type="checkbox" checked={r.route} onChange={(e) => set({ route: e.target.checked })} />
+          Следить за маршрутом из раздела «Карта»
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={r.sound} onChange={(e) => set({ sound: e.target.checked })} />
+          Звук при опасности
+        </label>
+        <label className="check">
+          <input type="checkbox" checked={r.discord} disabled={!settings.intel.discord.webhook} onChange={(e) => set({ discord: e.target.checked })} />
+          Отправлять в Discord (вебхук из настроек разведки)
+        </label>
+        {status && (
+          <div className="muted small">
+            {status.enabled
+              ? status.error
+                ? `Ошибка: ${status.error}`
+                : `${status.here ? `Вы в ${status.here.name}` : 'Система неизвестна — нужен лог игры'} · под наблюдением ${status.watched} систем${status.routeSystems ? ` + маршрут ${status.routeSystems}` : ''} · проверено убийств: ${fmtNum(status.seen)}`
+              : 'Радар выключен'}
+          </div>
+        )}
+      </Card>
+      <Card title="За последний час">
+        {!kills.length ? (
+          <Empty>{r.enabled ? 'Рядом и на маршруте пока тихо.' : 'Включите радар, чтобы видеть убийства рядом.'}</Empty>
+        ) : (
+          <ul className="radar-list">
+            {kills.map((k) => (
+              <RadarRow key={k.id} k={k} />
+            ))}
+          </ul>
+        )}
+      </Card>
+    </div>
+  )
+}
+
+function RadarRow({ k }: { k: RadarKill }) {
+  const min = Math.max(0, Math.floor((Date.now() - Date.parse(k.time)) / 60_000))
+  const danger = k.camp || k.bubbles || k.smartbombs
+  return (
+    <li className={`radar-kill ${danger ? 'danger' : ''}`}>
+      <div className="row">
+        <Sec value={k.security} />
+        <b translate="no">{k.system}</b>
+        {k.gate && <span className="muted small" translate="no">{`гейт → ${k.gate.toName}`}</span>}
+        <span className="muted small">{k.jumps !== undefined ? (k.jumps === 0 ? 'здесь' : `${k.jumps} пр.`) : 'на маршруте'}</span>
+        <span className="grow" />
+        <span className="muted small">{min < 1 ? 'сейчас' : `${min} мин назад`}</span>
+      </div>
+      <div className="row small">
+        {k.camp && <span className="radar-flag">Кемп</span>}
+        {k.bubbles && <span className="radar-flag">Бубли</span>}
+        {k.smartbombs && <span className="radar-flag">Смартбомбы</span>}
+        <TypeLink id={k.victimShip} size={18} />
+        <span className="muted">{`${fmtIsk(k.value, true)} · ${k.attackers} атак.`}</span>
+        {!!k.attackerShips.length && <span className="muted" translate="no">{k.attackerShips.join(', ')}</span>}
+        <a href={`https://zkillboard.com/kill/${k.id}/`}>zKillboard</a>
+      </div>
+    </li>
+  )
+}
 
 function IntelSettingsTab() {
   const { settings, updateSettings } = useApp()

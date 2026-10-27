@@ -127,6 +127,14 @@ const api: CanopusApi = {
     history: () => invoke('notify:history'),
     checkNow: () => invoke('notify:checkNow')
   },
+  radar: {
+    status: () => invoke('radar:status'),
+    set: (patch) => invoke('radar:set', patch),
+    setHere: (id) => invoke('radar:setHere', id),
+    setRoute: (ids) => invoke('radar:setRoute', ids),
+    onKill: (listener) => on('radar:kill', listener),
+    onStatus: (listener) => on('radar:status', listener)
+  },
   knowledge: {
     status: () => invoke('knowledge:status'),
     update: () => invoke('knowledge:update'),

@@ -796,6 +796,10 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
   const routeIds = route.data?.ids ?? null
   const routeKey = routeIds?.join(',') ?? ''
   useEffect(() => {
+    if (routeIds) void window.api.radar.setRoute(routeIds)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey])
+  useEffect(() => {
     const s = sceneRef.current
     if (!s) return
     clearGroup(s.route)
