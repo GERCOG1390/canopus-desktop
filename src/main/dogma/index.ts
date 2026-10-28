@@ -7,8 +7,9 @@ import { fittableFor, requiredSkills, sdeForDogma, variantsOf } from '../sde'
 import { Dogma, shipModes } from './engine'
 import { calculate } from './stats'
 import { fitMetrics } from './metrics'
+import { skillGains, type SkillGain } from './gains'
 
-export { fitMetrics }
+export { fitMetrics, skillGains, type SkillGain }
 
 /** Explains one attribute of one item in a fit: target is 'ship', 'char', or `${kind}:${index}`. */
 export function explainAttr(spec: FitSpec, skills: SkillSource, target: string, attrId: number) {
@@ -58,24 +59,6 @@ export function deleteFit(id: string): void {
   writeFileSync(fitsPath(), JSON.stringify(listFits().filter((f) => f.id !== id), null, 2), 'utf8')
 }
 
-export interface SkillGain {
-  skill: number
-  /** Level the character has now */
-  from: number
-  dps: number
-  ehp: number
-  activeTank: number
-  speed: number
-  /** Seconds (negative = faster align) */
-  align: number
-  capacitor: number
-  lockRange: number
-}
-
-/**
- * What each next skill level would change on this fit: the fit is recalculated with one skill a level
- * higher, for every published skill the character hasn't maxed; skills that change nothing are left out.
- */
 /**
  * The fit with each fitted module type (all modules of that type at once) and each drone type swapped for
  * every other version of it the hull can take, and the resulting numbers. Prices are added in the renderer.
@@ -102,31 +85,4 @@ export function fitVariants(spec: FitSpec, skills: SkillSource): { base: FitMetr
     }
   }
   return { base, options }
-}
-
-export function skillGains(spec: FitSpec, levels: Record<number, number>): SkillGain[] {
-  const db = sdeForDogma()
-  const base = calculate(db, spec, { mode: 'char', levels })
-  const out: SkillGain[] = []
-  for (const t of Object.values(db.types)) {
-    if (!t.pub || db.groups[t.g]?.c !== 16) continue
-    const from = levels[t.id] ?? 0
-    if (from >= 5) continue
-    const s = calculate(db, spec, { mode: 'char', levels: { ...levels, [t.id]: from + 1 } })
-    const g: SkillGain = {
-      skill: t.id,
-      from,
-      dps: s.offense.totalDps - base.offense.totalDps,
-      ehp: s.defense.ehp - base.defense.ehp,
-      activeTank: s.defense.activeTankEhp - base.defense.activeTankEhp,
-      speed: s.navigation.maxVelocity - base.navigation.maxVelocity,
-      align: s.navigation.alignSec - base.navigation.alignSec,
-      capacitor: (s.capacitor.stable ? 1000 + (s.capacitor.stableLevel ?? 0) * 100 : (s.capacitor.lastsSec ?? 0) / 60) - (base.capacitor.stable ? 1000 + (base.capacitor.stableLevel ?? 0) * 100 : (base.capacitor.lastsSec ?? 0) / 60),
-      lockRange: s.targeting.maxRange - base.targeting.maxRange
-    }
-    const tiny = (v: number, eps: number) => Math.abs(v) < eps
-    if (tiny(g.dps, 0.05) && tiny(g.ehp, 1) && tiny(g.activeTank, 0.05) && tiny(g.speed, 0.05) && tiny(g.align, 0.005) && tiny(g.capacitor, 0.05) && tiny(g.lockRange, 1)) continue
-    out.push(g)
-  }
-  return out
 }
