@@ -6,6 +6,9 @@ import type { FitMetrics, FitSpec, FitStats, FitVariant, SavedFit, SkillSource }
 import { fittableFor, requiredSkills, sdeForDogma, variantsOf } from '../sde'
 import { Dogma, shipModes } from './engine'
 import { calculate } from './stats'
+import { fitMetrics } from './metrics'
+
+export { fitMetrics }
 
 /** Explains one attribute of one item in a fit: target is 'ship', 'char', or `${kind}:${index}`. */
 export function explainAttr(spec: FitSpec, skills: SkillSource, target: string, attrId: number) {
@@ -73,40 +76,6 @@ export interface SkillGain {
  * What each next skill level would change on this fit: the fit is recalculated with one skill a level
  * higher, for every published skill the character hasn't maxed; skills that change nothing are left out.
  */
-export function fitMetrics(s: FitStats): FitMetrics {
-  const sh = s.ship
-  // DPS-weighted averages over the weapons that have the property.
-  const avg = (pick: (w: FitStats['offense']['weapons'][number]) => number | undefined) => {
-    let sum = 0
-    let weight = 0
-    for (const w of s.offense.weapons) {
-      const v = pick(w)
-      if (v === undefined || !Number.isFinite(v)) continue
-      sum += v * w.dps
-      weight += w.dps
-    }
-    return weight ? sum / weight : 0
-  }
-  return {
-    dps: s.offense.totalDps,
-    ehp: s.defense.ehp,
-    activeTank: s.defense.activeTankEhp,
-    speed: s.navigation.maxVelocity,
-    align: s.navigation.alignSec,
-    lockRange: s.targeting.maxRange,
-    scanRes: s.targeting.scanResolution,
-    signature: s.navigation.signatureRadius,
-    range: avg((w) => (w.kind === 'turret' ? (w.optimal ?? 0) + (w.falloff ?? 0) : w.kind === 'missile' || w.kind === 'vorton' ? w.optimal : undefined)),
-    tracking: avg((w) => (w.kind === 'turret' ? w.tracking : undefined)),
-    explosionRadius: avg((w) => (w.kind === 'missile' || w.kind === 'vorton' ? w.explosionRadius : undefined)),
-    explosionVelocity: avg((w) => (w.kind === 'missile' || w.kind === 'vorton' ? w.explosionVelocity : undefined)),
-    capStable: s.capacitor.stable,
-    capLevel: s.capacitor.stableLevel ?? 0,
-    capLasts: s.capacitor.lastsSec ?? 0,
-    fits: sh.cpu.used <= sh.cpu.total + 1e-6 && sh.power.used <= sh.power.total + 1e-6 && sh.calibration.used <= sh.calibration.total + 1e-6
-  }
-}
-
 /**
  * The fit with each fitted module type (all modules of that type at once) and each drone type swapped for
  * every other version of it the hull can take, and the resulting numbers. Prices are added in the renderer.
