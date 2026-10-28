@@ -411,7 +411,8 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       scanResolution: a(ship, A.scanResolution),
       maxTargets: Math.min(a(ship, A.maxLockedTargets), a(dogma.char, A.maxLockedTargets) || Infinity),
       sensorStrength: sensor[0],
-      sensorType: sensor[1]
+      sensorType: sensor[1],
+      droneControlRange: a(dogma.char, 458)
     },
     modules: moduleResults,
     problems,

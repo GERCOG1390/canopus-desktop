@@ -158,6 +158,8 @@ export interface FitStats {
     maxTargets: number
     sensorStrength: number
     sensorType: string
+    /** How far drones can be controlled, m (a character attribute raised by skills) */
+    droneControlRange: number
   }
   modules: ModuleResult[]
   problems: string[]
