@@ -20,7 +20,7 @@ import { fmtDate, fmtDuration, fmtNum } from '../lib/format'
 import { chargesFor, defaultState, fromEft, loadCatalog, nextState, SLOT_LABEL, SLOT_ORDER, toEft, useFitting } from '../lib/fitting'
 import { CATEGORY, getBasic, searchTypesSde, tn, useTypeBasics } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
-import { locale } from '../i18n'
+import { locale, translate } from '../i18n'
 
 type SkillMode = 'all5' | 'char'
 
@@ -364,7 +364,7 @@ function Editor() {
       {stats && <FitMetrics stats={preview?.stats ?? stats} base={preview?.stats ? stats : (realStats ?? undefined)} />}
       {trialCount > 0 && !preview?.stats && (
         <div className="trial-note small">
-          Расчёт с пробными уровнями навыков ({trialCount}) — стрелки показывают разницу {mode === 'all5' ? 'со всеми навыками V' : 'с вашими реальными навыками'}.{' '}
+          {`Расчёт с пробными уровнями навыков (${trialCount}) — стрелки показывают разницу ${mode === 'all5' ? 'со всеми навыками V' : 'с вашими реальными навыками'}.`}{' '}
           <button className="button-link" onClick={() => setTrial({})}>
             Сбросить
           </button>
@@ -1000,7 +1000,7 @@ function FitMetrics({ stats: s, base: b }: { stats: FitStats; base?: FitStats })
         </div>
         <div className="metric-value">{fmtNum(s.offense.totalVolley)}</div>
         {damageTotal > 0 ? (
-          <div className="damage-bar" title={damage.map((d, i) => `${DAMAGE_NAMES[i]}: ${Math.round((d / damageTotal) * 100)}%`).join(', ')}>
+          <div className="damage-bar" title={damage.map((d, i) => `${translate(DAMAGE_NAMES[i])}: ${Math.round((d / damageTotal) * 100)}%`).join(', ')}>
             {damage.map((d, i) => (d > 0 ? <span key={i} className={`dmg-seg dmg-${RES_CLASS[i]}`} style={{ width: `${(d / damageTotal) * 100}%` }} /> : null))}
           </div>
         ) : (
@@ -1082,7 +1082,7 @@ function StatsPanel({
         {damageTotal > 0 && (
           <div className="damage-profile">
             {damage.map((d, i) => (
-              <span key={i} className={`dmg dmg-${RES_CLASS[i]}`} title={`${DAMAGE_NAMES[i]}: ${n1(d)} DPS`}>
+              <span key={i} className={`dmg dmg-${RES_CLASS[i]}`} title={`${translate(DAMAGE_NAMES[i])}: ${n1(d)} DPS`}>
                 <AttrIcon attr={ICON.damage[i]} size={18} />
                 {Math.round((d / damageTotal) * 100)}%
               </span>

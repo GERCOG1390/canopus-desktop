@@ -6,6 +6,7 @@
 
 import { useMemo, useState } from 'react'
 import { useApp, useLang } from '../AppContext'
+import { uiLang } from '../i18n'
 import { TypeLink, TypeName } from '../components/TypeLink'
 import { Card, Empty, Loading, SearchBox, Sec, Stat } from '../components/ui'
 import { fmtIsk, fmtNum, roundSec } from '../lib/format'
@@ -13,17 +14,18 @@ import { jitaPrices } from '../lib/market'
 import { searchSystemsSde, tn, useTypeBasics } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 
-/** Planet type → its name on the planet list in the game. */
-export const PLANET_TYPES: Record<number, string> = {
-  2016: 'Бесплодная',
-  13: 'Газовая',
-  12: 'Ледяная',
-  2015: 'Лавовая',
-  2014: 'Океаническая',
-  2063: 'Плазменная',
-  2017: 'Грозовая',
-  11: 'Умеренная'
+/** Planet type → its name in Russian and English (built into strings, so not left to the UI dictionary). */
+const PLANET_NAMES: Record<number, [string, string]> = {
+  2016: ['Бесплодная', 'Barren'],
+  13: ['Газовая', 'Gas'],
+  12: ['Ледяная', 'Ice'],
+  2015: ['Лавовая', 'Lava'],
+  2014: ['Океаническая', 'Oceanic'],
+  2063: ['Плазменная', 'Plasma'],
+  2017: ['Грозовая', 'Storm'],
+  11: ['Умеренная', 'Temperate']
 }
+export const planetName = (id: number): string => PLANET_NAMES[id]?.[uiLang() === 'en' ? 1 : 0] ?? ''
 
 /** Raw resource (P0) → planet types it can be extracted on. */
 export const P0_PLANETS: Record<number, number[]> = {
@@ -232,10 +234,10 @@ export default function PiCalculator() {
             <Card title="Цепочка производства">
               {tree && <TreeView node={tree} depth={0} />}
               <p className="muted small">
-                {[...totals.factories]
+                {`Фабрики: ${[...totals.factories]
                   .sort((a, b) => b[0] - a[0])
-                  .map(([t, n]) => `P${t}: ${fmtNum(Math.ceil(n - 1e-9))} фабр.`)
-                  .join(' · ')}
+                  .map(([t, n]) => `P${t} ×${fmtNum(Math.ceil(n - 1e-9))}`)
+                  .join(' · ')}`}
               </p>
             </Card>
             <div className="stack">
@@ -249,7 +251,7 @@ export default function PiCalculator() {
                             <TypeLink id={id} size={20} />
                           </td>
                           <td className="num">{`${fmtNum(r)} / час`}</td>
-                          <td className="muted small">{(P0_PLANETS[id] ?? []).map((p) => PLANET_TYPES[p]).join(', ')}</td>
+                          <td className="muted small">{(P0_PLANETS[id] ?? []).map((p) => planetName(p)).join(', ')}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -352,8 +354,8 @@ function ColonyFinder({ resources }: { resources: number[] }) {
                 <td className="num">{s.jumps}</td>
                 <td className="small">
                   {Object.entries(s.planets)
-                    .filter(([t]) => PLANET_TYPES[Number(t)])
-                    .map(([t, n]) => `${PLANET_TYPES[Number(t)]}${n > 1 ? ` ×${n}` : ''}`)
+                    .filter(([t]) => PLANET_NAMES[Number(t)])
+                    .map(([t, n]) => `${planetName(Number(t))}${n > 1 ? ` ×${n}` : ''}`)
                     .join(', ') || '—'}
                 </td>
                 <td className="small">
@@ -393,7 +395,7 @@ function TreeView({ node, depth }: { node: Node; depth: number }) {
         {node.source === 'build' && <span className="small">{`· фабрик ${fmtNum(node.factories ?? 0)}`}</span>}
         {node.source === 'buy' && <span className="small warn-text">· купить</span>}
         {node.source === 'extract' && (
-          <span className="small good">{`· добыть: ${(P0_PLANETS[node.type] ?? []).map((p) => PLANET_TYPES[p]).join(', ')}`}</span>
+          <span className="small good">{`· добыть: ${(P0_PLANETS[node.type] ?? []).map((p) => planetName(p)).join(', ')}`}</span>
         )}
       </div>
       {node.children.map((c, i) => (

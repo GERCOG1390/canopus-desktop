@@ -15,6 +15,7 @@ import { FittingProvider } from './lib/fitting'
 import { useUpdate } from './lib/update'
 import CharacterPage from './pages/character'
 import FittingPage from './pages/FittingPage'
+import { translate } from './i18n'
 import IntelPage from './pages/IntelPage'
 import { IntelProvider, useIntel } from './IntelContext'
 import IndustryPage from './pages/IndustryPage'
@@ -127,7 +128,7 @@ function EveClock() {
     return () => clearInterval(t)
   }, [])
   return (
-    <span className="eve-clock" title="Время EVE (UTC)" translate="no">
+    <span className="eve-clock" title={translate('Время EVE (UTC)')} translate="no">
       EVE {now.toISOString().slice(11, 16)}
     </span>
   )
