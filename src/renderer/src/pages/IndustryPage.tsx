@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from 'react'
-import type { SkillReq } from '../../../shared/sde'
+import type { PiSchematic, SkillReq } from '../../../shared/sde'
 import { useApp, useLang } from '../AppContext'
 import { MissingSkillsBox } from '../components/skills'
 import { TypeLink } from '../components/TypeLink'
@@ -424,11 +424,37 @@ function Planets() {
     const products = details.flatMap((d) => d.pins.map((p) => p.extractor_details?.product_type_id ?? 0))
     const names = await resolveNames([...colonies.map((c) => c.planet_id), ...products])
     const systems = await Promise.all(colonies.map((c) => systemInfo(c.solar_system_id)))
+    // What each planet makes in an hour: running extractors plus factories (assumed fed), less what its
+    // own factories use up; what is left is valued at Jita.
+    const schematics = await window.api.sde.piSchematics().catch(() => ({}) as Record<number, PiSchematic>)
+    const now = Date.now()
+    const nets = details.map((d) => {
+      const net = new Map<number, number>()
+      const add = (id: number, q: number) => net.set(id, (net.get(id) ?? 0) + q)
+      for (const p of d.pins) {
+        const x = p.extractor_details
+        if (x?.product_type_id && x.qty_per_cycle && x.cycle_time && p.expiry_time && Date.parse(p.expiry_time) > now) {
+          add(x.product_type_id, (x.qty_per_cycle * 3600) / x.cycle_time)
+        }
+        const s = p.schematic_id ? schematics[p.schematic_id] : undefined
+        if (s?.t) {
+          const perHour = 3600 / s.t
+          add(s.out[0], s.out[1] * perHour)
+          for (const [id, q] of s.in) add(id, -q * perHour)
+        }
+      }
+      return net
+    })
+    const outIds = [...new Set(nets.flatMap((n) => [...n].filter(([, q]) => q > 0).map(([id]) => id)))]
+    const prices = outIds.length ? await jitaPrices(outIds).catch(() => new Map()) : new Map()
     return colonies.map((c, i) => {
       const extractors = details[i].pins.filter((p) => p.extractor_details)
       const expiries = extractors.map((p) => (p.expiry_time ? new Date(p.expiry_time).getTime() : 0))
+      const output = [...nets[i]].filter(([, q]) => q > 0.01)
       return {
         ...c,
+        output,
+        perHour: output.reduce((s, [id, q]) => s + q * (prices.get(id)?.sell.best ?? 0), 0),
         name: names.get(c.planet_id) ?? String(c.planet_id),
         system: systems[i],
         extractors,
@@ -444,12 +470,14 @@ function Planets() {
   if (!data) return <ErrorBox error={error} />
   const sorted = [...data].sort((a, b) => (a.expiry ?? Infinity) - (b.expiry ?? Infinity))
   const expired = sorted.filter((c) => c.expiry !== null && c.expiry <= now).length
+  const income = data.reduce((s, c) => s + c.perHour, 0)
 
   return (
     <>
       <div className="stats-row">
         <Stat label="Колоний" value={data.length} />
         <Stat label="Экстракторы остановлены" value={<span className={expired ? 'bad' : 'good'}>{expired}</span>} />
+        <Stat label="Выход в час (Jita sell)" value={fmtIsk(income, true)} sub={`${fmtIsk(income * 24, true)} в сутки, до налогов`} />
       </div>
       <Card
         actions={
@@ -468,6 +496,7 @@ function Planets() {
                 <th>Тип</th>
                 <th>Добыча</th>
                 <th className="num">Фабрик</th>
+                <th>Выход в час</th>
                 <th className="num">Экстракторы до</th>
                 <th className="num">Осталось</th>
               </tr>
@@ -483,6 +512,20 @@ function Planets() {
                     <td className="muted">{c.planet_type}</td>
                     <td>{c.products.length ? c.products.map((p) => <TypeLink key={p} id={p} />) : <span className="muted">—</span>}</td>
                     <td className="num">{c.factories}</td>
+                    <td className="small">
+                      {c.output.length ? (
+                        <>
+                          {c.output.map(([id, q]) => (
+                            <div key={id}>
+                              <TypeLink id={id} size={16} /> <span className="muted">{fmtNum(q)}</span>
+                            </div>
+                          ))}
+                          <b>{fmtIsk(c.perHour, true)}</b>
+                        </>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
                     <td className="num muted">{c.expiry ? fmtDate(new Date(c.expiry).toISOString()) : '—'}</td>
                     <td className={`num ${left !== null && left <= 0 ? 'bad' : left !== null && left < 6 * 3600_000 ? 'warn-text' : ''}`}>
                       {left === null ? '—' : left <= 0 ? 'Остановлены' : fmtDuration(left)}
@@ -493,7 +536,10 @@ function Planets() {
             </tbody>
           </table>
         )}
-        <p className="muted small">ESI обновляет данные колонии только когда вы открываете её в игре.</p>
+        <p className="muted small">
+          ESI обновляет данные колонии только когда вы открываете её в игре. Выход в час — работающие экстракторы и фабрики (если им хватает сырья) минус то, что
+          фабрики планеты сами потребляют; оценка по Jita sell до налогов таможни.
+        </p>
       </Card>
     </>
   )

@@ -6,11 +6,11 @@
 
 import { useMemo, useState } from 'react'
 import { useApp, useLang } from '../AppContext'
-import { TypeLink } from '../components/TypeLink'
-import { Card, Empty, Loading, Stat } from '../components/ui'
-import { fmtIsk, fmtNum } from '../lib/format'
+import { TypeLink, TypeName } from '../components/TypeLink'
+import { Card, Empty, Loading, SearchBox, Sec, Stat } from '../components/ui'
+import { fmtIsk, fmtNum, roundSec } from '../lib/format'
 import { jitaPrices } from '../lib/market'
-import { tn, useTypeBasics } from '../lib/sde'
+import { searchSystemsSde, tn, useTypeBasics } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 
 /** Planet type → its name on the planet list in the game. */
@@ -276,6 +276,7 @@ export default function PiCalculator() {
               )}
             </div>
           </div>
+          {extracted.length > 0 && <ColonyFinder resources={extracted.map(([id]) => id)} />}
           <p className="muted small">
             Налог таможни: базовая стоимость единицы из SDE (P0 5, P1 400, P2 7 200, P3 60 000, P4 1 200 000 ISK) × ставка; ввоз — половина вывоза (по EVE University).
             Перевозка промежуточных товаров между вашими планетами не учтена. Схемы — из SDE CCP.
@@ -283,6 +284,102 @@ export default function PiCalculator() {
         </>
       )}
     </>
+  )
+}
+
+/** Where to put the colonies: systems near you with planets for every raw resource of the chain. */
+function ColonyFinder({ resources }: { resources: number[] }) {
+  const [from, setFrom] = useState<{ id: number; name: string } | null>(null)
+  const [radius, setRadius] = useState(5)
+  const [space, setSpace] = useState<'any' | 'high' | 'low'>('any')
+  const needs = resources.map((id) => P0_PLANETS[id] ?? [])
+  const sites = useAsync(
+    async () => (from ? window.api.sde.colonySites(from.id, radius, needs) : null),
+    [from?.id, radius, resources.join(',')]
+  )
+  const shown = (sites.data ?? []).filter((s) => {
+    const sec = roundSec(s.sec)
+    return space === 'any' || (space === 'high' ? sec >= 0.5 : sec < 0.5)
+  })
+  return (
+    <Card title="Где ставить колонии">
+      <div className="calc-form">
+        <label className="wide">
+          От системы
+          <SearchBox placeholder="Система…" search={searchSystemsSde} onSelect={setFrom} initial={from?.name ?? ''} />
+        </label>
+        <label>
+          Радиус, прыжков
+          <select value={radius} onChange={(e) => setRadius(Number(e.target.value))}>
+            {[0, 1, 2, 3, 5, 7, 10].map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Безопасность
+          <select value={space} onChange={(e) => setSpace(e.target.value as typeof space)}>
+            <option value="any">любая</option>
+            <option value="high">только хайсек</option>
+            <option value="low">лоусек и ниже</option>
+          </select>
+        </label>
+      </div>
+      {!from ? (
+        <p className="muted small">Укажите систему, от которой искать: покажу системы рядом, где есть планеты под всё сырьё цепочки.</p>
+      ) : sites.loading ? (
+        <Loading />
+      ) : !shown.length ? (
+        <Empty>В этом радиусе подходящих систем нет — увеличьте радиус.</Empty>
+      ) : (
+        <table className="table compact">
+          <thead>
+            <tr>
+              <th>Система</th>
+              <th className="num">Прыжков</th>
+              <th>Планеты</th>
+              <th>Сырьё</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((s) => (
+              <tr key={s.id}>
+                <td>
+                  <Sec value={s.sec} /> {s.n}
+                </td>
+                <td className="num">{s.jumps}</td>
+                <td className="small">
+                  {Object.entries(s.planets)
+                    .filter(([t]) => PLANET_TYPES[Number(t)])
+                    .map(([t, n]) => `${PLANET_TYPES[Number(t)]}${n > 1 ? ` ×${n}` : ''}`)
+                    .join(', ') || '—'}
+                </td>
+                <td className="small">
+                  {s.missing.length ? (
+                    <span className="warn-text">
+                      нет:{' '}
+                      {s.missing.map((i, k) => (
+                        <span key={i}>
+                          {k ? ', ' : ''}
+                          <TypeName id={resources[i]} />
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="good">✔ всё сырьё</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <p className="muted small">
+        Типы планет — из SDE. Планетарка недоступна в некоторых системах (например, торговые хабы вроде Jita) и в разрушенных системах — проверяйте в игре.
+      </p>
+    </Card>
   )
 }
 

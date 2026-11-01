@@ -130,6 +130,18 @@ export interface SdeDb {
   systemPlanets: Record<number, number[]>
 }
 
+/** A system for planetary colonies: its planets by type and which needed raw resources it lacks. */
+export interface ColonySite {
+  id: number
+  n: string
+  sec: number
+  jumps: number
+  /** planet type → how many */
+  planets: Record<number, number>
+  /** Indices (into the request's list) of the needs no planet here covers */
+  missing: number[]
+}
+
 export interface PiSchematic {
   n: L10n
   t: number

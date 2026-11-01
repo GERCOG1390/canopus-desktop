@@ -21,7 +21,8 @@ import type {
   TypeBasic,
   WormholeType,
   JumpHop,
-  PiSchematic
+  PiSchematic,
+  ColonySite
 } from '../../shared/sde'
 import type { FittableType } from '../../shared/fit'
 import { SDE_FORMAT } from '../../shared/sde'
@@ -311,6 +312,24 @@ export function piSchematics(): Record<number, PiSchematic> {
 export function systemPlanets(ids: number[]): Record<number, number[]> {
   const d = need()
   return Object.fromEntries(ids.map((id) => [id, d.systemPlanets?.[id] ?? []]))
+}
+
+/**
+ * Systems within `radius` jumps for a set of colonies: `needs` lists, per raw resource, the planet types
+ * that have it. Systems covering every need come first, then the nearest, then the safest.
+ */
+export function colonySites(fromId: number, radius: number, needs: number[][], limit = 60): ColonySite[] {
+  const d = need()
+  const out: ColonySite[] = []
+  for (const [id, jumps] of systemsWithin(fromId, radius)) {
+    const s = d.systems[id]
+    if (!s) continue
+    const planets: Record<number, number> = {}
+    for (const t of d.systemPlanets?.[id] ?? []) planets[t] = (planets[t] ?? 0) + 1
+    const missing = needs.map((types, i) => (types.some((t) => planets[t]) ? -1 : i)).filter((i) => i >= 0)
+    out.push({ id, n: s.n, sec: s.sec, jumps, planets, missing })
+  }
+  return out.sort((a, b) => a.missing.length - b.missing.length || a.jumps - b.jumps || b.sec - a.sec).slice(0, limit)
 }
 
 /** All wormhole types ("Wormhole C247") with their destination class and mass / time limits. */

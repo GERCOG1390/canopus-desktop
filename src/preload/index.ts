@@ -68,6 +68,7 @@ const api: CanopusApi = {
     wormholeTypes: () => invoke('sde:wormholeTypes'),
     piSchematics: () => invoke('sde:piSchematics'),
     systemPlanets: (ids) => invoke('sde:systemPlanets', ids),
+    colonySites: (from, radius, needs) => invoke('sde:colonySites', from, radius, needs),
     jumpRoute: (from, to, range) => invoke('sde:jumpRoute', from, to, range),
     lightYears: (from, to) => invoke('sde:lightYears', from, to),
     galaxy: () => invoke('sde:galaxy'),

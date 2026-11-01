@@ -309,6 +309,7 @@ function registerIpc(): void {
   ipcMain.handle('sde:wormholeTypes', () => sde.wormholeTypes())
   ipcMain.handle('sde:piSchematics', () => sde.piSchematics())
   ipcMain.handle('sde:systemPlanets', (_e, ids: number[]) => sde.systemPlanets(ids))
+  ipcMain.handle('sde:colonySites', (_e, from: number, radius: number, needs: number[][]) => sde.colonySites(from, radius, needs))
   ipcMain.handle('sde:jumpRoute', (_e, from: number, to: number, range: number) => sde.jumpRoute(from, to, range))
   ipcMain.handle('sde:lightYears', (_e, from: number, to: number) => sde.lightYears(from, to))
   ipcMain.handle('sde:galaxy', () => sde.galaxy())
