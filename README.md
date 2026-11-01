@@ -12,7 +12,7 @@
 <p align="center">
   <a href="../../releases/latest"><b>⬇ Download for Windows / macOS / Linux</b></a> ·
   English / Русский interface ·
-  <a href="LICENSE">MIT</a>
+  <a href="LICENSE">Source-available (PolyForm Strict)</a>
 </p>
 
 ![Live preview in the fitting tool: hover a module and every stat updates](docs/screenshots/fitting-preview.gif)
@@ -208,7 +208,7 @@ Canopus only uses official and player-visible data: CCP's ESI and SDE, the chat 
 
 ## Building from source
 
-Requires Node.js 22+.
+Requires Node.js 22+. Builds are for your own noncommercial use; distributing them, or anything built on this code, is not allowed (see [License](#license)).
 
 ```bash
 npm install
@@ -229,6 +229,8 @@ Questions and ideas: [Discussions](../../discussions) · bug reports: [Issues](.
 
 ## License
 
-[MIT](LICENSE).
+[PolyForm Strict 1.0.0](LICENSE): you may use Canopus for any noncommercial purpose and read its source, but not distribute it, change it or build new works on it. Versions up to and including 1.2.0 were published under the MIT License. The Canopus name and logo are not licensed.
+
+Bug reports and ideas are very welcome in [Issues](../../issues) and [Discussions](../../discussions); code contributions only by arrangement.
 
 EVE Online and all related materials are trademarks or property of CCP hf. Canopus is a third-party application and is not affiliated with or endorsed by CCP hf.
