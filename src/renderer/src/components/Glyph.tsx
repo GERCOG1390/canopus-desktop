@@ -23,7 +23,8 @@ const PATHS = {
   globe: 'M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0-18 0M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9z',
   rows: 'M4 6h16M4 12h16M4 18h16',
   assistant: 'M4 5h16v11H10l-5 4v-4H4zM8 9.5h8M8 12.5h5',
-  alert: 'M12 3l10 18H2zM12 10v5M12 18v.5'
+  alert: 'M12 3l10 18H2zM12 10v5M12 18v.5',
+  heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z'
 } as const
 
 export type GlyphName = keyof typeof PATHS

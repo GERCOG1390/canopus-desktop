@@ -4631,3 +4631,45 @@ button.danger-fill:hover:not(:disabled) {
   gap: 6px;
   padding: 4px 0 4px 6px;
 }
+
+/* ---------- Support Canopus ---------- */
+.nav-support .nav-icon {
+  color: #e06c75;
+}
+.support {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.support-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.support-head img {
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.support-name {
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+.support-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.support-ccp {
+  font-size: 11px;
+  opacity: 0.8;
+}
+.support-dialog {
+  max-width: 560px;
+}
+.support-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}

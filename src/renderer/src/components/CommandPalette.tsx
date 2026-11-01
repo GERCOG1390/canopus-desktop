@@ -91,6 +91,7 @@ export function CommandPalette({ pages, open, onClose }: { pages: NavPage[]; ope
         icon: 'rows',
         run: done(() => updateSettings({ density: settings.density === 'compact' ? 'comfortable' : 'compact' }))
       },
+      { key: 'support', section: 'Команды', label: 'Поддержать Canopus (ISK автору)', text: 'поддержать донат пожертвование support donate isk', icon: 'heart', run: done(() => navigate('settings')) },
       { key: 'discussions', section: 'Команды', label: 'Вопросы и идеи (GitHub Discussions)', text: 'вопрос идея помощь help discussions форум', icon: 'mail', run: done(openDiscussions) },
       { key: 'bug', section: 'Команды', label: 'Сообщить об ошибке (GitHub)', text: 'ошибка баг bug issue report сообщить', icon: 'alert', run: done(() => reportBug()) },
       {

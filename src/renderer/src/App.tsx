@@ -16,6 +16,7 @@ import { useUpdate } from './lib/update'
 import CharacterPage from './pages/character'
 import FittingPage from './pages/FittingPage'
 import { translate } from './i18n'
+import { SupportDialog } from './components/Support'
 import IntelPage from './pages/IntelPage'
 import { IntelProvider, useIntel } from './IntelContext'
 import IndustryPage from './pages/IndustryPage'
@@ -205,6 +206,7 @@ function Shell() {
   const { scan } = useIntel()
   const [palette, setPalette] = useState(false)
   const [assistant, setAssistant] = useState(false)
+  const [support, setSupport] = useState(false)
   const needsSetup = settings !== null && characters.length === 0
   const current = PAGES.find((p) => p.id === page)!
   const dangerous = scan?.pilots.filter((p) => p.threat === 'hostile' || p.threat === 'high').length ?? 0
@@ -242,6 +244,12 @@ function Shell() {
           </Fragment>
         ))}
         <div className="grow" />
+        <button className="nav nav-support" onClick={() => setSupport(true)} title="Добровольное пожертвование ISK автору">
+          <span className="nav-icon">
+            <Glyph name="heart" />
+          </span>
+          Поддержать
+        </button>
         <NavButton p={PAGES.find((p) => p.id === 'stream')!} />
         <NavButton p={PAGES.find((p) => p.id === 'settings')!} badge={needsSetup ? '●' : undefined} />
         {active ? (
@@ -291,6 +299,7 @@ function Shell() {
         </main>
       </div>
       {assistant && <AssistantPanel onClose={() => setAssistant(false)} />}
+      {support && <SupportDialog onClose={() => setSupport(false)} />}
       <InfoPanel />
       <CommandPalette pages={PAGES} open={palette} onClose={() => setPalette(false)} />
       <ReloginGate />

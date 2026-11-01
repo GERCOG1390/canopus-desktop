@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../AppContext'
 import { Card, ErrorBox } from '../components/ui'
+import { SupportCard } from '../components/Support'
 import { imageUrl } from '../lib/esi'
 import { IS_LINUX, IS_MAC, locale } from '../i18n'
 import { fmtDate } from '../lib/format'
@@ -140,6 +141,7 @@ export default function SettingsPage() {
       <NotifyCard />
 
       <UpdateCard />
+      <SupportCard />
       <FeedbackCard />
 
       <Card title="Источники данных">

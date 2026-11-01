@@ -1768,6 +1768,24 @@ export const EXACT: Record<string, string> = {
   'Выберите хотя бы один канал разведки выше.': 'Select at least one intel channel above.',
   'Сообщений пока нет — они появятся, как только в канале кто-то напишет.': 'No messages yet — they will appear as soon as someone writes in the channel.',
 
+  // ---- support Canopus
+  Поддержать: 'Support',
+  'Поддержать Canopus': 'Support Canopus',
+  'Поддержать Canopus (ISK автору)': 'Support Canopus (ISK to the author)',
+  'Добровольное пожертвование ISK автору': 'A voluntary ISK donation to the author',
+  'Автор Canopus': 'Canopus author',
+  'Canopus бесплатен и останется бесплатным — без рекламы, подписок и платных функций. Если он экономит вам время или ISK, можно отправить автору любую сумму ISK в игре. Каждый перевод помогает развивать приложение — спасибо!':
+    'Canopus is free and will stay free — no ads, no subscriptions, no paid features. If it saves you time or ISK, you can send the author any amount of ISK in the game. Every transfer helps keep it growing — thank you!',
+  'Нажмите «Открыть в игре» — в клиенте откроется карточка персонажа (или найдите его по имени).':
+    'Press "Open in game" — the character\'s info opens in the client (or search for the name).',
+  'Правый клик по портрету → «Give Money» (передать ISK).': 'Right-click the portrait → "Give Money".',
+  'В комментарии к переводу напишите «Canopus».': 'Put "Canopus" in the reason.',
+  'Открыть карточку персонажа в клиенте игры': "Open the character's info in the game client",
+  'открыто в игре': 'opened in the game',
+  'Копировать имя': 'Copy name',
+  'Имя скопировано': 'Name copied',
+  'Пожертвование добровольное: все функции Canopus работают одинаково для всех.': 'Donations are voluntary: every Canopus feature works the same for everyone.',
+
   // ---- 1.2: trial skill levels, PI calculator, my colonies
   'Пробные уровни навыков': 'Trial skill levels',
   '— посмотреть фит с другими уровнями': '— see the fit with other skill levels',
