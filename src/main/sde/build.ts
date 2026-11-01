@@ -109,7 +109,9 @@ export async function buildSde(
     icons: {},
     campaigns: {},
     campaignObjectives: {},
-    jobTypes: {}
+    jobTypes: {},
+    schematics: {},
+    systemPlanets: {}
   }
   const descriptions: Record<number, L10n> = {}
 
@@ -258,6 +260,22 @@ export async function buildSde(
     },
     freelanceJobSchemas: (r) => {
       for (const x of (r._value ?? []) as Row[]) db.jobTypes[x._key] = { t: l10n(x.title), d: l10n(x.description) }
+    },
+    planetSchematics: (r) => {
+      // Types come as { typeID: { isInput, quantity } } or as [{ _key: typeID, isInput, quantity }].
+      const list: Row[] = Array.isArray(r.types) ? r.types : Object.entries(r.types ?? {}).map(([k, v]) => ({ _key: Number(k), ...(v as Row) }))
+      const out = list.find((t) => !t.isInput)
+      if (!out) return
+      db.schematics[r._key] = {
+        n: l10n(r.name),
+        t: r.cycleTime ?? 0,
+        in: list.filter((t) => t.isInput).map((t) => [Number(t._key ?? t.typeID), t.quantity]),
+        out: [Number(out._key ?? out.typeID), out.quantity]
+      }
+    },
+    mapPlanets: (r) => {
+      if (!r.solarSystemID || !r.typeID) return
+      ;(db.systemPlanets[r.solarSystemID] ??= []).push(r.typeID)
     },
     icons: (r) => {
       if (r.iconFile) db.icons[r._key] = String(r.iconFile).toLowerCase()

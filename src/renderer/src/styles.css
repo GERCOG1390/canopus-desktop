@@ -4616,3 +4616,18 @@ button.danger-fill:hover:not(:disabled) {
   margin: -4px 0 10px;
   color: var(--warn);
 }
+
+/* Planetary industry calculator: the production tree */
+.pi-node {
+  border-left: 1px solid var(--border);
+}
+.pi-node:first-child {
+  border-left: none;
+}
+.pi-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0 4px 6px;
+}

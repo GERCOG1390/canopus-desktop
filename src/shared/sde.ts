@@ -60,7 +60,7 @@ export interface DogmaEffect {
 }
 
 /** Bumped whenever the DB layout changes, forcing a rebuild from the SDE zip. */
-export const SDE_FORMAT = 8
+export const SDE_FORMAT = 9
 
 export interface CampaignDef {
   t: L10n
@@ -124,6 +124,17 @@ export interface SdeDb {
   campaignObjectives: Record<string, CampaignObjectiveDef>
   /** Freelance job types (DeliverItem, MineOre…): title and description */
   jobTypes: Record<string, { t: L10n; d: L10n }>
+  /** Planetary industry schematics: name, cycle seconds, inputs [type, qty] per cycle, output [type, qty] */
+  schematics: Record<number, PiSchematic>
+  /** Planet types in each solar system (one entry per planet, for "where can I build this colony") */
+  systemPlanets: Record<number, number[]>
+}
+
+export interface PiSchematic {
+  n: L10n
+  t: number
+  in: [number, number][]
+  out: [number, number]
 }
 
 // ---------- IPC payloads ----------

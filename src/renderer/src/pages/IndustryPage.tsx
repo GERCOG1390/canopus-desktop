@@ -11,8 +11,9 @@ import { getBasic, searchSystemsSde, searchTypesSde, tn } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
 import Structures from './Structures'
 import Moons from './Moons'
+import PiCalculator from './PiCalculator'
 
-type Tab = 'calc' | 'jobs' | 'pi' | 'structures' | 'moons'
+type Tab = 'calc' | 'jobs' | 'pi' | 'picalc' | 'structures' | 'moons'
 
 export default function IndustryPage() {
   const { pageArg } = useApp()
@@ -26,7 +27,8 @@ export default function IndustryPage() {
         tabs={[
           { id: 'calc', label: 'Калькулятор производства' },
           { id: 'jobs', label: 'Мои работы' },
-          { id: 'pi', label: 'Планетарка' },
+          { id: 'pi', label: 'Мои колонии' },
+          { id: 'picalc', label: 'Расчёт планетарки' },
           { id: 'structures', label: 'Структуры' },
           { id: 'moons', label: 'Луны' }
         ]}
@@ -38,6 +40,7 @@ export default function IndustryPage() {
       {tab === 'structures' && <Structures />}
       {tab === 'moons' && <Moons />}
       {tab === 'pi' && <Planets />}
+      {tab === 'picalc' && <PiCalculator />}
     </div>
   )
 }

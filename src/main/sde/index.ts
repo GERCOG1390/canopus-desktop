@@ -20,7 +20,8 @@ import type {
   SystemBasic,
   TypeBasic,
   WormholeType,
-  JumpHop
+  JumpHop,
+  PiSchematic
 } from '../../shared/sde'
 import type { FittableType } from '../../shared/fit'
 import { SDE_FORMAT } from '../../shared/sde'
@@ -300,6 +301,17 @@ export function system(id: number): SystemBasic | null {
 
 const WORMHOLE_GROUP = 988
 const WH_ATTR = { target: 1381, lifetime: 1382, mass: 1383, regen: 1384, jumpMass: 1385 }
+
+/** Every planetary industry schematic (P0 → P1 … → P4), by schematic id. */
+export function piSchematics(): Record<number, PiSchematic> {
+  return need().schematics ?? {}
+}
+
+/** Planet types per solar system, for the given systems. */
+export function systemPlanets(ids: number[]): Record<number, number[]> {
+  const d = need()
+  return Object.fromEntries(ids.map((id) => [id, d.systemPlanets?.[id] ?? []]))
+}
 
 /** All wormhole types ("Wormhole C247") with their destination class and mass / time limits. */
 export function wormholeTypes(): WormholeType[] {

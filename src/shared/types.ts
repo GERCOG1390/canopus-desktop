@@ -17,7 +17,7 @@ import type { FreelanceFilter } from './freelance'
 import type { WidgetSettings, WidgetView } from './widgets'
 import type { ClientWindow, PreviewSettings } from './previews'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
-import type { CampaignDef, CampaignObjectiveDef, GalaxyData, JumpHop, WormholeType } from './sde'
+import type { CampaignDef, CampaignObjectiveDef, GalaxyData, JumpHop, PiSchematic, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
@@ -123,6 +123,10 @@ export interface CanopusApi {
     /** Published items anywhere under a market group. */
     marketTypesIn(groupId: number): Promise<number[]>
     wormholeTypes(): Promise<WormholeType[]>
+    /** Planetary industry schematics by id. */
+    piSchematics(): Promise<Record<number, PiSchematic>>
+    /** Planet types in each of the given solar systems. */
+    systemPlanets(ids: number[]): Promise<Record<number, number[]>>
     /** Fewest-jumps capital route within a jump range (null when unreachable). */
     jumpRoute(from: number, to: number, rangeLy: number): Promise<JumpHop[] | null>
     lightYears(from: number, to: number): Promise<number | null>
