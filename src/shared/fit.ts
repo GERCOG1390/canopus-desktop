@@ -30,8 +30,11 @@ export interface FitSpec {
   environment?: number
 }
 
-/** Skill levels to fit with: a map of skill → level, or every skill at V. */
-export type SkillSource = { mode: 'all5' } | { mode: 'char'; levels: Record<number, number> }
+/**
+ * Skill levels to fit with: a map of skill → level, or every skill at V. `overrides` (trial levels in the
+ * fitting) sets some skills to another level on top of "all V".
+ */
+export type SkillSource = { mode: 'all5'; overrides?: Record<number, number> } | { mode: 'char'; levels: Record<number, number> }
 
 export interface ResourceUse {
   used: number

@@ -96,7 +96,7 @@ export class Dogma {
       skills.mode === 'all5'
         ? Object.values(db.types)
             .filter((t) => t.pub && db.groups[t.g]?.c === CATEGORY.SKILL)
-            .map((t) => [t.id, 5])
+            .map((t) => [t.id, skills.overrides?.[t.id] ?? 5])
         : Object.entries(skills.levels).map(([id, lvl]) => [Number(id), lvl])
     for (const [id, level] of levels) {
       if (!db.types[id] || level <= 0) continue

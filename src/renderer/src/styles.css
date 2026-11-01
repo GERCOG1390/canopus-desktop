@@ -4555,3 +4555,64 @@ button.danger-fill:hover:not(:disabled) {
 .rk-org {
   flex-shrink: 1;
 }
+
+/* Trial skill levels in the fitting */
+.trial-skills {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.trial-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.trial-badge {
+  font-size: 12px;
+  color: var(--warn);
+}
+.trial-actions {
+  display: flex;
+  gap: 6px;
+  margin: 6px 0;
+}
+.trial-search {
+  margin-bottom: 6px;
+}
+.trial-list {
+  display: flex;
+  flex-direction: column;
+}
+.trial-row {
+  padding: 6px 0 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.trial-row.trial-changed {
+  box-shadow: inset 3px 0 0 var(--warn);
+}
+.trial-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.trial-levels {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+.trial-levels .chip-btn.small {
+  padding: 1px 7px;
+  min-width: 26px;
+}
+.trial-levels .muted {
+  margin-left: 6px;
+}
+.trial-note {
+  margin: -4px 0 10px;
+  color: var(--warn);
+}

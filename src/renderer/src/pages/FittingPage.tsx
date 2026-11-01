@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { FitSpec, FitStats, FittableType, LayerStats, ModuleState, SavedFit, SkillSource, Slot } from '../../../shared/fit'
 import type { SkillReq } from '../../../shared/sde'
 import { useApp, useLang } from '../AppContext'
@@ -12,6 +12,7 @@ import { GameButton } from '../components/GameButton'
 import { saveFitToGame, SCOPE } from '../lib/gameActions'
 import { MarketTree } from '../components/MarketTree'
 import { MissingSkillsBox } from '../components/skills'
+import { TrialSkills } from '../components/TrialSkills'
 import { TypeLink, TypeName } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, SearchBox } from '../components/ui'
 import { imageUrl } from '../lib/esi'
@@ -133,14 +134,18 @@ function SavedList({ fits, onDeleted }: { fits: SavedFit[]; onDeleted: () => voi
 
 // ---------------- Editor ----------------
 
-function useSkillSource(mode: SkillMode): SkillSource {
+/** The skills to fit with; `trial` (trial levels) sets some skills to another level on top. */
+function useSkillSource(mode: SkillMode, trial: Record<number, number> = {}): SkillSource {
   const char = useCharacter()
+  const key = JSON.stringify(Object.entries(trial).sort(([a], [b]) => Number(a) - Number(b)))
   return useMemo(() => {
+    const has = key !== '[]'
     if (mode === 'char' && char.skills) {
-      return { mode: 'char', levels: Object.fromEntries([...char.skills.entries()].map(([id, s]) => [id, s.active])) }
+      return { mode: 'char', levels: { ...Object.fromEntries([...char.skills.entries()].map(([id, s]) => [id, s.active])), ...(has ? trial : {}) } }
     }
-    return { mode: 'all5' }
-  }, [mode, char.skills])
+    return has ? { mode: 'all5', overrides: trial } : { mode: 'all5' }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, char.skills, key])
 }
 
 function Editor() {
@@ -148,7 +153,20 @@ function Editor() {
   const char = useCharacter()
   const { fit, savedId, setFit, updateFit } = useFitting()
   const [mode, setMode] = useState<SkillMode>(active ? 'char' : 'all5')
-  const skills = useSkillSource(mode)
+  /** Trial skill levels: the fit as it would be with these skills at these levels. */
+  const [trial, setTrial] = useState<Record<number, number>>({})
+  const skills = useSkillSource(mode, trial)
+  const realSkills = useSkillSource(mode)
+  const trialCount = Object.keys(trial).length
+  // Trial levels mean something else on top of "all V" (only lower) than on top of the character.
+  const shownMode = useRef(mode)
+  useEffect(() => {
+    if (shownMode.current === mode) return
+    shownMode.current = mode
+    setTrial({})
+  }, [mode])
+  /** The fit with the real skills, while trial levels are set: the metrics show the difference. */
+  const [realStats, setRealStats] = useState<FitStats | null>(null)
   const [stats, setStats] = useState<FitStats | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [browserSlot, setBrowserSlot] = useState<Slot | 'drone' | 'implant'>('hi')
@@ -198,6 +216,24 @@ function Editor() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hoverId, f, skills, stats])
+
+  useEffect(() => {
+    if (!trialCount) {
+      setRealStats(null)
+      return
+    }
+    let cancelled = false
+    const t = setTimeout(() => {
+      window.api.fit
+        .calculate(f, realSkills)
+        .then((s) => !cancelled && setRealStats(s))
+        .catch(() => undefined)
+    }, 60)
+    return () => {
+      cancelled = true
+      clearTimeout(t)
+    }
+  }, [f, realSkills, trialCount])
 
   // The combat simulator window follows the fit being edited.
   useEffect(() => {
@@ -325,7 +361,15 @@ function Editor() {
 
       {tool && <FitTools tool={tool} setTool={setTool} fit={f} skills={skills} onLoad={(x) => setFit(x)} onChange={(x) => updateFit(() => x)} />}
 
-      {stats && <FitMetrics stats={preview?.stats ?? stats} base={preview?.stats ? stats : undefined} />}
+      {stats && <FitMetrics stats={preview?.stats ?? stats} base={preview?.stats ? stats : (realStats ?? undefined)} />}
+      {trialCount > 0 && !preview?.stats && (
+        <div className="trial-note small">
+          Расчёт с пробными уровнями навыков ({trialCount}) — стрелки показывают разницу {mode === 'all5' ? 'со всеми навыками V' : 'с вашими реальными навыками'}.{' '}
+          <button className="button-link" onClick={() => setTrial({})}>
+            Сбросить
+          </button>
+        </div>
+      )}
 
       <div className="fitting-grid">
         <div className="fit-col">
@@ -341,6 +385,9 @@ function Editor() {
               </div>
             </div>
             {mode === 'char' && reqs.data && <MissingSkillsBox reqs={reqs.data as Record<number, SkillReq>} title="Фит" />}
+            {reqs.data && (mode === 'all5' || char.skills) && (
+              <TrialSkills reqs={reqs.data as Record<number, SkillReq>} allV={mode === 'all5'} trial={trial} onChange={setTrial} />
+            )}
             {mode === 'all5' && char.skills && reqs.data && (
               <div className="muted small">Расчёт со всеми навыками V. Переключите на своего персонажа, чтобы увидеть реальные цифры.</div>
             )}
