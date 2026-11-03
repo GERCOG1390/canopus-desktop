@@ -422,7 +422,15 @@ function Planets() {
       colonies.map((c) => esi<{ pins: Pin[] }>(`/characters/${active.id}/planets/${c.planet_id}/`, { characterId: active.id }).catch(() => ({ pins: [] as Pin[] })))
     )
     const products = details.flatMap((d) => d.pins.map((p) => p.extractor_details?.product_type_id ?? 0))
-    const names = await resolveNames([...colonies.map((c) => c.planet_id), ...products])
+    const names = await resolveNames(products)
+    // /universe/names/ doesn't resolve planets: each one has its own endpoint.
+    await Promise.all(
+      colonies.map((c) =>
+        esi<{ name: string }>(`/universe/planets/${c.planet_id}/`)
+          .then((p) => names.set(c.planet_id, p.name))
+          .catch(() => {})
+      )
+    )
     const systems = await Promise.all(colonies.map((c) => systemInfo(c.solar_system_id)))
     // What each planet makes in an hour: running extractors plus factories (assumed fed), less what its
     // own factories use up; what is left is valued at Jita.
