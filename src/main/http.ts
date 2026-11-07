@@ -54,7 +54,9 @@ async function fetchOnce(url: string, options: RequestOptions): Promise<{ data: 
     } catch {
       // Non-JSON error body; keep the raw text.
     }
-    throw new HttpError(res.status, `${res.status}: ${message}`)
+    // The wait goes with the message: the error reaches the page as text.
+    const retry = res.headers.get('retry-after')
+    throw new HttpError(res.status, `${res.status}: ${message}${retry ? ` retry-after=${retry}` : ''}`)
   }
   return {
     data: text ? JSON.parse(text) : null,

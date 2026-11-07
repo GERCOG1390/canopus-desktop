@@ -12,6 +12,7 @@ import { openContractInGame, SCOPE } from '../lib/gameActions'
 import { jitaPrices } from '../lib/market'
 import { searchTypesSde, tn } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
+import { limitedFor } from '../../../shared/esiLimit'
 import { dealOf, pickContracts, sells, type ContractDeal, type PublicContract, type PublicContractItem } from '../../../shared/publicContracts'
 
 /** Contracts looked into per search */
@@ -46,6 +47,7 @@ export default function PublicContracts() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [result, setResult] = useState<{ rows: Row[]; picked: PublicContract[]; scanned: number; errors: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [waitSeconds, setWaitSeconds] = useState<number | null>(null)
   const [open, setOpen] = useState<number | null>(null)
   const run = useRef(0)
   useEffect(
@@ -59,6 +61,7 @@ export default function PublicContracts() {
   const scan = async (given: { picked: PublicContract[]; scanned: number; errors: number } | null) => {
     const me = ++run.current
     setError(null)
+    setWaitSeconds(null)
     setOpen(null)
     if (!given) setResult(null)
     setProgress({ done: given?.scanned ?? 0, total: given?.picked.length ?? 0 })
@@ -70,15 +73,18 @@ export default function PublicContracts() {
       let next = start
       let done = start
       let errors = 0
+      let limited: number | null = null
       setProgress({ done, total: end })
       const worker = async () => {
-        while (next < end && errors < MAX_ERRORS && run.current === me) {
+        while (next < end && errors < MAX_ERRORS && limited === null && run.current === me) {
           const c = picked[next++]
           if (!contents.has(c.contract_id)) {
             try {
               contents.set(c.contract_id, await esi<PublicContractItem[]>(`/contracts/public/items/${c.contract_id}/`, { allPages: true }))
-            } catch {
-              errors++
+            } catch (e) {
+              const wait = limitedFor(e instanceof Error ? e.message : String(e))
+              if (wait === null) errors++
+              else limited = wait
             }
           }
           done++
@@ -105,6 +111,7 @@ export default function PublicContracts() {
           unit: (id: number) => prices.get(id)?.sell.best ?? 0
         }
       })
+      setWaitSeconds(limited)
       setResult({ rows, picked, scanned: done, errors: (given?.errors ?? 0) + errors })
     } catch (e) {
       if (run.current === me) setError(e instanceof Error ? e.message : String(e))
@@ -175,6 +182,7 @@ export default function PublicContracts() {
           </>
         )}
         {error && <p className="warn-text small">{error}</p>}
+        {waitSeconds !== null && <p className="warn-text small">{`ESI просит подождать, минут: ${Math.ceil(waitSeconds / 60)}. Что успели прочитать, сохранено.`}</p>}
       </Card>
       {!result && !progress ? (
         <Empty>Выберите регион и нажмите «Искать». Предмет можно не указывать: тогда покажутся самые выгодные контракты.</Empty>

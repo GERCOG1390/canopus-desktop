@@ -2,10 +2,12 @@ import { Fragment, useEffect, useState } from 'react'
 import { FitView, type FitItem } from '../components/FitView'
 import { useApp } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
-import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat } from '../components/ui'
+import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat, Tabs } from '../components/ui'
 import { esi, imageUrl, resolveIds, resolveNames, systemInfo, type SystemInfo } from '../lib/esi'
 import { fmtAgo, fmtIsk, fmtNum } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
+import BattleReportTab from './BattleReport'
+import Wars from './Wars'
 
 interface Pilot {
   id: number
@@ -64,7 +66,33 @@ async function searchPilots(q: string, characterId: number | null): Promise<Pilo
   return (await resolveIds([query])).characters ?? []
 }
 
+type Tab = 'pilot' | 'wars' | 'battle'
+
 export default function PvpPage() {
+  const { pageArg } = useApp()
+  const [tab, setTab] = useState<Tab>('pilot')
+  useEffect(() => {
+    if (pageArg) setTab('pilot')
+  }, [pageArg])
+  return (
+    <div className="page">
+      <Tabs
+        tabs={[
+          { id: 'pilot', label: 'Пилот' },
+          { id: 'battle', label: 'Разбор боя' },
+          { id: 'wars', label: 'Войны' }
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+      {tab === 'pilot' && <PilotTab />}
+      {tab === 'battle' && <BattleReportTab />}
+      {tab === 'wars' && <Wars />}
+    </div>
+  )
+}
+
+function PilotTab() {
   const { active, pageArg } = useApp()
   const [pilot, setPilot] = useState<Pilot | null>(null)
 
@@ -80,7 +108,7 @@ export default function PvpPage() {
   }, [pageArg])
 
   return (
-    <div className="page">
+    <>
       <div className="toolbar">
         <SearchBox
           placeholder="Имя пилота…"
@@ -100,7 +128,7 @@ export default function PvpPage() {
         )}
       </div>
       {pilot ? <PilotBoard pilot={pilot} /> : <Empty>Найдите пилота, чтобы посмотреть его статистику и последние бои.</Empty>}
-    </div>
+    </>
   )
 }
 
