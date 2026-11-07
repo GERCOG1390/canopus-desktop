@@ -606,7 +606,9 @@ const TOOLS: Tool[] = [
         speedA: a.my_speed ?? d.speedA,
         headingA: a.my_heading_deg ?? 0,
         speedB: a.enemy_speed ?? d.speedB,
-        headingB: a.enemy_heading_deg ?? 90
+        headingB: a.enemy_heading_deg ?? 90,
+        behaviorA: a.my_heading_deg === undefined ? 'orbit' : 'free',
+        behaviorB: a.enemy_heading_deg === undefined ? 'orbit' : 'free'
       })
       await names([r.a.shipTypeId, r.b.shipTypeId, ...r.a.effects.map((e) => e.typeId), ...r.b.effects.map((e) => e.typeId)])
       const side = (s: typeof r.a) => ({
@@ -618,8 +620,8 @@ const TOOLS: Tool[] = [
         prop: s.prop && { on: s.prop.on, blocked_by_scram: s.prop.blocked },
         affected_by: s.effects.map((e) => `${e.kind} ${en(e.typeId)} x${e.count}: ${r1(e.value)}%`)
       })
-      const dir = (x: typeof r.ab) => ({ paper_dps: r1(x.paperDps), applied_dps: r1(x.applied), time_to_kill_s: Number.isFinite(x.timeToKill) ? Math.round(x.timeToKill) : 'never', limits: [...new Set(x.weapons.map((w) => w.limit).filter(Boolean))], cap_warning: x.capWarning })
-      return { you: side(r.a), opponent: side(r.b), you_to_opponent: dir(r.ab), opponent_to_you: dir(r.ba), transversal_m_s: r1(r.transversal) }
+      const dir = (x: typeof r.ab) => ({ paper_dps: r1(x.paperDps), applied_dps: r1(x.applied), time_to_kill_s: Number.isFinite(x.timeToKill) ? Math.round(x.timeToKill) : 'never', limits: [...new Set(x.weapons.map((w) => w.limit).filter(Boolean))] })
+      return { you: side(r.a), opponent: side(r.b), you_to_opponent: dir(r.ab), opponent_to_you: dir(r.ba), transversal_m_s: r1(r.transversal), fight: { winner: r.timeline.winner === 'a' ? 'you' : r.timeline.winner === 'b' ? 'opponent' : r.timeline.winner, ended_after_s: Math.round(r.timeline.end), events: r.timeline.events.map((e) => `${Math.round(e.t)}s ${e.side === 'a' ? 'you' : 'opponent'}: ${e.kind}`).slice(0, 30) } }
     }
   ),
 

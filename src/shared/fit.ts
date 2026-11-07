@@ -74,6 +74,11 @@ export interface WeaponStats {
   speed?: number
   /** Triglavian disintegrators: the damage bonus reached after spooling up (2.125 = +212.5%) */
   spoolMax?: number
+  /** ...and how much of it each cycle adds */
+  spoolPerCycle?: number
+  /** Cycles a load of charges lasts; undefined when it never stops to reload */
+  shots?: number
+  reloadSec?: number
 }
 
 export interface ModuleResult {
@@ -96,6 +101,7 @@ export interface ModuleResult {
 export type TacticalModule =
   | { kind: 'web' | 'paint'; strength: number; range: number; falloff: number }
   | { kind: 'scram' | 'point'; strength: number; range: number }
+  | { kind: 'neut' | 'nos'; amount: number; range: number; falloff: number; cycle: number }
   | { kind: 'mwd' | 'ab' }
 
 export interface FitStats {
@@ -125,6 +131,10 @@ export interface FitStats {
     hullRepair: number
     /** Effective (resist-weighted) active tank per second */
     activeTankEhp: number
+    /** The same repairs one module at a time, for the combat timeline */
+    repairers: { index: number; layer: 'shield' | 'armor' | 'hull'; amount: number; cycle: number; shots?: number; reloadSec?: number }[]
+    /** Multiplier on incoming neuts and nosferatus, 1 = none resisted */
+    neutResist: number
   }
   capacitor: {
     capacity: number

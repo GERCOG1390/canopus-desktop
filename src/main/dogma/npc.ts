@@ -5,7 +5,7 @@
 import type { FitSpec, LayerStats, SkillSource } from '../../shared/fit'
 import type { NpcClassResult, NpcFaction, NpcReport } from '../../shared/npc'
 import { sdeForDogma } from '../sde'
-import { application } from './combat'
+import { application } from '../../shared/combatTimeline'
 import { calculateFit } from './index'
 
 /** Mission NPC groups: pirates fly the "Deadspace" groups, empires and others the "Mission" groups. */

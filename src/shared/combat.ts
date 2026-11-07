@@ -1,5 +1,6 @@
 // Combat simulator: two fits against each other at a given geometry (distance, speeds, headings).
 
+import type { Behavior, Timeline } from './combatTimeline'
 import type { FitSpec, SkillSource } from './fit'
 
 export interface CombatPilot {
@@ -30,11 +31,17 @@ export interface CombatScenario {
   /** Use this side's webs, target painters and scramblers on the other; undefined = on */
   ewarA?: boolean
   ewarB?: boolean
+  /** What each ship does once the fight starts; undefined = keeps its course and speed */
+  behaviorA?: Behavior
+  behaviorB?: Behavior
+  /** Orbit or keep-at-range distance, m; undefined = the starting distance */
+  rangeA?: number
+  rangeB?: number
 }
 
 /** Something one side's modules do to the other at the current distance. */
 export interface CombatEffect {
-  kind: 'web' | 'paint' | 'scram' | 'point'
+  kind: 'web' | 'paint' | 'scram' | 'point' | 'neut' | 'nos'
   typeId: number
   count: number
   /** Change applied, % (−60 for a web at full strength, +30 for a painter), after falloff and stacking */
@@ -59,6 +66,8 @@ export interface AppliedWeapon {
   factor: number
   /** Why application is reduced ("out of range", "tracking", "explosion radius"...) */
   limit?: string
+  /** Bonus a spooling weapon works up to; the figures above are before it */
+  spoolMax?: number
 }
 
 export interface CombatDirection {
@@ -71,11 +80,9 @@ export interface CombatDirection {
   effective: { shield: number; armor: number; hull: number }
   /** Target's repairs per layer (HP/s): shield boost + passive regen, armor and hull repair */
   repair: { shield: number; armor: number; hull: number }
-  /** Seconds to strip each layer; Infinity when the damage doesn't beat the repair */
+  /** Seconds the fight took to strip each layer; Infinity when it never did */
   time: { shield: number; armor: number; hull: number }
   timeToKill: number
-  /** Target's repairs need a capacitor that runs out: they are counted only while it lasts */
-  capWarning?: string
 }
 
 export interface CombatSideInfo {
@@ -111,6 +118,8 @@ export interface CombatResult {
   ba: CombatDirection
   angularVelocity: number
   transversal: number
+  /** The fight stepped through time */
+  timeline: Timeline
   /** Applied DPS (before resists) over distance, for the chart */
   curve: { distance: number[]; ab: number[]; ba: number[] }
 }

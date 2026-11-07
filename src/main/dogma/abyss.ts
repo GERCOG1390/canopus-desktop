@@ -7,7 +7,7 @@ import type { AbyssFaction, AbyssFactionResult, AbyssFitSide, AbyssNpc, AbyssRep
 import { ABYSS_FACTIONS, WEATHER_CELESTIAL, WEATHER_HOLE } from '../../shared/abyss'
 import type { FitSpec, FitStats, SkillSource } from '../../shared/fit'
 import { sdeForDogma } from '../sde'
-import { application } from './combat'
+import { application } from '../../shared/combatTimeline'
 import { calculateFit } from './index'
 
 const NPC_GROUPS = new Set([1982, 1997])

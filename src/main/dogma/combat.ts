@@ -1,126 +1,15 @@
-// Combat simulator: applied damage of one fit against another at a given geometry,
-// using the game's published formulas (turret hit chance, missile application), and the
-// time each side needs to strip the other's shield, armor and hull through resists and repairs.
+// Combat simulator: applied damage of one fit against another at the opening geometry, using the game's
+// published formulas, and the fight itself stepped through time (shared/combatTimeline.ts).
 
 import type { AppliedWeapon, CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
-import type { FitStats, LayerStats, TacticalModule, WeaponStats } from '../../shared/fit'
+import { application, ewarEfficiency, runTimeline, stackingPenalty, type Combatant, type Geometry, type Orders, type Tactical, type Timeline } from '../../shared/combatTimeline'
+import type { FitStats, TacticalModule } from '../../shared/fit'
 import { calculateFit } from './index'
-
-/** Turret tracking is normalised to a 40 km signature resolution since the 2019 rework. */
-const TURRET_SIG_RESOLUTION = 40_000
-
-/** Average damage multiplier for a hit chance, including 1% wrecking shots at 3x (as the game rolls it). */
-function turretMultiplier(chance: number): number {
-  const wrecking = Math.min(chance, 0.01)
-  const normal = chance - wrecking
-  const normalPart = normal > 0 ? normal * ((0.01 + chance) / 2 + 0.49) : 0
-  return normalPart + wrecking * 3
-}
-
-export interface Geometry {
-  distance: number
-  /** Relative sideways speed, m/s */
-  transversal: number
-  /** Target's own speed (for missiles and drones), m/s */
-  targetSpeed: number
-  targetSig: number
-  /** How fast the target moves away from the shooter, m/s (negative when closing in) */
-  receding: number
-}
-
-/** Share of a weapon's damage that lands, and what limits it. */
-export function application(w: WeaponStats, g: Geometry): { factor: number; limit?: string } {
-  if (w.kind === 'turret') {
-    const angular = g.transversal / Math.max(g.distance, 1)
-    const trackingTerm = w.tracking && g.targetSig > 0 ? ((angular * TURRET_SIG_RESOLUTION) / (w.tracking * g.targetSig)) ** 2 : 0
-    const beyond = Math.max(0, g.distance - (w.optimal ?? 0))
-    const rangeTerm = beyond > 0 ? (w.falloff ? (beyond / w.falloff) ** 2 : Infinity) : 0
-    const factor = turretMultiplier(0.5 ** (trackingTerm + rangeTerm))
-    const limit = factor > 0.98 ? undefined : rangeTerm > trackingTerm ? (rangeTerm === Infinity ? 'вне дальности' : 'фоллоф') : 'наводка'
-    return { factor, limit }
-  }
-  if (w.kind === 'smartbomb') return g.distance <= (w.optimal ?? 0) ? { factor: 1 } : { factor: 0, limit: 'вне радиуса смартбомбы' }
-  if (w.kind === 'missile' || w.kind === 'vorton') {
-    // A missile chasing a target that moves away covers (speed − receding speed) × flight time;
-    // against one coming closer it reaches farther.
-    if (w.optimal !== undefined) {
-      const flightTime = w.missileVelocity ? w.optimal / w.missileVelocity : 0
-      const reach = w.missileVelocity ? Math.max(0, (w.missileVelocity - g.receding) * flightTime) : w.optimal
-      if (g.distance > reach) return { factor: 0, limit: g.receding > 0 && g.distance <= w.optimal ? 'цель уходит от ракет' : 'вне дальности полёта' }
-    }
-    const e = w.explosionRadius ?? 0
-    const ve = w.explosionVelocity ?? 0
-    const drf = w.drf ?? 0.5
-    const sigTerm = e > 0 ? g.targetSig / e : 1
-    const speedTerm = e > 0 && g.targetSpeed > 0 && ve > 0 ? ((g.targetSig * ve) / (e * g.targetSpeed)) ** drf : Infinity
-    const factor = Math.min(1, sigTerm, speedTerm)
-    const limit = factor > 0.98 ? undefined : sigTerm <= speedTerm ? 'радиус взрыва' : 'скорость взрыва'
-    return { factor, limit }
-  }
-  if (w.kind === 'drone') {
-    // Drones fly to the target: range doesn't matter. As in Pyfa, drones faster than the target keep pace
-    // with it (no transversal, full application); a faster target simply outruns them.
-    if (w.speed && g.targetSpeed > w.speed) return { factor: 0, limit: 'цель быстрее дронов' }
-    return { factor: turretMultiplier(1) }
-  }
-  return { factor: 1 }
-}
-
-const layerEffective = (byType: number[], l: LayerStats) => byType.reduce((s, d, i) => s + d * (1 - l.resist[i]), 0)
-
-/**
- * Seconds to strip a layer of `hp` starting at `start`: the target repairs `passive` all the time
- * and `active` only until `capOut` (its capacitor runs dry).
- */
-function layerTime(hp: number, dps: number, passive: number, active: number, start: number, capOut: number): number {
-  if (hp <= 0) return 0
-  let remaining = hp
-  let t = start
-  if (t < capOut) {
-    const net = dps - passive - active
-    const window = capOut - t
-    if (net > 0 && net * window >= remaining) return remaining / net
-    if (net > 0) remaining -= net * window
-    if (capOut === Infinity) return Infinity
-    t = capOut
-  }
-  const net = dps - passive
-  if (net <= 0) return Infinity
-  return t + remaining / net - start
-}
-
-/** Longest fight worth simulating; beyond it the tank holds. */
-const MAX_FIGHT_SEC = 3 * 3600
-
-/**
- * Seconds to strip the shield, integrating the game's passive recharge: at fraction s of the shield
- * it regenerates 10·S/T·(√s − s) HP/s — nothing when full, the peak (2.5·S/T) at 25%.
- * Active boosting adds `active` HP/s until the capacitor runs out at `capOut`.
- */
-function shieldTime(hp: number, dps: number, rechargeSec: number, active: number, capOut: number): number {
-  if (hp <= 0) return 0
-  if (dps <= 0) return Infinity
-  const k = rechargeSec > 0 ? (10 * hp) / rechargeSec : 0
-  let shield = hp
-  let t = 0
-  const dt = Math.max(0.05, Math.min(1, hp / dps / 2000))
-  while (shield > 0) {
-    const s = shield / hp
-    const regen = k * (Math.sqrt(s) - s) + (t < capOut ? active : 0)
-    const net = dps - regen
-    // The regeneration holds the damage: the shield settles above zero.
-    if (net <= 0 && (t >= capOut || capOut === Infinity)) return Infinity
-    shield = Math.min(hp, shield - net * dt)
-    t += dt
-    if (t > MAX_FIGHT_SEC) return Infinity
-  }
-  return t
-}
 
 function direction(att: FitStats, def: FitStats, g: Geometry): CombatDirection {
   const weapons: AppliedWeapon[] = att.offense.weapons.map((w) => {
     const { factor, limit } = application(w, g)
-    return { typeId: w.typeId, chargeTypeId: w.chargeTypeId, kind: w.kind, count: w.count, dps: w.dps, applied: w.dps * factor, factor, limit }
+    return { typeId: w.typeId, chargeTypeId: w.chargeTypeId, kind: w.kind, count: w.count, dps: w.dps, applied: w.dps * factor, factor, limit, spoolMax: w.spoolMax }
   })
   const appliedByType = [0, 0, 0, 0] as [number, number, number, number]
   att.offense.weapons.forEach((w, i) => {
@@ -128,14 +17,9 @@ function direction(att: FitStats, def: FitStats, g: Geometry): CombatDirection {
     w.damage.forEach((d, k) => (appliedByType[k] += (d / (w.cycle || 1)) * factor))
   })
   const d = def.defense
-  const effective = { shield: layerEffective(appliedByType, d.shield), armor: layerEffective(appliedByType, d.armor), hull: layerEffective(appliedByType, d.hull) }
+  const layerEffective = (l: FitStats['defense']['shield']): number => appliedByType.reduce((sum, v, i) => sum + v * (1 - l.resist[i]), 0)
+  const effective = { shield: layerEffective(d.shield), armor: layerEffective(d.armor), hull: layerEffective(d.hull) }
   const repair = { shield: d.shieldBoost + d.passiveShieldRegen, armor: d.armorRepair, hull: d.hullRepair }
-  const activeReps = d.shieldBoost + d.armorRepair + d.hullRepair
-  const capOut = def.capacitor.stable || !activeReps ? Infinity : (def.capacitor.lastsSec ?? 0)
-
-  const shield = shieldTime(d.shield.hp, effective.shield, d.shieldRechargeSec, d.shieldBoost, capOut)
-  const armor = shield === Infinity ? Infinity : layerTime(d.armor.hp, effective.armor, 0, d.armorRepair, shield, capOut)
-  const hull = shield === Infinity || armor === Infinity ? Infinity : layerTime(d.hull.hp, effective.hull, 0, d.hullRepair, shield + armor, capOut)
 
   const paperDps = weapons.reduce((s, w) => s + w.dps, 0)
   const applied = weapons.reduce((s, w) => s + w.applied, 0)
@@ -154,9 +38,8 @@ function direction(att: FitStats, def: FitStats, g: Geometry): CombatDirection {
     applied,
     effective,
     repair,
-    time: { shield, armor, hull },
-    timeToKill: shield + armor + hull,
-    capWarning: capOut !== Infinity ? `Накопитель цели кончается за ${Math.round(capOut)} с — после этого её активные ремонтники не работают` : undefined
+    time: { shield: Infinity, armor: Infinity, hull: Infinity },
+    timeToKill: Infinity
   }
 }
 
@@ -201,26 +84,11 @@ function chartRange(stats: FitStats[], current: number): number {
   return Math.min(300_000, Math.max(10_000, max, current * 1.25))
 }
 
-/** The game's stacking penalty for the n-th strongest module of a kind (0-based). */
-const stackingPenalty = (n: number) => Math.exp(-((n / 2.67) ** 2))
-
-/** Strength of a web or painter at a distance: full within range, 0.5^((d − range)/falloff)² beyond. */
-function ewarEfficiency(d: number, range: number, falloff: number): number {
-  if (d <= range) return 1
-  if (!falloff) return 0
-  return 0.5 ** (((d - range) / falloff) ** 2)
-}
-
-interface Tactical {
-  typeId: number
-  t: TacticalModule
-}
-
-/** Webs, painters, scrams and points of a fit that are fitted (not offline). */
-function ewarModules(pilot: CombatPilot, s: FitStats): Tactical[] {
+/** Webs, painters, scrams, points and neuts of a fit that are fitted (not offline). */
+function ewarModules(pilot: CombatPilot, s: FitStats): (Tactical & { index: number })[] {
   return s.modules
     .filter((r) => r.tactical && r.tactical.kind !== 'mwd' && r.tactical.kind !== 'ab' && pilot.fit.modules[r.index]?.state !== 'offline')
-    .map((r) => ({ typeId: pilot.fit.modules[r.index].typeId, t: r.tactical! }))
+    .map((r) => ({ index: r.index, typeId: pilot.fit.modules[r.index].typeId, t: r.tactical! }))
 }
 
 /**
@@ -263,6 +131,22 @@ function tackle(mods: Tactical[], kind: 'scram' | 'point', d: number): CombatEff
   return [...byType.values()]
 }
 
+/** Neuts or nosferatus in reach at a distance, one line per module type; value is GJ per cycle after falloff. */
+function drains(mods: Tactical[], kind: 'neut' | 'nos', d: number): CombatEffect[] {
+  const byType = new Map<number, CombatEffect>()
+  for (const m of mods) {
+    if (m.t.kind !== kind) continue
+    const efficiency = ewarEfficiency(d, m.t.range, m.t.falloff)
+    if (efficiency <= 0.001) continue
+    const e = byType.get(m.typeId)
+    if (e) {
+      e.count++
+      e.value += m.t.amount * efficiency
+    } else byType.set(m.typeId, { kind, typeId: m.typeId, count: 1, value: m.t.amount * efficiency, efficiency, range: m.t.range, falloff: m.t.falloff })
+  }
+  return [...byType.values()]
+}
+
 /** One side's fit with the propulsion module switched on or off (for MWD/AB toggles and a scram). */
 function withProp(pilot: CombatPilot, index: number, on: boolean): CombatPilot {
   return {
@@ -275,7 +159,7 @@ function withProp(pilot: CombatPilot, index: number, on: boolean): CombatPilot {
 class Side {
   readonly base: FitStats
   readonly prop?: { kind: 'mwd' | 'ab'; typeId: number; index: number; fitOn: boolean }
-  readonly ewar: Tactical[]
+  readonly ewar: (Tactical & { index: number })[]
   private cache = new Map<boolean, FitStats>()
 
   constructor(readonly pilot: CombatPilot) {
@@ -328,8 +212,56 @@ function sideState(me: Side, them: Side, d: number, wantProp: boolean | undefine
     webbedVelocity,
     speed: Math.min(speed, webbedVelocity),
     signature: sigOverride ?? stats.navigation.signatureRadius * paint.mult,
-    effects: [...web.effects, ...paint.effects, ...scrams, ...tackle(ewar, 'point', d)]
+    effects: [...web.effects, ...paint.effects, ...scrams, ...tackle(ewar, 'point', d), ...drains(ewar, 'neut', d), ...drains(ewar, 'nos', d)]
   }
+}
+
+/** A side as the fight needs it: its running modules one by one, with what each costs. */
+function combatant(side: Side, propWanted: boolean): Combatant {
+  // The modules running as fitted; propulsion is added or left out on top of this.
+  const base = side.stats(false)
+  const d = base.defense
+  const need = (index: number): number => {
+    const r = base.modules.find((m) => m.index === index)
+    return r ? r.capPerSecond * r.cycle : 0
+  }
+  const weapons = base.offense.weapons.map((w) => (w.kind === 'drone' ? w : { ...w, need: need(w.moduleIndex) }))
+  const taken = new Set([...base.offense.weapons.filter((w) => w.kind !== 'drone').map((w) => w.moduleIndex), ...d.repairers.map((r) => r.index)])
+  const motion = (s: FitStats) => ({ maxVelocity: s.navigation.maxVelocity, signature: s.navigation.signatureRadius, alignSec: s.navigation.alignSec })
+  const modules = base.modules
+    .filter((m) => !taken.has(m.index) && !m.occasional && m.cycle > 0 && (m.capPerSecond !== 0 || m.tactical))
+    .filter((m) => m.tactical?.kind !== 'mwd' && m.tactical?.kind !== 'ab')
+    .map((m) => ({ index: m.index, need: m.capPerSecond * m.cycle, cycle: m.cycle }))
+  let on: Combatant['on']
+  if (side.prop && propWanted) {
+    const running = side.stats(true)
+    const r = running.modules.find((m) => m.index === side.prop!.index)
+    on = { ...motion(running), index: side.prop.index, kind: side.prop.kind, need: r ? r.capPerSecond * r.cycle : 0, cycle: r?.cycle || 10 }
+  }
+  return {
+    weapons,
+    shield: d.shield,
+    armor: d.armor,
+    hull: d.hull,
+    shieldRechargeSec: d.shieldRechargeSec,
+    neutResist: d.neutResist,
+    capacity: base.capacitor.capacity,
+    capRechargeSec: base.capacitor.rechargeSec,
+    repairers: d.repairers.map((r) => ({ ...r, need: need(r.index) })),
+    modules,
+    tactical: side.ewar,
+    off: motion(base),
+    on
+  }
+}
+
+/** Layer times of the one being shot, from the fight. */
+function timesOf(tl: Timeline, target: 'a' | 'b'): { time: CombatDirection['time']; timeToKill: number } {
+  const o = tl[target]
+  const shield = o.shieldDown ?? (o.dead !== null ? 0 : Infinity)
+  const armor = o.armorDown === null ? (o.dead !== null ? 0 : Infinity) : o.armorDown - (o.shieldDown ?? 0)
+  const hull = o.dead === null ? Infinity : o.dead - (o.armorDown ?? o.shieldDown ?? 0)
+  return { time: { shield, armor, hull }, timeToKill: o.dead ?? Infinity }
 }
 
 export function simulate(a: CombatPilot, b: CombatPilot, sc: CombatScenario): CombatResult {
@@ -359,11 +291,31 @@ export function simulate(a: CombatPilot, b: CombatPilot, sc: CombatScenario): Co
     curve.ba.push(p.sb.stats.offense.weapons.reduce((s, w) => s + w.dps * application(w, p.ba).factor, 0))
   }
 
+  const wantA = sc.propA ?? A.prop?.fitOn ?? false
+  const wantB = sc.propB ?? B.prop?.fitOn ?? false
+  const orders = (behavior: CombatScenario['behaviorA'], range: number | undefined, heading: number, speed: number, wantProp: boolean, useEwar: boolean, sig: number | undefined): Orders => ({
+    behavior: behavior ?? 'free',
+    range: range ?? sc.distance,
+    heading,
+    speed,
+    wantProp,
+    useEwar,
+    sig
+  })
+  const timeline = runTimeline(
+    combatant(A, wantA),
+    combatant(B, wantB),
+    orders(sc.behaviorA, sc.rangeA, sc.headingA, sc.speedA, wantA, sc.ewarA !== false, sc.sigA),
+    orders(sc.behaviorB, sc.rangeB, sc.headingB, sc.speedB, wantB, sc.ewarB !== false, sc.sigB),
+    sc.distance
+  )
+
   return {
     a: sideInfo(A, now.sa),
     b: sideInfo(B, now.sb),
-    ab: direction(now.sa.stats, now.sb.stats, now.ab),
-    ba: direction(now.sb.stats, now.sa.stats, now.ba),
+    ab: { ...direction(now.sa.stats, now.sb.stats, now.ab), ...timesOf(timeline, 'b') },
+    ba: { ...direction(now.sb.stats, now.sa.stats, now.ba), ...timesOf(timeline, 'a') },
+    timeline,
     angularVelocity: now.transversal / Math.max(sc.distance, 1),
     transversal: now.transversal,
     curve

@@ -82,6 +82,10 @@ const EFFECT = { turretFitted: 42, launcherFitted: 40, targetAttack: 10, project
 /** Ancillary armor repairers: repair multiplier with nanite paste loaded; disintegrator spool-up */
 const ATTR_CHARGED_ARMOR_MULT = 1886
 const ATTR_SPOOL_MAX = 2734
+const ATTR_SPOOL_STEP = 2733
+/** Charges an ancillary repairer burns per cycle */
+const ATTR_CHARGE_RATE = 56
+const ATTR_NEUT_RESIST = 2045
 const ATTR_EMP_RANGE = 99
 const ATTR_AOE_VELOCITY = 653
 const ATTR_AOE_CLOUD = 654
@@ -221,15 +225,40 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   let shieldBoost = 0
   let armorRepair = 0
   let hullRepair = 0
+  const repairers: FitStats['defense']['repairers'] = []
+  /** Cycles a load of charges lasts for an ancillary repairer, and the reload after it. */
+  const load = (m: Item): { shots?: number; reloadSec?: number } => {
+    if (!m.other) return {}
+    const vol = db.types[m.other.typeId]?.vol ?? 0
+    const perCycle = a(m, ATTR_CHARGE_RATE) || 1
+    const shots = vol > 0 ? Math.floor((db.types[m.typeId]?.cap ?? 0) / vol / perCycle + 1e-9) : 0
+    return shots > 0 ? { shots, reloadSec: a(m, A.reloadTime) / 1000 } : {}
+  }
   for (const m of dogma.modules.filter(activeState)) {
     const e = defaultEffectName(dogma, m)
     const { cycle } = cycleAndCap(dogma, m)
     if (!cycle) continue
-    if (e === 'shieldBoosting' || e === 'fueledShieldBoosting') shieldBoost += a(m, A.shieldBonus) / cycle
-    if (e === 'armorRepair') armorRepair += a(m, A.armorDamageAmount) / cycle
+    if (e === 'shieldBoosting' || e === 'fueledShieldBoosting') {
+      const amount = a(m, A.shieldBonus)
+      shieldBoost += amount / cycle
+      repairers.push({ index: m.index!, layer: 'shield', amount, cycle, ...(e === 'fueledShieldBoosting' ? load(m) : {}) })
+    }
+    if (e === 'armorRepair') {
+      const amount = a(m, A.armorDamageAmount)
+      armorRepair += amount / cycle
+      repairers.push({ index: m.index!, layer: 'armor', amount, cycle })
+    }
     // Ancillary armor repairers repair three times as much with nanite paste loaded.
-    if (e === 'fueledArmorRepair') armorRepair += (a(m, A.armorDamageAmount) * (m.other ? a(m, ATTR_CHARGED_ARMOR_MULT) || 1 : 1)) / cycle
-    if (e === 'structureRepair') hullRepair += a(m, A.structureDamageAmount) / cycle
+    if (e === 'fueledArmorRepair') {
+      const amount = a(m, A.armorDamageAmount) * (m.other ? a(m, ATTR_CHARGED_ARMOR_MULT) || 1 : 1)
+      armorRepair += amount / cycle
+      repairers.push({ index: m.index!, layer: 'armor', amount, cycle, ...load(m) })
+    }
+    if (e === 'structureRepair') {
+      const amount = a(m, A.structureDamageAmount)
+      hullRepair += amount / cycle
+      repairers.push({ index: m.index!, layer: 'hull', amount, cycle })
+    }
   }
   const avgRes = (l: LayerStats) => 1 - l.resist.reduce((s, x) => s + x, 0) / 4
   const activeTankEhp = shieldBoost / (avgRes(shield) || 1) + armorRepair / (avgRes(armor) || 1) + hullRepair / (avgRes(hull) || 1)
@@ -249,14 +278,18 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
    * DPS with reloads: the weapon fires a full load (module capacity / charge volume), then reloads.
    * Frequency crystals are not used up, so lasers never stop to reload.
    */
-  const withReload = (m: Item, charge: Item, volley: number, cycle: number): number => {
+  const loadOf = (m: Item, charge: Item): { shots?: number; reloadSec?: number } => {
     const cap = db.types[m.typeId]?.cap ?? 0
     const vol = db.types[charge.typeId]?.vol ?? 0
     const crystal = db.dogma[charge.typeId]?.a[A.crystalsGetDamaged] !== undefined
     const shots = vol > 0 ? Math.floor(cap / vol + 1e-9) : 0
     const reload = a(m, A.reloadTime) / 1000
-    if (crystal || shots <= 0 || !reload) return volley / cycle
-    return (volley * shots) / (shots * cycle + reload)
+    return crystal || shots <= 0 || !reload ? {} : { shots, reloadSec: reload }
+  }
+  const withReload = (m: Item, charge: Item, volley: number, cycle: number): number => {
+    const { shots, reloadSec } = loadOf(m, charge)
+    if (!shots) return volley / cycle
+    return (volley * shots) / (shots * cycle + (reloadSec as number))
   }
   for (const m of dogma.modules.filter(activeState)) {
     // Smartbombs: damage of their own, every cycle, to everything within their radius.
@@ -289,13 +322,15 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
         volley,
         dps: volley / cycle,
         dpsReload: withReload(m, charge, volley, cycle),
+        ...loadOf(m, charge),
         damage,
         cycle,
         optimal: a(m, A.maxRange),
         falloff: a(m, A.falloff),
         tracking: a(m, A.trackingSpeed),
         // The game's fitting window shows disintegrators before they spool up; the bonus comes with time on target.
-        spoolMax: isDisintegrator ? a(m, ATTR_SPOOL_MAX) || undefined : undefined
+        spoolMax: isDisintegrator ? a(m, ATTR_SPOOL_MAX) || undefined : undefined,
+        spoolPerCycle: isDisintegrator ? a(m, ATTR_SPOOL_STEP) || undefined : undefined
       })
     } else if (isVorton) {
       // Vorton projectors: charge damage x the projector's multiplier, applied like missiles (explosion radius and speed).
@@ -310,6 +345,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
         volley,
         dps: volley / cycle,
         dpsReload: withReload(m, charge, volley, cycle),
+        ...loadOf(m, charge),
         damage,
         cycle,
         optimal: a(m, A.maxRange),
@@ -330,6 +366,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
         volley,
         dps: volley / cycle,
         dpsReload: withReload(m, charge, volley, cycle),
+        ...loadOf(m, charge),
         damage,
         cycle,
         optimal: (a(charge, A.maxVelocity) * a(charge, A.explosionDelay)) / 1000,
@@ -386,7 +423,9 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       shieldBoost,
       armorRepair,
       hullRepair,
-      activeTankEhp
+      activeTankEhp,
+      repairers,
+      neutResist: a(ship, ATTR_NEUT_RESIST) || 1
     },
     capacitor: { capacity, rechargeSec, usePerSecond, ...capacitor },
     offense: {
@@ -423,7 +462,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
 const defaultEffectName = (dogma: Dogma, m: Item): string | undefined => dogma.defaultEffect(m)?.name
 
 /** speedFactor, signatureRadiusBonus, maxRange, warpScrambleStrength, falloffEffectiveness */
-const TA = { speedFactor: 20, sigBonus: 554, range: 54, scramStrength: 105, falloffEff: 2044 }
+const TA = { speedFactor: 20, sigBonus: 554, range: 54, scramStrength: 105, falloffEff: 2044, neutAmount: 97, nosAmount: 90 }
 
 function tacticalOf(dogma: Dogma, m: Item): TacticalModule | undefined {
   const a = (id: number) => dogma.attr(m, id)
@@ -436,6 +475,10 @@ function tacticalOf(dogma: Dogma, m: Item): TacticalModule | undefined {
       return { kind: 'scram', strength: a(TA.scramStrength), range: a(TA.range) }
     case 'warpDisrupt':
       return { kind: 'point', strength: a(TA.scramStrength), range: a(TA.range) }
+    case 'energyNeutralizerFalloff':
+      return { kind: 'neut', amount: a(TA.neutAmount), range: a(TA.range), falloff: a(TA.falloffEff), cycle: cycleAndCap(dogma, m).cycle }
+    case 'energyNosferatuFalloff':
+      return { kind: 'nos', amount: a(TA.nosAmount), range: a(TA.range), falloff: a(TA.falloffEff), cycle: cycleAndCap(dogma, m).cycle }
     case 'moduleBonusMicrowarpdrive':
       return { kind: 'mwd' }
     case 'moduleBonusAfterburner':

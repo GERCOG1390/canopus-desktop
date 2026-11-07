@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
+import type { Behavior, Timeline, TimelineEvent, TimelinePoint } from '../../shared/combatTimeline'
 import type { FitSpec, FittableType, SavedFit } from '../../shared/fit'
 import { AppProvider, useApp, useLang } from './AppContext'
 import { ChargePicker } from './components/ChargePicker'
@@ -22,7 +23,7 @@ const n1 = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: 1 
 const km = (m: number) => `${(m / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 })} км`
 
 function duration(sec: number): string {
-  if (!Number.isFinite(sec)) return 'не пробить'
+  if (!Number.isFinite(sec)) return '—'
   if (sec < 60) return `${n1(sec)} с`
   const m = Math.floor(sec / 60)
   const s = Math.round(sec % 60)
@@ -71,7 +72,7 @@ function Simulator() {
         : attacker,
     [attacker, ammoA]
   )
-  const [sc, setSc] = useState<CombatScenario>({ distance: 10_000, speedA: 0, headingA: 0, speedB: 0, headingB: 90 })
+  const [sc, setSc] = useState<CombatScenario>({ distance: 10_000, speedA: 0, headingA: 0, speedB: 0, headingB: 90, behaviorA: 'orbit', behaviorB: 'orbit' })
   const [maxSpeed, setMaxSpeed] = useState({ a: 1000, b: 1000 })
   const [result, setResult] = useState<CombatResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -109,7 +110,14 @@ function Simulator() {
     }
   }, [attacker, you, defender, sc])
 
-  const set = (patch: Partial<CombatScenario>) => setSc((s) => ({ ...s, ...patch }))
+  // A course set by hand (an arrow on the map, the exact values) is what that ship then flies.
+  const set = (patch: Partial<CombatScenario>) =>
+    setSc((s) => ({
+      ...s,
+      ...patch,
+      ...('headingA' in patch && !('behaviorA' in patch) ? { behaviorA: 'free' as const } : {}),
+      ...('headingB' in patch && !('behaviorB' in patch) ? { behaviorB: 'free' as const } : {})
+    }))
   // Switching propulsion on or off: the ship then flies at its new top speed.
   const [follow, setFollow] = useState<{ a?: boolean; b?: boolean }>({})
   const setProp = (side: 'a' | 'b', on: boolean) => {
@@ -225,19 +233,19 @@ function Simulator() {
               <TacticalMap sc={sc} set={set} r={result} bearing={bearing} setBearing={setBearing} maxSpeed={maxSpeed} />
               <div className="combat-presets">
                 <span className="muted small">Быстро:</span>
-                <button className="ghost small" onClick={() => set({ speedA: 0, headingB: 90, speedB: result.b.maxVelocity })}>
+                <button className="ghost small" onClick={() => set({ speedA: 0, headingB: 90, speedB: result.b.maxVelocity, behaviorA: 'stop', behaviorB: 'orbit', rangeB: undefined })}>
                   Противник на орбите
                 </button>
-                <button className="ghost small" onClick={() => set({ headingA: 90, headingB: 270, speedA: result.a.maxVelocity, speedB: result.b.maxVelocity })}>
+                <button className="ghost small" onClick={() => set({ headingA: 90, headingB: 270, speedA: result.a.maxVelocity, speedB: result.b.maxVelocity, behaviorA: 'orbit', behaviorB: 'orbit', rangeA: undefined, rangeB: undefined })}>
                   Встречные орбиты
                 </button>
-                <button className="ghost small" onClick={() => set({ headingA: 0, headingB: 180, speedA: result.a.maxVelocity, speedB: result.b.maxVelocity })}>
+                <button className="ghost small" onClick={() => set({ headingA: 0, headingB: 180, speedA: result.a.maxVelocity, speedB: result.b.maxVelocity, behaviorA: 'approach', behaviorB: 'approach', rangeA: 500, rangeB: 500 })}>
                   Сближение лоб в лоб
                 </button>
-                <button className="ghost small" onClick={() => set({ headingA: 0, headingB: 0, speedA: result.a.maxVelocity, speedB: result.b.maxVelocity })}>
+                <button className="ghost small" onClick={() => set({ headingA: 0, headingB: 0, speedA: result.a.maxVelocity, speedB: result.b.maxVelocity, behaviorA: 'approach', behaviorB: 'flee', rangeA: 500 })}>
                   Противник убегает
                 </button>
-                <button className="ghost small" onClick={() => set({ speedA: 0, speedB: 0 })}>
+                <button className="ghost small" onClick={() => set({ speedA: 0, speedB: 0, behaviorA: 'stop', behaviorB: 'stop' })}>
                   Оба стоят
                 </button>
               </div>
@@ -257,18 +265,16 @@ function Simulator() {
             </Card>
             <Summary r={result} />
           </div>
+          <FightCard r={result} sc={sc} set={set} />
           <div className="combat-sides">
             <DirectionCard title="Вы → противник" d={result.ab} />
             <DirectionCard title="Противник → вы" d={result.ba} />
           </div>
-          <Card title="Урон по дистанции при текущих скоростях (до резистов)">
+          <Card title="Урон по дистанции при текущих скоростях (до резистов и раскрутки)">
             <Chart r={result} distance={sc.distance} onDistance={(d) => set({ distance: d })} />
           </Card>
           <p className="muted small">
-            Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E,
-            (S/E·Ve/Vt)^drf), дальность — скорость × время полёта с поправкой на уходящую цель. Щит регенерирует по игровой кривой (пик при 25%), активные ремонтники
-            работают, пока хватает накопителя. Стазис-сетки и подсветка целей — с фоллофом и штрафом за стакинг, варп-скрамблер выключает MWD. Не учитываются:
-            нейтрализаторы, ECM и дампы, перегрев, расход вашего накопителя на оружие, запуск ракет от края корпуса у крупных кораблей.
+            Бой считается шаг за шагом: корабли движутся с инерцией, оружие стреляет циклами и перезаряжается, дезинтеграторы раскручиваются, накопитель тратится и восстанавливается, у анцилларных ремонтников кончаются заряды, нейтрализаторы и носферату работают по накопителю. Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E, (S/E·Ve/Vt)^drf). Часовые дроны считаются как турели. Не учитываются: перегрев, ECM, дампы и дизрапторы, отключение активных резистов при пустом накопителе, время полёта ракет, заряды бустеров накопителя. Значения средние, без случайных промахов.
           </p>
         </>
       )}
@@ -518,7 +524,7 @@ function SigInput({ label, value, auto, onChange }: { label: string; value?: num
   )
 }
 
-const EFFECT_NAMES: Record<CombatEffect['kind'], string> = { web: 'Сетка', paint: 'Подсветка', scram: 'Скрамблер', point: 'Дизраптор' }
+const EFFECT_NAMES: Record<CombatEffect['kind'], string> = { web: 'Сетка', paint: 'Подсветка', scram: 'Скрамблер', point: 'Дизраптор', neut: 'Нейтрализатор', nos: 'Носферату' }
 
 /** Propulsion and EWAR switches of a side, and what the other side's modules do to it right now. */
 function Tactics({ info, ewar, onProp, onEwar, own }: { info: CombatSideInfo; ewar: boolean; onProp: (on: boolean) => void; onEwar: (on: boolean) => void; own: string }) {
@@ -537,7 +543,7 @@ function Tactics({ info, ewar, onProp, onEwar, own }: { info: CombatSideInfo; ew
       {info.hasEwar && (
         <label className="check">
           <input type="checkbox" checked={ewar} onChange={(e) => onEwar(e.target.checked)} />
-          {`${own} сетки, подсветка и скрамблеры включены`}
+          {`${own} сетки, подсветка, скрамблеры и нейты включены`}
         </label>
       )}
       {info.effects.length > 0 && (
@@ -554,7 +560,7 @@ function Tactics({ info, ewar, onProp, onEwar, own }: { info: CombatSideInfo; ew
 function EffectLine({ e }: { e: CombatEffect }) {
   const lang = useLang()
   const t = useTypeBasic(e.typeId)
-  const value = e.kind === 'web' ? `${n1(e.value)}% ${translate('скорости')}` : e.kind === 'paint' ? `+${n1(e.value)}% ${translate('сигнатуры')}` : translate(e.kind === 'scram' ? 'варп и MWD заблокированы' : 'варп заблокирован')
+  const value = e.kind === 'neut' || e.kind === 'nos' ? `${n1(e.value)} ${translate('GJ за цикл')}` : e.kind === 'web' ? `${n1(e.value)}% ${translate('скорости')}` : e.kind === 'paint' ? `+${n1(e.value)}% ${translate('сигнатуры')}` : translate(e.kind === 'scram' ? 'варп и MWD заблокированы' : 'варп заблокирован')
   return (
     <li className={e.kind === 'paint' ? '' : 'bad'}>
       <b>{translate(EFFECT_NAMES[e.kind])}</b> <span translate="no">{`${e.count > 1 ? `${e.count}× ` : ''}${tn(t?.n, lang)}`}</span>: {value}
@@ -821,19 +827,166 @@ function ShipName({ id, lang }: { id: number; lang: 0 | 1 }) {
 }
 
 function Verdict({ r }: { r: CombatResult }) {
-  const you = r.ab.timeToKill
-  const them = r.ba.timeToKill
+  const tl = r.timeline
+  const share = (side: CombatSideInfo, left: Timeline['a']['left']): number => {
+    const total = side.hp.shield + side.hp.armor + side.hp.hull
+    return total ? Math.round(((left.s * side.hp.shield + left.a * side.hp.armor + left.h * side.hp.hull) / total) * 100) : 0
+  }
   let text: string
   let cls = ''
-  if (!Number.isFinite(you) && !Number.isFinite(them)) text = 'Никто никого не пробьёт при этих условиях'
-  else if (you < them) {
-    text = `Вы побеждаете: противник уничтожен за ${duration(you)}, вам нужно было бы продержаться ${duration(them)}`
+  if (tl.winner === 'a') {
+    text = `Вы побеждаете за ${duration(tl.end)}, у вас осталось ${share(r.a, tl.a.left)}%`
     cls = 'good'
-  } else if (them < you) {
-    text = `Вы проигрываете: вас уничтожат за ${duration(them)}, противнику нужно ${duration(you)}`
+  } else if (tl.winner === 'b') {
+    text = `Вы проигрываете за ${duration(tl.end)}, у противника осталось ${share(r.b, tl.b.left)}%`
     cls = 'bad'
-  } else text = `Равный бой: ${duration(you)}`
+  } else if (tl.winner === 'both') text = `Оба погибают на ${duration(tl.end)}`
+  else text = `За ${Math.round(tl.end / 60)} мин никто никого не уничтожил: у вас ${share(r.a, tl.a.left)}%, у противника ${share(r.b, tl.b.left)}%`
   return <div className={`combat-verdict ${cls}`}>{text}</div>
+}
+
+const BEHAVIORS: [Behavior, string][] = [
+  ['orbit', 'Орбита'],
+  ['keep', 'Держать дистанцию'],
+  ['approach', 'Сблизиться'],
+  ['flee', 'Уходить'],
+  ['stop', 'Стоять'],
+  ['free', 'Курс с карты']
+]
+
+function OrdersBox({ title, behavior, range, distance, onChange }: { title: string; behavior: Behavior; range?: number; distance: number; onChange: (b: Behavior, range: number | undefined) => void }) {
+  const ranged = behavior === 'orbit' || behavior === 'keep' || behavior === 'approach'
+  return (
+    <div className="calc-form">
+      <label>
+        {title}
+        <select value={behavior} onChange={(e) => onChange(e.target.value as Behavior, undefined)}>
+          {BEHAVIORS.map(([id, label]) => (
+            <option key={id} value={id}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+      {ranged && (
+        <label>
+          Дистанция, км
+          <input type="number" min={0} step={0.5} value={(range ?? distance) / 1000} onChange={(e) => onChange(behavior, Math.max(0, Number(e.target.value) || 0) * 1000)} />
+        </label>
+      )}
+    </div>
+  )
+}
+
+const EVENT_TEXT: Record<TimelineEvent['kind'], string> = {
+  shieldDown: 'Щит пробит',
+  armorDown: 'Броня пробита',
+  dead: 'Уничтожен',
+  capEmpty: 'Накопитель пуст: модули встают',
+  reload: 'Оружие ушло на перезарядку',
+  repReload: 'Ремонтник ушёл на перезарядку',
+  propBlocked: 'MWD выключен скрамблером',
+  lostRange: 'Цель вне досягаемости оружия',
+  backInRange: 'Цель снова в досягаемости'
+}
+
+/** The whole body as a share of the ship: shield, armor and hull weighed by their hit points. */
+const toughness = (side: CombatSideInfo, p: TimelinePoint['a']): number => {
+  const total = side.hp.shield + side.hp.armor + side.hp.hull
+  return total ? ((p.s * side.hp.shield + p.a * side.hp.armor + p.h * side.hp.hull) / total) * 100 : 0
+}
+
+function FightCard({ r, sc, set }: { r: CombatResult; sc: CombatScenario; set: (p: Partial<CombatScenario>) => void }) {
+  const tl = r.timeline
+  const [hover, setHover] = useState<number | null>(null)
+  const pts = tl.series
+  const at = hover !== null ? pts[Math.min(hover, pts.length - 1)] : null
+  const rows = useMemo(
+    () => [
+      { title: 'Прочность, %', a: pts.map((p) => toughness(r.a, p.a)), b: pts.map((p) => toughness(r.b, p.b)), max: 100, fmt: (v: number) => `${Math.round(v)}%` },
+      { title: 'Накопитель, %', a: pts.map((p) => p.a.c * 100), b: pts.map((p) => p.b.c * 100), max: 100, fmt: (v: number) => `${Math.round(v)}%` },
+      { title: 'Дистанция, км', a: pts.map((p) => p.distance / 1000), b: null, max: Math.max(1, ...pts.map((p) => p.distance / 1000)), fmt: (v: number) => n1(v) }
+    ],
+    [pts, r.a, r.b]
+  )
+  return (
+    <Card title="Ход боя">
+      <div className="row">
+        <OrdersBox title="Вы" behavior={sc.behaviorA ?? 'free'} range={sc.rangeA} distance={sc.distance} onChange={(b, range) => set({ behaviorA: b, rangeA: range })} />
+        <OrdersBox title="Противник" behavior={sc.behaviorB ?? 'free'} range={sc.rangeB} distance={sc.distance} onChange={(b, range) => set({ behaviorB: b, rangeB: range })} />
+      </div>
+      <div className="combat-chart">
+        {rows.map((row) => (
+          <FightRow key={row.title} row={row} pts={pts} end={tl.end} hover={hover} setHover={setHover} />
+        ))}
+        <div className="combat-legend">
+          <span className="legend-a">Вы</span>
+          <span className="legend-b">Противник</span>
+          <span className="muted small">
+            {at
+              ? `${duration(at.t)} · ${Math.round(toughness(r.a, at.a))}% / ${Math.round(toughness(r.b, at.b))}% · ${km(at.distance)} · ${n1(at.a.v)} / ${n1(at.b.v)} м/с`
+              : 'Наведите на график, чтобы увидеть момент боя'}
+          </span>
+        </div>
+      </div>
+      {tl.events.length > 0 && (
+        <table className="table compact">
+          <tbody>
+            {tl.events.map((e, i) => (
+              <tr key={i}>
+                <td className="muted small">{duration(e.t)}</td>
+                <td className={e.side === 'a' ? 'legend-a' : 'legend-b'}>{e.side === 'a' ? 'Вы' : 'Противник'}</td>
+                <td>{EVENT_TEXT[e.kind]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Card>
+  )
+}
+
+function FightRow({ row, pts, end, hover, setHover }: { row: { title: string; a: number[]; b: number[] | null; max: number; fmt: (v: number) => string }; pts: TimelinePoint[]; end: number; hover: number | null; setHover: (i: number | null) => void }) {
+  const W = 900
+  const H = 96
+  const pad = { l: 50, r: 16, t: 8, b: 18 }
+  const span = Math.max(1, end)
+  const x = (t: number) => pad.l + (t / span) * (W - pad.l - pad.r)
+  const y = (v: number) => H - pad.b - (Math.min(v, row.max) / (row.max || 1)) * (H - pad.t - pad.b)
+  const path = (vals: number[]) => vals.map((v, i) => `${i ? 'L' : 'M'}${x(pts[i].t).toFixed(1)},${y(v).toFixed(1)}`).join(' ')
+  return (
+    <div>
+      <div className="muted small">{row.title}</div>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        onMouseLeave={() => setHover(null)}
+        onMouseMove={(e) => {
+          const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+          const t = (((e.clientX - rect.left) / rect.width) * W - pad.l) / (W - pad.l - pad.r) * span
+          let best = 0
+          pts.forEach((p, i) => {
+            if (Math.abs(p.t - t) < Math.abs(pts[best].t - t)) best = i
+          })
+          setHover(best)
+        }}
+      >
+        <line x1={pad.l} x2={W - pad.r} y1={y(0)} y2={y(0)} className="grid" />
+        <line x1={pad.l} x2={W - pad.r} y1={y(row.max)} y2={y(row.max)} className="grid" />
+        <text x={pad.l - 6} y={y(row.max) + 4} textAnchor="end">
+          {row.fmt(row.max)}
+        </text>
+        <text x={pad.l - 6} y={y(0) + 4} textAnchor="end">
+          {row.fmt(0)}
+        </text>
+        <text x={W - pad.r} y={H - 4} textAnchor="end">
+          {duration(end)}
+        </text>
+        <path d={path(row.a)} className={row.b ? 'line-a' : 'line-a'} />
+        {row.b && <path d={path(row.b)} className="line-b" />}
+        {hover !== null && pts[hover] && <line x1={x(pts[hover].t)} x2={x(pts[hover].t)} y1={pad.t} y2={H - pad.b} className="marker" />}
+      </svg>
+    </div>
+  )
 }
 
 function DirectionCard({ title, d }: { title: string; d: CombatDirection }) {
@@ -902,7 +1055,6 @@ function DirectionCard({ title, d }: { title: string; d: CombatDirection }) {
           </tr>
         </tbody>
       </table>
-      {d.capWarning && <p className="muted small">{d.capWarning}</p>}
     </Card>
   )
 }
@@ -924,7 +1076,10 @@ function WeaponRow({ w, lang }: { w: CombatDirection['weapons'][number]; lang: 0
       </td>
       <td className="num">{`${n1(w.applied)} / ${n1(w.dps)}`}</td>
       <td className={`num ${w.factor < 0.5 ? 'bad' : w.factor < 0.9 ? 'warn-text' : 'good'}`}>{`${(w.factor * 100).toFixed(0)}%`}</td>
-      <td className="muted small">{w.limit ?? ''}</td>
+      <td className="muted small">
+        {w.limit ?? ''}
+        {w.spoolMax ? <div>{`раскрутка до ×${(1 + w.spoolMax).toLocaleString(locale(), { maximumFractionDigits: 2 })}`}</div> : null}
+      </td>
     </tr>
   )
 }

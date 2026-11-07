@@ -1,0 +1,638 @@
+// The fight as it unfolds: ships move with inertia, weapons cycle, reload and spool up, the capacitor drains
+// and recharges, repairers burn charges and neuts bite, all stepped through time. Values are averages (no
+// random misses), so the same setup always gives the same fight.
+//
+// Not modelled: heat, ECM and sensor or weapon disruption, hardeners dropping when the capacitor is empty,
+// missile flight time, charges of capacitor boosters.
+
+import type { LayerStats, TacticalModule, WeaponStats } from './fit'
+
+// ---------- One shot at one moment: the game's formulas ----------
+
+/** Turret tracking is normalised to a 40 km signature resolution since the 2019 rework. */
+const TURRET_SIG_RESOLUTION = 40_000
+
+/** Average damage multiplier for a hit chance, including 1% wrecking shots at 3x (as the game rolls it). */
+export function turretMultiplier(chance: number): number {
+  const wrecking = Math.min(chance, 0.01)
+  const normal = chance - wrecking
+  const normalPart = normal > 0 ? normal * ((0.01 + chance) / 2 + 0.49) : 0
+  return normalPart + wrecking * 3
+}
+
+export interface Geometry {
+  distance: number
+  /** Relative sideways speed, m/s */
+  transversal: number
+  /** Target's own speed (for missiles and drones), m/s */
+  targetSpeed: number
+  targetSig: number
+  /** How fast the target moves away from the shooter, m/s (negative when closing in) */
+  receding: number
+}
+
+/** Sentry drones don't fly: their speed is a tiny fraction of a metre per second. */
+export const isSentry = (w: Pick<WeaponStats, 'kind' | 'speed'>): boolean => w.kind === 'drone' && (w.speed ?? 0) < 1
+
+function gunnery(w: WeaponStats, g: Geometry): { factor: number; limit?: string } {
+  const angular = g.transversal / Math.max(g.distance, 1)
+  const trackingTerm = w.tracking && g.targetSig > 0 ? ((angular * TURRET_SIG_RESOLUTION) / (w.tracking * g.targetSig)) ** 2 : 0
+  const beyond = Math.max(0, g.distance - (w.optimal ?? 0))
+  const rangeTerm = beyond > 0 ? (w.falloff ? (beyond / w.falloff) ** 2 : Infinity) : 0
+  const factor = turretMultiplier(0.5 ** (trackingTerm + rangeTerm))
+  const limit = factor > 0.98 ? undefined : rangeTerm > trackingTerm ? (rangeTerm === Infinity ? 'вне дальности' : 'фоллоф') : 'наводка'
+  return { factor, limit }
+}
+
+/** Share of a weapon's damage that lands, and what limits it. */
+export function application(w: WeaponStats, g: Geometry): { factor: number; limit?: string } {
+  if (w.kind === 'turret' || isSentry(w)) return gunnery(w, g)
+  if (w.kind === 'smartbomb') return g.distance <= (w.optimal ?? 0) ? { factor: 1 } : { factor: 0, limit: 'вне радиуса смартбомбы' }
+  if (w.kind === 'missile' || w.kind === 'vorton') {
+    // A missile chasing a target that moves away covers (speed − receding speed) × flight time;
+    // against one coming closer it reaches farther.
+    if (w.optimal !== undefined) {
+      const flightTime = w.missileVelocity ? w.optimal / w.missileVelocity : 0
+      const reach = w.missileVelocity ? Math.max(0, (w.missileVelocity - g.receding) * flightTime) : w.optimal
+      if (g.distance > reach) return { factor: 0, limit: g.receding > 0 && g.distance <= w.optimal ? 'цель уходит от ракет' : 'вне дальности полёта' }
+    }
+    const e = w.explosionRadius ?? 0
+    const ve = w.explosionVelocity ?? 0
+    const drf = w.drf ?? 0.5
+    const sigTerm = e > 0 ? g.targetSig / e : 1
+    const speedTerm = e > 0 && g.targetSpeed > 0 && ve > 0 ? ((g.targetSig * ve) / (e * g.targetSpeed)) ** drf : Infinity
+    const factor = Math.min(1, sigTerm, speedTerm)
+    const limit = factor > 0.98 ? undefined : sigTerm <= speedTerm ? 'радиус взрыва' : 'скорость взрыва'
+    return { factor, limit }
+  }
+  if (w.kind === 'drone') {
+    // Drones fly to the target: range doesn't matter. As in Pyfa, drones faster than the target keep pace
+    // with it (no transversal, full application); a faster target simply outruns them.
+    if (w.speed && g.targetSpeed > w.speed) return { factor: 0, limit: 'цель быстрее дронов' }
+    return { factor: turretMultiplier(1) }
+  }
+  return { factor: 1 }
+}
+
+/** The game's stacking penalty for the n-th strongest module of a kind (0-based). */
+export const stackingPenalty = (n: number): number => Math.exp(-((n / 2.67) ** 2))
+
+/** Strength of a falloff module at a distance: full within range, 0.5^((d − range)/falloff)² beyond. */
+export function ewarEfficiency(d: number, range: number, falloff: number): number {
+  if (d <= range) return 1
+  if (!falloff) return 0
+  return 0.5 ** (((d - range) / falloff) ** 2)
+}
+
+/** A module working on the other ship. */
+export interface Tactical {
+  typeId: number
+  t: TacticalModule
+}
+
+/** A web's or painter's reach and strength, narrowed from the union. */
+type Falloff = Extract<TacticalModule, { kind: 'web' | 'paint' }>
+
+/** Combined multiplier of several webs or painters at a distance, strongest first with the stacking penalty. */
+export function stackedMultiplier(mods: Tactical[], kind: 'web' | 'paint', d: number): number {
+  const values = mods
+    .filter((m) => m.t.kind === kind)
+    .map((m) => {
+      const t = m.t as Falloff
+      return t.strength * ewarEfficiency(d, t.range, t.falloff)
+    })
+    .sort((a, b) => Math.abs(b) - Math.abs(a))
+  return values.reduce((mult, v, i) => mult * (1 + (v * stackingPenalty(i)) / 100), 1)
+}
+
+// ---------- The fight ----------
+
+export type Behavior = 'orbit' | 'keep' | 'approach' | 'flee' | 'stop' | 'free'
+
+export interface Orders {
+  behavior: Behavior
+  /** Orbit, keep-at-range or approach distance, m */
+  range: number
+  /** Degrees from the line between the ships: where 'free' flies, and which way an orbit turns */
+  heading: number
+  /** Top speed asked for, m/s; webs and the ship itself may hold it lower */
+  speed: number
+  wantProp: boolean
+  /** Use webs, painters, scramblers and neuts on the other ship */
+  useEwar: boolean
+  /** Signature set by hand */
+  sig?: number
+}
+
+export interface Repairer {
+  index: number
+  layer: 'shield' | 'armor' | 'hull'
+  amount: number
+  cycle: number
+  need: number
+  /** Cycles a load of charges lasts, for ancillary repairers; undefined when it needs none */
+  shots?: number
+  reloadSec?: number
+}
+
+export interface CapModule {
+  index: number
+  need: number
+  cycle: number
+}
+
+export interface Motion {
+  maxVelocity: number
+  signature: number
+  alignSec: number
+}
+
+export interface Combatant {
+  weapons: (WeaponStats & { need?: number })[]
+  shield: LayerStats
+  armor: LayerStats
+  hull: LayerStats
+  shieldRechargeSec: number
+  /** Multiplier on incoming neuts, 1 = none resisted */
+  neutResist: number
+  capacity: number
+  capRechargeSec: number
+  repairers: Repairer[]
+  /** Everything else that draws on the capacitor */
+  modules: CapModule[]
+  tactical: (Tactical & { index: number })[]
+  off: Motion
+  /** With the propulsion running */
+  on?: Motion & { index: number; kind: 'mwd' | 'ab'; need: number; cycle: number }
+}
+
+export type TimelineEvent = {
+  t: number
+  side: 'a' | 'b'
+  kind: 'shieldDown' | 'armorDown' | 'dead' | 'capEmpty' | 'reload' | 'repReload' | 'propBlocked' | 'lostRange' | 'backInRange'
+}
+
+export interface TimelinePoint {
+  t: number
+  distance: number
+  transversal: number
+  /** Per side: shield, armor, hull and capacitor as a share 0–1, speed, and damage dealt in that second after resists */
+  a: { s: number; a: number; h: number; c: number; v: number; dealt: number }
+  b: { s: number; a: number; h: number; c: number; v: number; dealt: number }
+}
+
+export interface SideOutcome {
+  /** When each layer fell, s */
+  shieldDown: number | null
+  armorDown: number | null
+  dead: number | null
+  /** Total damage dealt after the target's resists */
+  dealt: number
+  /** What remains at the end, 0–1 */
+  left: { s: number; a: number; h: number; c: number }
+}
+
+export interface Timeline {
+  winner: 'a' | 'b' | 'both' | null
+  end: number
+  a: SideOutcome
+  b: SideOutcome
+  events: TimelineEvent[]
+  series: TimelinePoint[]
+}
+
+/** A fight that hasn't ended by then is called off. */
+export const TIMELINE_MAX_SEC = 900
+const DT = 0.2
+/** Below this share of its damage nobody bothers firing: chance is practically nil, ammo and capacitor are not. */
+const WORTH_FIRING = 0.01
+/** Nothing in reach of anything for this long: the fight is over. */
+const OUT_OF_REACH_SEC = 60
+const LOG4 = Math.log(4)
+
+type Vec = { x: number; y: number }
+const length = (v: Vec): number => Math.hypot(v.x, v.y)
+
+/** Capacitor and shield share one recharge curve; this solves it exactly, so an empty one still comes back. */
+export function recharge(value: number, max: number, tauSec: number, dt: number): number {
+  if (max <= 0 || tauSec <= 0) return value
+  const r = 1 + (Math.sqrt(Math.max(0, Math.min(value, max)) / max) - 1) * Math.exp((-5 * dt) / tauSec)
+  return Math.max(value, max * r * r)
+}
+
+interface WeaponState {
+  w: Combatant['weapons'][number]
+  next: number
+  shots: number
+  spool: number
+  arrival: number
+  firing: boolean
+}
+
+interface RepState {
+  r: Repairer
+  next: number
+  shots: number
+  pending: { at: number; amount: number } | null
+}
+
+interface ModState extends CapModule {
+  next: number
+  on: boolean
+  tactical?: Combatant['tactical'][number]
+}
+
+interface State {
+  key: 'a' | 'b'
+  c: Combatant
+  o: Orders
+  pos: Vec
+  vel: Vec
+  freeDir: Vec
+  orbitSign: number
+  shield: number
+  armor: number
+  hull: number
+  cap: number
+  weapons: WeaponState[]
+  reps: RepState[]
+  mods: ModState[]
+  propNext: number
+  propPaid: boolean
+  propOn: boolean
+  blocked: boolean
+  outcome: SideOutcome
+  dealtBucket: number
+  capFlag: boolean
+  reloadFlag: boolean
+  repReloadFlag: boolean
+  inRange: boolean | null
+}
+
+const empty = (): SideOutcome => ({ shieldDown: null, armorDown: null, dead: null, dealt: 0, left: { s: 1, a: 1, h: 1, c: 1 } })
+
+function start(key: 'a' | 'b', c: Combatant, o: Orders, pos: Vec, distance: number): State {
+  const rad = (o.heading * Math.PI) / 180
+  // 0° is along the line, away from "you": towards the opponent for you, away from you for them.
+  const freeDir = { x: Math.cos(rad), y: Math.sin(rad) }
+  return {
+    key,
+    c,
+    o,
+    pos,
+    vel: { x: 0, y: 0 },
+    freeDir,
+    orbitSign: Math.sin(rad) < 0 ? -1 : 1,
+    shield: c.shield.hp,
+    armor: c.armor.hp,
+    hull: c.hull.hp,
+    cap: c.capacity,
+    weapons: c.weapons.map((w) => ({
+      w,
+      next: 0,
+      shots: w.shots ?? 0,
+      spool: 0,
+      // Mobile drones have to get there first.
+      arrival: w.kind === 'drone' && (w.speed ?? 0) >= 1 ? distance / (w.speed as number) : 0,
+      firing: false
+    })),
+    reps: c.repairers.map((r) => ({ r, next: 0, shots: r.shots ?? 0, pending: null })),
+    mods: c.modules.map((m) => ({ ...m, next: 0, on: true, tactical: c.tactical.find((t) => t.index === m.index) })),
+    propNext: 0,
+    propPaid: true,
+    propOn: false,
+    blocked: false,
+    outcome: empty(),
+    dealtBucket: 0,
+    capFlag: false,
+    reloadFlag: false,
+    repReloadFlag: false,
+    inRange: null
+  }
+}
+
+/** The other ship's modules that are running and aimed at this one. */
+function incoming(them: State): Tactical[] {
+  if (!them.o.useEwar) return []
+  // A module that draws on the capacitor works only while it's paid for; one that doesn't always works.
+  return them.c.tactical.filter((t) => them.mods.find((m) => m.index === t.index)?.on !== false)
+}
+
+const scrammed = (mods: Tactical[], d: number): boolean => mods.some((m) => m.t.kind === 'scram' && m.t.range >= d)
+
+function desiredVelocity(me: State, other: State, d: number, speed: number): Vec {
+  const radial = { x: (other.pos.x - me.pos.x) / d, y: (other.pos.y - me.pos.y) / d }
+  const o = me.o
+  const tau = (me.propOn && me.c.on ? me.c.on.alignSec : me.c.off.alignSec) / LOG4
+  // Brake early enough for the inertia: with less margin than 3·v·τ the ship sails past the range and, on approach, stays there.
+  const closing = (range: number): number => Math.max(-1, Math.min(1, (d - range) / Math.max(100, 3 * speed * tau)))
+  switch (o.behavior) {
+    case 'stop':
+      return { x: 0, y: 0 }
+    case 'free':
+      return { x: me.freeDir.x * speed, y: me.freeDir.y * speed }
+    case 'flee':
+      return { x: -radial.x * speed, y: -radial.y * speed }
+    case 'approach': {
+      const k = Math.max(0, closing(o.range))
+      return { x: radial.x * speed * k, y: radial.y * speed * k }
+    }
+    case 'keep': {
+      const k = closing(o.range)
+      return { x: radial.x * speed * k, y: radial.y * speed * k }
+    }
+    case 'orbit': {
+      const k = Math.max(-1, Math.min(1, (d - o.range) / Math.max(500, o.range * 0.2)))
+      // The turn is chosen once in world terms: for the ship on the far side the tangent points the other way.
+      const side = me.key === 'a' ? 1 : -1
+      const tangent = { x: -radial.y * me.orbitSign * side, y: radial.x * me.orbitSign * side }
+      const across = Math.sqrt(1 - k * k)
+      return { x: (tangent.x * across + radial.x * k) * speed, y: (tangent.y * across + radial.y * k) * speed }
+    }
+  }
+}
+
+/** Damage after this layer's resists, spilling what's left to the next layer. */
+export function applyDamage(s: { shield: number; armor: number; hull: number }, c: { shield: LayerStats; armor: LayerStats; hull: LayerStats }, byType: readonly number[]): number {
+  let left: number[] = [...byType]
+  let dealt = 0
+  for (const name of ['shield', 'armor', 'hull'] as const) {
+    if (s[name] <= 0) continue
+    const after = left.reduce((sum, d, i) => sum + d * (1 - c[name].resist[i]), 0)
+    if (after <= 0) return dealt
+    if (after < s[name]) {
+      s[name] -= after
+      return dealt + after
+    }
+    const share = 1 - s[name] / after
+    dealt += s[name]
+    s[name] = 0
+    left = left.map((d) => d * share)
+  }
+  return dealt
+}
+
+export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: Orders, distance: number): Timeline {
+  const A = start('a', a, orderA, { x: 0, y: 0 }, distance)
+  const B = start('b', b, orderB, { x: Math.max(distance, 1), y: 0 }, distance)
+  const events: TimelineEvent[] = []
+  const series: TimelinePoint[] = []
+  const log = (t: number, s: State, kind: TimelineEvent['kind']): void => void events.push({ t, side: s.key, kind })
+
+  const frac = (s: State) => ({
+    s: s.c.shield.hp ? s.shield / s.c.shield.hp : 0,
+    a: s.c.armor.hp ? s.armor / s.c.armor.hp : 0,
+    h: s.c.hull.hp ? s.hull / s.c.hull.hp : 0,
+    c: s.c.capacity ? s.cap / s.c.capacity : 0
+  })
+
+  const pay = (s: State, need: number): boolean => {
+    if (need <= 0) {
+      s.cap = Math.min(s.c.capacity, s.cap - need)
+      return true
+    }
+    if (s.cap < need) return false
+    s.cap -= need
+    return true
+  }
+  const noCap = (t: number, s: State): void => {
+    if (s.capFlag) return
+    s.capFlag = true
+    log(t, s, 'capEmpty')
+  }
+
+  const steps = Math.round(TIMELINE_MAX_SEC / DT)
+  let end = TIMELINE_MAX_SEC
+  let finished = false
+  let nextSample = 0
+  let quietSince: number | null = null
+
+  for (let step = 0; step <= steps; step++) {
+    const t = step * DT
+    const gap = { x: B.pos.x - A.pos.x, y: B.pos.y - A.pos.y }
+    const d = Math.max(length(gap), 1)
+
+    const pairs: [State, State][] = [
+      [A, B],
+      [B, A]
+    ]
+
+    // ----- What each ship can do under the other's modules, and how it moves.
+    for (const [me, them] of pairs) {
+      const mods = incoming(them)
+      const blocked = me.c.on?.kind === 'mwd' && scrammed(mods, d)
+      if (blocked && me.o.wantProp && !me.blocked) log(t, me, 'propBlocked')
+      me.blocked = !!blocked
+      const prop = me.c.on
+      let on = false
+      if (prop && me.o.wantProp && !blocked) {
+        if (t + 1e-9 >= me.propNext) {
+          me.propPaid = pay(me, prop.need)
+          if (!me.propPaid) noCap(t, me)
+          me.propNext = me.propPaid ? me.propNext + prop.cycle : t + DT
+          if (me.propNext < t) me.propNext = t + prop.cycle
+        }
+        on = me.propPaid
+      }
+      me.propOn = on
+      const motion = on && prop ? prop : me.c.off
+      const top = motion.maxVelocity * Math.max(0, stackedMultiplier(mods, 'web', d))
+      const speed = Math.min(me.o.speed, top)
+      const want = desiredVelocity(me, them, d, speed)
+      const k = 1 - Math.exp(-DT / Math.max(0.1, motion.alignSec / LOG4))
+      me.vel.x += (want.x - me.vel.x) * k
+      me.vel.y += (want.y - me.vel.y) * k
+    }
+    A.pos.x += A.vel.x * DT
+    A.pos.y += A.vel.y * DT
+    B.pos.x += B.vel.x * DT
+    B.pos.y += B.vel.y * DT
+
+    const gapNow = { x: B.pos.x - A.pos.x, y: B.pos.y - A.pos.y }
+    const dNow = Math.max(length(gapNow), 1)
+    const line = { x: gapNow.x / dNow, y: gapNow.y / dNow }
+    const rel = { x: B.vel.x - A.vel.x, y: B.vel.y - A.vel.y }
+    const receding = rel.x * line.x + rel.y * line.y
+    const transversal = Math.abs(rel.x * -line.y + rel.y * line.x)
+
+    // ----- Fire. Both ships shoot in the same instant; the damage lands together afterwards.
+    const hits = new Map<State, number[]>([
+      [A, [0, 0, 0, 0]],
+      [B, [0, 0, 0, 0]]
+    ])
+    for (const [me, them] of pairs) {
+      const mods = incoming(me)
+      const motion = them.propOn && them.c.on ? them.c.on : them.c.off
+      const geo = {
+        distance: dNow,
+        transversal,
+        targetSpeed: length(them.vel),
+        targetSig: them.o.sig ?? motion.signature * stackedMultiplier(mods, 'paint', dNow),
+        receding
+      }
+      let anyInReach = false
+      for (const ws of me.weapons) {
+        const { factor } = application(ws.w, geo)
+        if (factor >= WORTH_FIRING) anyInReach = true
+        if (t + 1e-9 < ws.next || t + 1e-9 < ws.arrival) continue
+        // Out of reach: nothing is fired, and a spooled weapon loses its spool.
+        if (factor < WORTH_FIRING) {
+          ws.spool = 0
+          ws.firing = false
+          continue
+        }
+        if (ws.w.need && !pay(me, ws.w.need)) {
+          noCap(t, me)
+          ws.firing = false
+          continue
+        }
+        const boost = 1 + ws.spool
+        ws.w.damage.forEach((v, i) => ((hits.get(them) as number[])[i] += v * boost * factor))
+        if (ws.w.spoolMax) ws.spool = Math.min(ws.w.spoolMax, ws.spool + (ws.w.spoolPerCycle ?? 0))
+        ws.firing = true
+        // A skipped cycle starts again from now, not from when it should have fired.
+        ws.next = Math.max(ws.next + ws.w.cycle, t)
+        if (ws.w.shots) {
+          ws.shots--
+          if (ws.shots <= 0) {
+            ws.shots = ws.w.shots
+            ws.next += ws.w.reloadSec ?? 0
+            ws.spool = 0
+            if (!me.reloadFlag) {
+              me.reloadFlag = true
+              log(t, me, 'reload')
+            }
+          }
+        }
+      }
+      if (me.weapons.length) {
+        if (me.inRange === true && !anyInReach) log(t, me, 'lostRange')
+        if (me.inRange === false && anyInReach) log(t, me, 'backInRange')
+        me.inRange = anyInReach
+      }
+    }
+
+    // ----- Modules that aren't weapons: paying for them, and what neuts take.
+    for (const [me, them] of pairs) {
+      for (const m of me.mods) {
+        if (t + 1e-9 < m.next) continue
+        const tactical: TacticalModule | undefined = m.tactical?.t
+        const aimed = tactical && tactical.kind !== 'mwd' && tactical.kind !== 'ab'
+        const reach = !aimed ? 1 : !me.o.useEwar ? 0 : 'falloff' in tactical ? ewarEfficiency(dNow, tactical.range, tactical.falloff) : (tactical as { range: number }).range >= dNow ? 1 : 0
+        // Nobody runs a web or a neut at something it can't reach.
+        if (aimed && reach <= 0.001) {
+          m.on = false
+          m.next = t + DT
+          continue
+        }
+        if (!pay(me, m.need)) {
+          if (m.need > 0) noCap(t, me)
+          m.on = false
+          m.next = t + DT
+          continue
+        }
+        m.on = true
+        m.next = Math.max(m.next + m.cycle, t)
+        if (tactical?.kind === 'neut') {
+          them.cap = Math.max(0, them.cap - tactical.amount * reach * them.c.neutResist)
+        } else if (tactical?.kind === 'nos') {
+          // A nosferatu only drinks from a capacitor fuller, by share, than one's own.
+          const share = (s: State): number => (s.c.capacity ? s.cap / s.c.capacity : 0)
+          if (share(them) > share(me)) {
+            const take = Math.min(tactical.amount * reach * them.c.neutResist, them.cap)
+            them.cap -= take
+            me.cap = Math.min(me.c.capacity, me.cap + take)
+          }
+        }
+      }
+    }
+
+    // ----- Repairs: shield boosters heal when they start, armor and hull ones when they finish.
+    for (const s of [A, B]) {
+      for (const rs of s.reps) {
+        const r = rs.r
+        if (rs.pending && t + 1e-9 >= rs.pending.at) {
+          s[r.layer] = Math.min(s.c[r.layer].hp, s[r.layer] + rs.pending.amount)
+          rs.pending = null
+        }
+        if (t + 1e-9 < rs.next || s[r.layer] >= s.c[r.layer].hp) continue
+        if (s[r.layer] <= 0 && r.layer !== 'hull') continue
+        if (!pay(s, r.need)) {
+          noCap(t, s)
+          continue
+        }
+        if (r.layer === 'shield') s.shield = Math.min(s.c.shield.hp, s.shield + r.amount)
+        else rs.pending = { at: t + r.cycle, amount: r.amount }
+        rs.next = t + r.cycle
+        if (r.shots) {
+          rs.shots--
+          if (rs.shots <= 0) {
+            rs.shots = r.shots
+            rs.next += r.reloadSec ?? 0
+            if (!s.repReloadFlag) {
+              s.repReloadFlag = true
+              log(t, s, 'repReload')
+            }
+          }
+        }
+      }
+    }
+
+    // ----- Natural recharge, then the damage of this instant.
+    for (const s of [A, B]) {
+      s.cap = recharge(s.cap, s.c.capacity, s.c.capRechargeSec, DT)
+      if (s.shield > 0) s.shield = recharge(s.shield, s.c.shield.hp, s.c.shieldRechargeSec, DT)
+    }
+    for (const [me, them] of pairs) {
+      const before = { s: them.shield, a: them.armor }
+      const dealt = applyDamage(them, them.c, hits.get(them) as number[])
+      me.outcome.dealt += dealt
+      me.dealtBucket += dealt
+      // The first fall counts: a repair landing on an empty layer can bring it back for a moment.
+      if (before.s > 0 && them.shield <= 0 && them.c.shield.hp > 0 && them.outcome.shieldDown === null) {
+        them.outcome.shieldDown = t
+        log(t, them, 'shieldDown')
+      }
+      if (before.a > 0 && them.armor <= 0 && them.c.armor.hp > 0 && them.outcome.armorDown === null) {
+        them.outcome.armorDown = t
+        log(t, them, 'armorDown')
+      }
+    }
+    for (const s of [A, B]) {
+      if (s.hull <= 0 && s.outcome.dead === null) {
+        s.outcome.dead = t
+        log(t, s, 'dead')
+      }
+    }
+    finished = A.outcome.dead !== null || B.outcome.dead !== null
+    // Only once someone has had a gun and lost its reach: two unarmed ships aren't "over", they're just flying.
+    const anyArmed = A.weapons.length > 0 || B.weapons.length > 0
+    const reachable = A.inRange === true || B.inRange === true
+    if (!anyArmed || reachable) quietSince = null
+    else quietSince ??= t
+    if (quietSince !== null && t - quietSince >= OUT_OF_REACH_SEC) finished = true
+    if (t + 1e-9 >= nextSample || finished) {
+      const fa = frac(A)
+      const fb = frac(B)
+      series.push({
+        t,
+        distance: dNow,
+        transversal,
+        a: { ...fa, v: length(A.vel), dealt: A.dealtBucket },
+        b: { ...fb, v: length(B.vel), dealt: B.dealtBucket }
+      })
+      A.dealtBucket = 0
+      B.dealtBucket = 0
+      nextSample += 1
+    }
+    if (finished) {
+      end = t
+      break
+    }
+  }
+
+  A.outcome.left = frac(A)
+  B.outcome.left = frac(B)
+  const winner = A.outcome.dead !== null && B.outcome.dead !== null ? 'both' : B.outcome.dead !== null ? 'a' : A.outcome.dead !== null ? 'b' : null
+  return { winner, end, a: A.outcome, b: B.outcome, events, series }
+}
