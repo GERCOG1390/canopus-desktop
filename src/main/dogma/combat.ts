@@ -231,7 +231,7 @@ function combatant(side: Side, propWanted: boolean): Combatant {
   const taken = new Set([...base.offense.weapons.filter((w) => w.kind !== 'drone').map((w) => w.moduleIndex), ...d.repairers.map((r) => r.index)])
   const motion = (s: FitStats) => ({ maxVelocity: s.navigation.maxVelocity, signature: s.navigation.signatureRadius, alignSec: s.navigation.alignSec })
   const modules = base.modules
-    .filter((m) => !taken.has(m.index) && !m.occasional && m.cycle > 0 && (m.capPerSecond !== 0 || m.tactical))
+    .filter((m) => !taken.has(m.index) && !m.occasional && m.cycle > 0 && (m.capPerSecond !== 0 || m.tactical || m.index === d.rah?.index))
     .filter((m) => m.tactical?.kind !== 'mwd' && m.tactical?.kind !== 'ab')
     .map((m) => ({ index: m.index, need: m.capPerSecond * m.cycle, cycle: m.cycle }))
   let on: Combatant['on']
@@ -250,6 +250,7 @@ function combatant(side: Side, propWanted: boolean): Combatant {
     capacity: base.capacitor.capacity,
     capRechargeSec: base.capacitor.rechargeSec,
     repairers: d.repairers.map((r) => ({ ...r, need: need(r.index) })),
+    rah: d.rah,
     modules,
     tactical: side.ewar,
     off: motion(base),

@@ -188,3 +188,11 @@ test('out-damaged and out-tanked only by a clear margin', () => {
   assert.deepEqual(problems({ ab: direction({ applied: 100 }), ba: direction({ applied: 150 }) }), [{ code: 'outgunned', mine: 100, theirs: 150 }])
   assert.deepEqual(problems({ b: side({ ehp: 1500 }) }), [{ code: 'lessTank', mine: 1000, theirs: 1500 }])
 })
+
+test('a resist the RAH has already moved is judged as it ended up', () => {
+  const armorShip = side({ hp: { shield: 100, armor: 1000, hull: 100 } })
+  const ba = direction({ appliedByType: [0, 0, 0, 100] })
+  // Fitted resist 10% on explosive, but the RAH reached 60% in the fight.
+  const timeline = { events: [], winner: null, end: 10, series: [], a: { armorResist: [0.5, 0.2, 0.1, 0.6] } }
+  assert.deepEqual(problems({ a: armorShip, ba, timeline }), [])
+})

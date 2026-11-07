@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { application, applyDamage, isSentry, recharge, runTimeline, stackedMultiplier, TIMELINE_MAX_SEC, turretMultiplier } from './combatTimeline.ts'
+import { adaptRah, application, applyDamage, isSentry, rahResist, recharge, runTimeline, stackedMultiplier, TIMELINE_MAX_SEC, turretMultiplier } from './combatTimeline.ts'
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`)
 const layer = (hp, r = 0) => ({ hp, resist: [r, r, r, r], ehp: hp })
@@ -279,4 +279,117 @@ test('a layer falls once in the record, even if a repair brings it back for a mo
   const r = run(ship({ weapons: [gun({ damage: [25, 0, 0, 0] })] }), tank)
   assert.equal(r.events.filter((e) => e.kind === 'armorDown').length, 1)
   assert.equal(r.winner, 'a')
+})
+
+// ---------- Reactive Armor Hardener
+// Damage and resonances are in the order em, thermal, kinetic, explosive. A resonance of 0.85 is 15% resist.
+
+const near = (a, b) => a.forEach((v, i) => close(v, b[i], 1e-9))
+const START = [0.85, 0.85, 0.85, 0.85]
+
+test('RAH: no damage in a cycle, no change', () => {
+  near(adaptRah(START, [0, 0, 0, 0], 0.06), START)
+})
+
+test('RAH: four types: the two least hit give 6% each, the two most hit share it', () => {
+  // Thermal 40, kinetic 30 are the most hit; explosive 20 and em 10 give.
+  near(adaptRah(START, [10, 40, 30, 20], 0.06), [0.91, 0.79, 0.79, 0.91])
+})
+
+test('RAH: a type can only give what it has: its resonance stops at 1', () => {
+  near(adaptRah([0.98, 0.7, 0.72, 1], [1, 40, 30, 2], 0.06), [1, 0.69, 0.71, 1])
+})
+
+test('RAH: three types: the same rule, the untouched one is simply the least hit', () => {
+  near(adaptRah(START, [0, 40, 30, 20], 0.06), [0.91, 0.79, 0.79, 0.91])
+})
+
+test('RAH: damage taken decides, not the raw order: ties go em, explosive, kinetic, thermal', () => {
+  near(adaptRah(START, [10, 10, 10, 10], 0.06), [0.91, 0.79, 0.79, 0.91])
+})
+
+test('RAH: one type: everything drifts to it and settles at 60% there, 0% elsewhere', () => {
+  let v = START
+  v = adaptRah(v, [0, 0, 100, 0], 0.06)
+  near(v, [0.91, 0.91, 0.67, 0.91])
+  v = adaptRah(v, [0, 0, 100, 0], 0.06)
+  near(v, [0.97, 0.97, 0.49, 0.97])
+  v = adaptRah(v, [0, 0, 100, 0], 0.06)
+  near(v, [1, 1, 0.4, 1])
+  near(adaptRah(v, [0, 0, 100, 0], 0.06), [1, 1, 0.4, 1])
+})
+
+test('RAH: two types: the rest goes to them equally, settling at 30% each', () => {
+  let v = START
+  for (let i = 0; i < 5; i++) v = adaptRah(v, [0, 60, 40, 0], 0.06)
+  near(v, [1, 0.7, 0.7, 1])
+})
+
+test('RAH: the total of 60% never changes', () => {
+  let v = START
+  const hits = [[10, 40, 30, 20], [0, 0, 100, 0], [50, 0, 0, 50], [1, 2, 3, 4]]
+  for (let i = 0; i < 40; i++) {
+    v = adaptRah(v, hits[i % 4], 0.06)
+    close(v.reduce((a, b) => a + b, 0), 3.4, 1e-9)
+    assert.ok(v.every((x) => x <= 1 + 1e-9 && x > 0))
+  }
+})
+
+test('RAH: its resist goes through the stacking penalty with its peers', () => {
+  const rah = { rest: [1, 1, 1, 0.5], peers: [[], [0.8], [], []], index: 3, cycle: 10, shift: 0.06, start: START }
+  // Alone: 0.4 on kinetic is 60%.
+  close(rahResist(rah, [1, 1, 0.4, 1])[2], 0.6)
+  // With a peer of 0.8, the stronger comes first and the weaker takes the penalty: 0.6 × (1 − 0.2·e^-(1/2.67)²)
+  close(rahResist(rah, [1, 0.6, 1, 1])[1], 1 - 0.6 * (1 - 0.2 * Math.exp(-((1 / 2.67) ** 2))))
+  // The unpenalised rest multiplies on top.
+  close(rahResist(rah, [1, 1, 1, 0.85])[3], 1 - 0.5 * 0.85)
+})
+
+const rahShip = (o = {}) =>
+  ship({
+    armor: layer(1e6),
+    hull: layer(100),
+    capacity: 1e6,
+    modules: [{ index: 3, need: 0, cycle: 10 }],
+    rah: { index: 3, cycle: 10, shift: 0.06, start: START, rest: [1, 1, 1, 1], peers: [[], [], [], []] },
+    ...o
+  })
+const kinetic = ship({ weapons: [gun({ damage: [0, 0, 100, 0], cycle: 1 })] })
+
+test('in a fight: a RAH under kinetic fire takes less each cycle, down to 40% of the damage', () => {
+  const r = run(kinetic, rahShip())
+  const taken = (t) => r.series.find((p) => p.t >= t).a.dealt / FULL
+  close(taken(5), 85, 1e-6) // 15%
+  close(taken(15), 67, 1e-6) // after one cycle
+  close(taken(25), 49, 1e-6)
+  close(taken(35), 40, 1e-6) // settled
+  close(taken(200), 40, 1e-6)
+  assert.deepEqual(r.b.armorResist.map((x) => Math.round(x * 100)), [0, 0, 60, 0])
+})
+
+test('in a fight: a RAH does not stir while only the shield is hit', () => {
+  const r = run(kinetic, rahShip({ shield: layer(1e6) }))
+  close(r.b.armorResist[0], 0.15)
+  close(r.b.armorResist[2], 0.15)
+})
+
+test('in a fight: a RAH without capacitor gives nothing, and starts over from 15% when it can run again', () => {
+  // The neut empties the capacitor at the start; recharge is off, so it never runs at all after the first cycle.
+  const poor = rahShip({ capacity: 10, modules: [{ index: 3, need: 10, cycle: 10 }] })
+  const r = run(kinetic, poor)
+  // First cycle paid: 15%, 85 a volley; next cycle can't be paid: no bonus.
+  close(r.series.find((p) => p.t >= 5).a.dealt / FULL, 85, 1e-6)
+  close(r.series.find((p) => p.t >= 15).a.dealt / FULL, 100, 1e-6)
+  assert.ok(r.events.some((e) => e.kind === 'capEmpty' && e.side === 'b'))
+  // With recharge it returns to the base split and adapts from there.
+  const back = rahShip({ capacity: 10, capRechargeSec: 200, modules: [{ index: 3, need: 8, cycle: 10 }] })
+  const again = run(kinetic, back)
+  const low = again.series.filter((p) => p.t > 15).map((p) => p.a.dealt / FULL)
+  assert.ok(low.includes(100) && low.some((v) => v < 100), 'off, then on again')
+})
+
+test('a ship with no RAH keeps its armor resists as they are', () => {
+  const r = run(kinetic, ship({ armor: layer(1e6, 0.5), hull: layer(100) }))
+  close(r.series.find((p) => p.t >= 15).a.dealt / FULL, 50, 1e-6)
+  assert.equal(r.b.armorResist, undefined)
 })

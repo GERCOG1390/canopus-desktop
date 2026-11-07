@@ -374,6 +374,20 @@ export class Dogma {
     }
   }
 
+  /**
+   * An attribute split around one source: the other modules penalised with it in the pre-multiply stage, and what
+   * everything else adds up to. Lets a module whose own value changes be re-stacked without working the fit out again.
+   */
+  penalisedPeers(item: Item, attrId: number, source: Item): { peers: number[]; rest: number } {
+    const mods = (item.mods.get(attrId) ?? []).filter((m) => m.op === 0)
+    const stackable = this.db.attributes[attrId]?.stack ?? true
+    const penalised = stackable ? [] : mods.filter((m) => !m.noPenalty && !PENALTY_EXEMPT.has(m.source.category))
+    const mult = (m: Modifier) => (m.value ? m.value() : this.attr(m.source, m.srcAttr))
+    const all = penalised.map(mult)
+    const peers = penalised.filter((m) => m.source !== source).map(mult)
+    return { peers, rest: this.attr(item, attrId) / (stackingProduct(all) || 1) }
+  }
+
   // ---------------- Evaluation ----------------
 
   attr(item: Item, attrId: number): number {

@@ -285,7 +285,7 @@ function Simulator() {
             <Chart r={result} distance={sc.distance} onDistance={(d) => set({ distance: d })} />
           </Card>
           <p className="muted small">
-            Бой считается шаг за шагом: корабли движутся с инерцией, оружие стреляет циклами и перезаряжается, дезинтеграторы раскручиваются, накопитель тратится и восстанавливается, у анцилларных ремонтников кончаются заряды, нейтрализаторы и носферату работают по накопителю. Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E, (S/E·Ve/Vt)^drf). Часовые дроны считаются как турели. Не учитываются: перегрев, ECM, дампы и дизрапторы, отключение активных резистов при пустом накопителе, время полёта ракет, заряды бустеров накопителя. Значения средние, без случайных промахов.
+            Бой считается шаг за шагом: корабли движутся с инерцией, оружие стреляет циклами и перезаряжается, дезинтеграторы раскручиваются, накопитель тратится и восстанавливается, у анцилларных ремонтников кончаются заряды, нейтрализаторы и носферату работают по накопителю. Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E, (S/E·Ve/Vt)^drf). Часовые дроны считаются как турели. Reactive Armor Hardener подстраивается под урон по броне каждый цикл. Не учитываются: перегрев, ECM, дампы и дизрапторы, отключение обычных активных резистов при пустом накопителе, время полёта ракет, заряды бустеров накопителя. Значения средние, без случайных промахов.
           </p>
         </>
       )}
@@ -1081,6 +1081,8 @@ function FightCard({ r, sc, set }: { r: CombatResult; sc: CombatScenario; set: (
           </span>
         </div>
       </div>
+      {tl.a.armorResist && <RahLine who="Вы" resist={tl.a.armorResist} />}
+      {tl.b.armorResist && <RahLine who="Противник" resist={tl.b.armorResist} />}
       {tl.events.length > 0 && (
         <table className="table compact">
           <tbody>
@@ -1095,6 +1097,21 @@ function FightCard({ r, sc, set }: { r: CombatResult; sc: CombatScenario; set: (
         </table>
       )}
     </Card>
+  )
+}
+
+/** Where a Reactive Armor Hardener's armor resists ended up by the end of the fight. */
+function RahLine({ who, resist }: { who: string; resist: number[] }) {
+  return (
+    <p className="small">
+      <span className="muted">{who}</span> <span>{'· Reactive Armor Hardener, резисты брони к концу боя:'}</span>{' '}
+      {resist.map((r, i) => (
+        <span key={i} className="with-icon" style={{ marginRight: 10 }}>
+          <AttrIcon attr={RESIST_ICONS[i]} size={14} />
+          {`${Math.round(r * 100)}%`}
+        </span>
+      ))}
+    </p>
   )
 }
 

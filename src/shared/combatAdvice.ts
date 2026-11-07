@@ -169,8 +169,10 @@ export function fightProblems(r: { a: CombatSideInfo; b: CombatSideInfo; ab: Com
     const share = r.ba.appliedByType[damage] / total
     const hpTotal = r.a.hp.shield + r.a.hp.armor + r.a.hp.hull
     const layer = LAYERS.reduce((x, y) => (r.a.hp[y] > r.a.hp[x] ? y : x))
-    const resist = r.a.resist[layer][damage]
-    const avg = r.a.resist[layer].reduce((s, v) => s + v, 0) / 4
+    // A RAH has moved by the end of the fight: judge what it became, not how it was fitted.
+    const resists = (layer === 'armor' && r.timeline.a?.armorResist) || r.a.resist[layer]
+    const resist = resists[damage]
+    const avg = resists.reduce((s: number, v: number) => s + v, 0) / 4
     // Hull is where nobody tanks: bare resists there say nothing about the fit.
     if (share >= 0.4 && layer !== 'hull' && hpTotal > 0 && resist < avg - 0.05 && resist < 0.6) {
       out.push({ code: 'weakResist', layer, damage, share: Math.round(share * 100), resist: Math.round(resist * 100) })

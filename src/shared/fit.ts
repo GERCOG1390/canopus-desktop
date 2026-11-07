@@ -135,6 +135,8 @@ export interface FitStats {
     repairers: { index: number; layer: 'shield' | 'armor' | 'hull'; amount: number; cycle: number; shots?: number; reloadSec?: number }[]
     /** Multiplier on incoming neuts and nosferatus, 1 = none resisted */
     neutResist: number
+    /** A running Reactive Armor Hardener, for the combat timeline */
+    rah?: { index: number; cycle: number; shift: number; start: number[]; rest: number[]; peers: number[][] }
   }
   capacitor: {
     capacity: number

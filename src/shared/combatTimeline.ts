@@ -2,7 +2,7 @@
 // and recharges, repairers burn charges and neuts bite, all stepped through time. Values are averages (no
 // random misses), so the same setup always gives the same fight.
 //
-// Not modelled: heat, ECM and sensor or weapon disruption, hardeners dropping when the capacitor is empty,
+// Not modelled: heat, ECM and sensor or weapon disruption, ordinary hardeners dropping when the capacitor is empty,
 // missile flight time, charges of capacitor boosters.
 
 import type { LayerStats, TacticalModule, WeaponStats } from './fit'
@@ -124,6 +124,56 @@ export interface Orders {
   sig?: number
 }
 
+/**
+ * A Reactive Armor Hardener: 60% resist in all, starting 15% each, drifting towards the damage taken. Resonances
+ * below (1 − resist) go em, thermal, kinetic, explosive. Each armor resist is `rest` × the stacking-penalised product
+ * of `peers` and the RAH's own resonance, the way the engine stacks it.
+ */
+export interface Rah {
+  index: number
+  cycle: number
+  /** Share one type gives up per cycle, 0.06 */
+  shift: number
+  start: number[]
+  /** Everything else on that armor resonance */
+  rest: number[]
+  /** Other modules penalised in the same stage */
+  peers: number[][]
+}
+
+const stacked = (mults: number[]): number => {
+  const run = (list: number[]): number => list.reduce((p, m, i) => p * (1 + (m - 1) * Math.exp(-((i / 2.67) ** 2))), 1)
+  return run(mults.filter((m) => m > 1).sort((a, b) => b - a)) * run(mults.filter((m) => m < 1).sort((a, b) => a - b))
+}
+
+/** Armor resists with the RAH at these resonances. */
+export const rahResist = (r: Rah, vector: number[]): number[] => vector.map((v, i) => 1 - r.rest[i] * stacked([...r.peers[i], v]))
+
+// When types took the same damage the game orders them em, explosive, kinetic, thermal.
+const RAH_TIE_ORDER = [0, 3, 2, 1]
+
+/**
+ * One cycle of the RAH, from the armor damage taken in it. Three or four types hit: the two least hit give up to
+ * `shift` each and the two most hit share it. One or two hit: every untouched type gives, and only those hit receive.
+ * The state it settles at is the game's; the pace for one or two types is the same per-cycle cap.
+ */
+export function adaptRah(vector: number[], damage: number[], shift: number): number[] {
+  const order = [...RAH_TIE_ORDER].sort((x, y) => damage[x] - damage[y])
+  const hit = order.filter((i) => damage[i] > 0)
+  if (!hit.length) return vector
+  const givers = hit.length >= 3 ? order.slice(0, 2) : order.filter((i) => damage[i] <= 0)
+  const takers = hit.length >= 3 ? order.slice(2) : hit
+  const out = [...vector]
+  let pool = 0
+  for (const i of givers) {
+    const give = Math.min(shift, 1 - out[i])
+    out[i] += give
+    pool += give
+  }
+  for (const i of takers) out[i] -= pool / takers.length
+  return out
+}
+
 export interface Repairer {
   index: number
   layer: 'shield' | 'armor' | 'hull'
@@ -158,6 +208,7 @@ export interface Combatant {
   capacity: number
   capRechargeSec: number
   repairers: Repairer[]
+  rah?: Rah
   /** Everything else that draws on the capacitor */
   modules: CapModule[]
   tactical: (Tactical & { index: number })[]
@@ -190,6 +241,8 @@ export interface SideOutcome {
   dealt: number
   /** What remains at the end, 0–1 */
   left: { s: number; a: number; h: number; c: number }
+  /** Armor resists at the end, for a ship with a RAH */
+  armorResist?: number[]
 }
 
 export interface Timeline {
@@ -245,6 +298,8 @@ interface ModState extends CapModule {
 interface State {
   key: 'a' | 'b'
   c: Combatant
+  /** The RAH: where it stands, whether it's running, and the armor damage of this cycle */
+  rah?: { vector: number[]; running: boolean; damage: number[] }
   o: Orders
   pos: Vec
   vel: Vec
@@ -277,7 +332,9 @@ function start(key: 'a' | 'b', c: Combatant, o: Orders, pos: Vec, distance: numb
   const freeDir = { x: Math.cos(rad), y: Math.sin(rad) }
   return {
     key,
-    c,
+    // The armor as it stands in the fight; the fitted figure stays with the fit.
+    c: c.rah ? { ...c, armor: { ...c.armor, resist: rahResist(c.rah, c.rah.start) as LayerStats['resist'] } } : c,
+    rah: c.rah ? { vector: c.rah.start, running: true, damage: [0, 0, 0, 0] } : undefined,
     o,
     pos,
     vel: { x: 0, y: 0 },
@@ -353,13 +410,15 @@ function desiredVelocity(me: State, other: State, d: number, speed: number): Vec
 }
 
 /** Damage after this layer's resists, spilling what's left to the next layer. */
-export function applyDamage(s: { shield: number; armor: number; hull: number }, c: { shield: LayerStats; armor: LayerStats; hull: LayerStats }, byType: readonly number[]): number {
+export function applyDamage(s: { shield: number; armor: number; hull: number }, c: { shield: LayerStats; armor: LayerStats; hull: LayerStats }, byType: readonly number[], onArmor?: (taken: number[]) => void): number {
   let left: number[] = [...byType]
   let dealt = 0
   for (const name of ['shield', 'armor', 'hull'] as const) {
     if (s[name] <= 0) continue
     const after = left.reduce((sum, d, i) => sum + d * (1 - c[name].resist[i]), 0)
     if (after <= 0) return dealt
+    const landed = Math.min(1, s[name] / after)
+    if (name === 'armor') onArmor?.(left.map((d, i) => d * (1 - c.armor.resist[i]) * landed))
     if (after < s[name]) {
       s[name] -= after
       return dealt + after
@@ -525,13 +584,23 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
           m.next = t + DT
           continue
         }
+        const rah = me.c.rah?.index === m.index ? me.c.rah : undefined
         if (!pay(me, m.need)) {
           if (m.need > 0) noCap(t, me)
           m.on = false
           m.next = t + DT
+          // Off, it gives nothing at all; turned on again it starts from the even split.
+          if (rah && me.rah?.running) {
+            me.rah = { vector: [1, 1, 1, 1], running: false, damage: [0, 0, 0, 0] }
+            me.c.armor.resist = rahResist(rah, me.rah.vector) as LayerStats['resist']
+          }
           continue
         }
         m.on = true
+        if (rah && me.rah) {
+          me.rah = { vector: me.rah.running ? (t > 0 ? adaptRah(me.rah.vector, me.rah.damage, rah.shift) : me.rah.vector) : rah.start, running: true, damage: [0, 0, 0, 0] }
+          me.c.armor.resist = rahResist(rah, me.rah.vector) as LayerStats['resist']
+        }
         m.next = Math.max(m.next + m.cycle, t)
         if (tactical?.kind === 'neut') {
           them.cap = Math.max(0, them.cap - tactical.amount * reach * them.c.neutResist)
@@ -585,7 +654,9 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
     }
     for (const [me, them] of pairs) {
       const before = { s: them.shield, a: them.armor }
-      const dealt = applyDamage(them, them.c, hits.get(them) as number[])
+      const dealt = applyDamage(them, them.c, hits.get(them) as number[], (taken) => {
+        if (them.rah) taken.forEach((v, i) => ((them.rah as NonNullable<State['rah']>).damage[i] += v))
+      })
       me.outcome.dealt += dealt
       me.dealtBucket += dealt
       // The first fall counts: a repair landing on an empty layer can bring it back for a moment.
@@ -633,6 +704,8 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
 
   A.outcome.left = frac(A)
   B.outcome.left = frac(B)
+  if (a.rah) A.outcome.armorResist = [...A.c.armor.resist]
+  if (b.rah) B.outcome.armorResist = [...B.c.armor.resist]
   const winner = A.outcome.dead !== null && B.outcome.dead !== null ? 'both' : B.outcome.dead !== null ? 'a' : A.outcome.dead !== null ? 'b' : null
   return { winner, end, a: A.outcome, b: B.outcome, events, series }
 }

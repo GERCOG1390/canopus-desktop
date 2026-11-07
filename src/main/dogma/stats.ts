@@ -86,6 +86,7 @@ const ATTR_SPOOL_STEP = 2733
 /** Charges an ancillary repairer burns per cycle */
 const ATTR_CHARGE_RATE = 56
 const ATTR_NEUT_RESIST = 2045
+const ATTR_RAH_SHIFT = 1849
 const ATTR_EMP_RANGE = 99
 const ATTR_AOE_VELOCITY = 653
 const ATTR_AOE_CLOUD = 654
@@ -260,6 +261,21 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       repairers.push({ index: m.index!, layer: 'hull', amount, cycle })
     }
   }
+  // A running RAH, split from the rest of the armor resonances (em, thermal, kinetic, explosive).
+  let rah: FitStats['defense']['rah']
+  const rahModule = dogma.modules.filter(activeState).find((m) => defaultEffectName(dogma, m) === 'adaptiveArmorHardener')
+  if (rahModule) {
+    const parts = RESONANCE.armor.map((attr) => dogma.penalisedPeers(ship, attr, rahModule))
+    rah = {
+      index: rahModule.index!,
+      cycle: cycleAndCap(dogma, rahModule).cycle,
+      shift: a(rahModule, ATTR_RAH_SHIFT) / 100,
+      start: RESONANCE.armor.map((attr) => a(rahModule, attr)),
+      rest: parts.map((p) => p.rest),
+      peers: parts.map((p) => p.peers)
+    }
+  }
+
   const avgRes = (l: LayerStats) => 1 - l.resist.reduce((s, x) => s + x, 0) / 4
   const activeTankEhp = shieldBoost / (avgRes(shield) || 1) + armorRepair / (avgRes(armor) || 1) + hullRepair / (avgRes(hull) || 1)
 
@@ -425,6 +441,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       hullRepair,
       activeTankEhp,
       repairers,
+      rah,
       neutResist: a(ship, ATTR_NEUT_RESIST) || 1
     },
     capacitor: { capacity, rechargeSec, usePerSecond, ...capacitor },

@@ -3,6 +3,7 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  '· Reactive Armor Hardener, резисты брони к концу боя:': '· Reactive Armor Hardener, armor resists at the end of the fight:',
   'сейчас:': 'now:',
   'включить MWD/AB': 'turn MWD/AB on',
   'выключить MWD/AB': 'turn MWD/AB off',
@@ -42,7 +43,7 @@ export const EXACT: Record<string, string> = {
   'Носферату': 'Nosferatu',
   'GJ за цикл': 'GJ per cycle',
   'Урон по дистанции при текущих скоростях (до резистов и раскрутки)': 'Damage by distance at the current speeds (before resists and spool-up)',
-  'Бой считается шаг за шагом: корабли движутся с инерцией, оружие стреляет циклами и перезаряжается, дезинтеграторы раскручиваются, накопитель тратится и восстанавливается, у анцилларных ремонтников кончаются заряды, нейтрализаторы и носферату работают по накопителю. Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E, (S/E·Ve/Vt)^drf). Часовые дроны считаются как турели. Не учитываются: перегрев, ECM, дампы и дизрапторы, отключение активных резистов при пустом накопителе, время полёта ракет, заряды бустеров накопителя. Значения средние, без случайных промахов.': 'The fight is stepped through time: ships move with inertia, weapons cycle and reload, disintegrators spool up, the capacitor drains and recharges, ancillary repairers run out of charges, neutralizers and nosferatus work on the capacitor. Turrets: hit chance 0.5^((ω·40,000 / (tracking·signature))² + (max(0, d − optimal) / falloff)²), with wrecking hits. Missiles: min(1, S/E, (S/E·Ve/Vt)^drf). Sentry drones count as turrets. Not modelled: heat, ECM, damps and disruptors, active resists dropping on an empty capacitor, missile flight time, capacitor booster charges. Values are averages, no random misses.',
+  'Бой считается шаг за шагом: корабли движутся с инерцией, оружие стреляет циклами и перезаряжается, дезинтеграторы раскручиваются, накопитель тратится и восстанавливается, у анцилларных ремонтников кончаются заряды, нейтрализаторы и носферату работают по накопителю. Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E, (S/E·Ve/Vt)^drf). Часовые дроны считаются как турели. Reactive Armor Hardener подстраивается под урон по броне каждый цикл. Не учитываются: перегрев, ECM, дампы и дизрапторы, отключение обычных активных резистов при пустом накопителе, время полёта ракет, заряды бустеров накопителя. Значения средние, без случайных промахов.': 'The fight is stepped through time: ships move with inertia, weapons cycle and reload, disintegrators spool up, the capacitor drains and recharges, ancillary repairers run out of charges, neutralizers and nosferatus work on the capacitor. Turrets: hit chance 0.5^((ω·40,000 / (tracking·signature))² + (max(0, d − optimal) / falloff)²), with wrecking hits. Missiles: min(1, S/E, (S/E·Ve/Vt)^drf). Sentry drones count as turrets. A Reactive Armor Hardener adapts to armor damage every cycle. Not modelled: heat, ECM, damps and disruptors, ordinary active resists dropping on an empty capacitor, missile flight time, capacitor booster charges. Values are averages, no random misses.',
   'В среднем': 'Average',
   'По кому': 'Target',
   'Разбор по логу': 'Log report',
