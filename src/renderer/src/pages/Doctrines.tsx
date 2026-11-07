@@ -17,9 +17,9 @@ import { fromEft } from '../lib/fitting'
 import { tn } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 
-const STORE_KEY = 'doctrines'
+export const STORE_KEY = 'doctrines'
 
-interface Doctrine {
+export interface Doctrine {
   id: string
   name: string
   /** The fits as pasted, EFT text */
@@ -34,7 +34,7 @@ interface CharSkills {
 }
 
 /** One EFT block per fit: a new one starts at each "[Ship, Name]" line. */
-function splitEft(text: string): string[] {
+export function splitEft(text: string): string[] {
   const blocks: string[][] = []
   for (const line of text.split(/\r?\n/)) {
     if (/^\s*\[[^\],]+,[^\]]*\]\s*$/.test(line)) blocks.push([line])

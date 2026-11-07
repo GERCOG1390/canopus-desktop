@@ -1,6 +1,9 @@
 // Fleet management through ESI: the fleet the character is in, its wings, squads and members,
 // and — for the fleet boss — MOTD, free move, invites, kicks, moves and renames.
 
+import { compareFleet } from '../../../shared/fleetDoctrine'
+import { fromEft } from '../lib/fitting'
+import { STORE_KEY as DOCTRINES_KEY, splitEft, type Doctrine } from './Doctrines'
 import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../AppContext'
 import { GameButton } from '../components/GameButton'
@@ -125,6 +128,7 @@ function Fleet({ who }: { who: CharacterAuth }) {
           {info && <FleetSettings fleetId={fleetId} who={who} info={info} canWrite={canWrite} onChanged={reload} />}
           <Invite fleetId={fleetId} who={who} wings={wings ?? []} canWrite={canWrite} onChanged={reload} />
           <Composition members={members!} />
+          <DoctrineCheck members={members!} />
           {(wings ?? []).map((w) => (
             <Card
               key={w.id}
@@ -312,6 +316,68 @@ function Composition({ members }: { members: Member[] }) {
           </span>
         ))}
       </div>
+    </Card>
+  )
+}
+
+/** The fleet against a saved doctrine, by hull: ESI shows no fits or skills of other pilots. */
+function DoctrineCheck({ members }: { members: Member[] }) {
+  const [selected, setSelected] = useState('')
+  const doctrines = useAsync(() => window.api.store.get<Doctrine[]>(DOCTRINES_KEY).then((d) => d ?? []), [])
+  const doctrine = doctrines.data?.find((d) => d.id === selected) ?? doctrines.data?.[0]
+  const hulls = useAsync(async () => {
+    if (!doctrine) return []
+    const fits = await Promise.all(splitEft(doctrine.eft).map((b) => fromEft(b).catch(() => null)))
+    return fits.flatMap((f) => (f ? [f.fit.shipTypeId] : []))
+  }, [doctrine?.eft])
+  const check = useMemo(() => compareFleet(members, hulls.data ?? []), [members, hulls.data])
+  const names = useAsync(() => resolveNames(check.offDoctrine.map((m) => m.character_id)), [check.offDoctrine.map((m) => m.character_id).join(',')])
+  useTypeBasics([...check.hulls.map((h) => h.type), ...check.offDoctrine.map((m) => m.ship_type_id)])
+  if (doctrines.data && !doctrines.data.length) return null
+  return (
+    <Card
+      title="Флот и доктрина"
+      actions={
+        <select value={doctrine?.id ?? ''} onChange={(e) => setSelected(e.target.value)}>
+          {(doctrines.data ?? []).map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+      }
+    >
+      <div className="stats-row">
+        <Stat label="В доктринных корпусах" value={`${check.onDoctrine} / ${check.total}`} sub={`${Math.round(check.share * 100)}%`} />
+      </div>
+      <div className="link-grid">
+        {check.hulls.map((h) => (
+          <span key={h.type} className={h.count ? '' : 'muted'}>
+            <TypeLink id={h.type} size={20} /> <span className="muted">{`×${h.count}`}</span>
+          </span>
+        ))}
+      </div>
+      {check.offDoctrine.length > 0 && (
+        <table className="table compact">
+          <thead>
+            <tr>
+              <th>Не в доктрине</th>
+              <th>Корабль</th>
+            </tr>
+          </thead>
+          <tbody>
+            {check.offDoctrine.map((m) => (
+              <tr key={m.character_id}>
+                <td translate="no">{names.data?.get(m.character_id) ?? m.character_id}</td>
+                <td>
+                  <TypeLink id={m.ship_type_id} size={18} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <p className="muted small">Сравнение только по корпусу: фиты и навыки других пилотов ESI не показывает.</p>
     </Card>
   )
 }

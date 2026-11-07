@@ -3,6 +3,10 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  'Флот и доктрина': 'Fleet and doctrine',
+  'В доктринных корпусах': 'In doctrine hulls',
+  'Не в доктрине': 'Off doctrine',
+  'Сравнение только по корпусу: фиты и навыки других пилотов ESI не показывает.': "By hull only: ESI doesn't show other pilots' fits or skills.",
   'Этот предмет не изобретается': 'This item is not invented',
   'Инвенция': 'Invention',
   'Что изобретаем': 'Item to invent',
