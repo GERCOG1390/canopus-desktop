@@ -3,6 +3,23 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  'Руда под минералы': 'Ore for minerals',
+  'Какие минералы нужны': 'Minerals needed',
+  'Заполнить из предмета': 'Fill from an item',
+  'Прогонов чертежа': 'Blueprint runs',
+  'Выход переработки, %': 'Reprocessing yield, %',
+  'Сколько купить': 'What to buy',
+  'Партий': 'Batches',
+  'Объём сжатой, м³': 'Compressed, m³',
+  'Объём несжатой, м³': 'Uncompressed, m³',
+  'Руда обойдётся': 'The ore costs',
+  'Минералы в Jita': 'Minerals at Jita',
+  'Выгода руды': 'Ore saves',
+  'Лишнее после округления': 'Left over after rounding',
+  'Минерал': 'Mineral',
+  'Вставьте список минералов или заполните из предмета.': 'Paste a list of minerals or fill it from an item.',
+  'Такие минералы рудой не покрыть.': 'Ore cannot cover these minerals.',
+  'Подбор самой дешёвой смеси сжатой руды по лучшей цене продажи в Jita. Сколько реально даст переработка, зависит от навыков и структуры: укажите свой выход (около 70% на станции с навыками, до 90% в Tatara). Для добычи — столько же обычной руды. Побочные минералы, которых нет в списке, в выгоду не входят.': 'The cheapest mix of compressed ore at the best Jita sell. What reprocessing really gives depends on skills and the structure: set your yield (about 70% at a station with skills, up to 90% in a Tatara). To mine it, the same amount of raw ore. Other minerals the ore gives are not counted.',
   'Инжекторы и SP': 'Injectors & SP',
   'Покупка SP инжекторами': 'Buying SP with injectors',
   'Персонаж получит за инжектор': 'A character gets per injector',

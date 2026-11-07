@@ -195,6 +195,15 @@ export interface InventionData {
   decryptors: { id: number; chance: number; me: number; te: number; runs: number }[]
 }
 
+/** Compressed ore on the market: per unit volume, reprocessing per batch, and the uncompressed volume */
+export interface CompressedOre {
+  id: number
+  portion: number
+  volume: number
+  rawVolume: number
+  yields: [number, number][]
+}
+
 /** A mutaplasmid applying to a module */
 export interface MutaOption {
   id: number

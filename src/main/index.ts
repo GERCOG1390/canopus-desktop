@@ -309,6 +309,7 @@ function registerIpc(): void {
   ipcMain.handle('sde:system', (_e, id: number) => sde.system(id))
   ipcMain.handle('sde:wormholeTypes', () => sde.wormholeTypes())
   ipcMain.handle('sde:piSchematics', () => sde.piSchematics())
+  ipcMain.handle('sde:compressedOres', () => sde.compressedOres())
   ipcMain.handle('sde:inventableTypes', () => sde.inventableTypes())
   ipcMain.handle('sde:inventionFor', (_e, id: number) => sde.inventionFor(id))
   ipcMain.handle('sde:agents', (_e, q: AgentQuery) => sde.agents(q))

@@ -26,7 +26,7 @@ import type {
 } from '../../shared/sde'
 import type { FittableType } from '../../shared/fit'
 import { filterAgents, type AgentQuery } from '../../shared/agents'
-import { SDE_FORMAT, type AgentRow, type InventionData, type MutaOption, type MutaRange } from '../../shared/sde'
+import { SDE_FORMAT, type AgentRow, type CompressedOre, type InventionData, type MutaOption, type MutaRange } from '../../shared/sde'
 import { buildSde, latestBuild } from './build'
 
 /** requiredSkillN attribute → requiredSkillNLevel attribute */
@@ -354,6 +354,23 @@ export function agents(q: AgentQuery): { total: number; list: AgentRow[] } {
       jumps: jumps?.get(a.s)
     }))
   }
+}
+
+const ASTEROID_CATEGORY = 25
+
+/** Compressed ores sold on the market, with what they refine into. */
+export function compressedOres(): CompressedOre[] {
+  const d = need()
+  const byName = new Map<string, number>()
+  for (const t of Object.values(d.types)) if (t.pub && d.groups[t.g]?.c === ASTEROID_CATEGORY) byName.set(t.n[0], t.vol ?? 0)
+  const out: CompressedOre[] = []
+  for (const t of Object.values(d.types)) {
+    if (!t.pub || !t.mg || d.groups[t.g]?.c !== ASTEROID_CATEGORY || !t.n[0].startsWith('Compressed ')) continue
+    const yields = d.reprocess[t.id]
+    if (!yields?.length) continue
+    out.push({ id: t.id, portion: t.portion ?? 1, volume: t.vol ?? 0, rawVolume: byName.get(t.n[0].slice('Compressed '.length)) ?? t.vol ?? 0, yields })
+  }
+  return out
 }
 
 const DECRYPTOR_GROUP = 1304
