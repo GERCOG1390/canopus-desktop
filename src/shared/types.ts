@@ -1,6 +1,7 @@
 // Types shared between the main process, preload and renderer.
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
+import type { Recipe } from './prodChain'
 import type { NpcFaction, NpcReport } from './npc'
 import type { AbyssFaction, AbyssReport, AbyssWeather } from './abyss'
 import type { RadarKill, RadarSettings, RadarStatus } from './radar'
@@ -127,6 +128,8 @@ export interface CanopusApi {
     /** Planetary industry schematics by id. */
     piSchematics(): Promise<Record<number, PiSchematic>>
     compressedOres(): Promise<CompressedOre[]>
+    /** Recipes of an item and everything under it. */
+    productionRecipes(root: number): Promise<Record<number, Recipe>>
     /** Items that can be invented. */
     inventableTypes(): Promise<number[]>
     inventionFor(productId: number): Promise<InventionData | null>

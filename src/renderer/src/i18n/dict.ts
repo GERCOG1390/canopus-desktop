@@ -3,6 +3,28 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  'Цепочка': 'Chain',
+  'ME чертежа, %': 'Blueprint ME, %',
+  'ME компонентов, %': 'Component ME, %',
+  'TE, %': 'TE, %',
+  'Бонус сооружения, %': 'Structure bonus, %',
+  'Выберите предмет, чтобы увидеть всю цепочку: что запускать и что покупать.': 'Pick an item to see the whole chain: what to run and what to buy.',
+  'Готовое в Jita': 'Finished at Jita',
+  'Выгода цепочки': 'Chain saves',
+  'Время подряд': 'One after another',
+  'Что запускать': 'What to run',
+  'На выходе': 'Output',
+  'Лишнее': 'Left over',
+  'Собрать, за шт.': 'Build, per unit',
+  'В Jita, за шт.': 'At Jita, per unit',
+  'Купить': 'Buy',
+  'Что купить': 'What to buy',
+  'Собрать': 'Build',
+  'Скопировать для мультибая': 'Copy for multibuy',
+  'Вернуть выбор по цене': 'Back to choosing by price',
+  'Купить или собрать выбирается по цене: компонент собирается, если нужное число целых партий дешевле, чем нужное количество по лучшей цене продажи в Jita. Материалы со всех уровней складываются до округления, поэтому общий компонент — это одна работа. Считается одна работа на компонент: если её придётся делить на несколько копий чертежа, материалов уйдёт немного больше. Для T2 чертёж после инвенции обычно ME 2. Навыки и бонусы на время здесь не учитываются.': "Build or buy is chosen by price: a component is built if the whole batches it takes cost less than the amount needed at the best Jita sell. Materials from all levels add up before rounding, so a shared component is one job. Each component is counted as one job: split across several blueprint copies, it takes slightly more material. A T2 blueprint from invention is usually ME 2. Skills and time bonuses are not counted here.",
+  'Лишнее из партий': 'Batch leftovers',
+  'в Jita, в выгоду не входит': 'at Jita, not in the saving',
   'Руда под минералы': 'Ore for minerals',
   'Какие минералы нужны': 'Minerals needed',
   'Заполнить из предмета': 'Fill from an item',
@@ -1954,6 +1976,9 @@ export const EXACT: Record<string, string> = {
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
   // ---- 1.3
+  [/^материалы (.+) · работы (.+)$/, 'materials $1 · jobs $2'],
+  [/^работ: (\d+)$/, 'jobs: $1'],
+  [/^Нет цены на рынке, в сумму не вошло: (\d+)$/, 'No market price, not in the total: $1'],
   [/^Доход: (.+)$/, 'Income: $1'],
   [/^Расход: (.+)$/, 'Expense: $1'],
   [/^Итого: (.+)$/, 'Net: $1'],

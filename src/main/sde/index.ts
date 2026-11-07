@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+import type { Recipe } from '../../shared/prodChain'
 import { existsSync, mkdirSync, readdirSync } from 'node:fs'
 import { readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -354,6 +355,25 @@ export function agents(q: AgentQuery): { total: number; list: AgentRow[] } {
       jumps: jumps?.get(a.s)
     }))
   }
+}
+
+/** Recipes of an item and everything under it. Only published blueprints: the others can't be run in the game. */
+export function productionRecipes(root: number): Record<number, Recipe> {
+  const d = need()
+  const out: Record<number, Recipe> = {}
+  const queue = [root]
+  while (queue.length) {
+    const id = queue.pop() as number
+    if (out[id]) continue
+    const hit = productToBp.get(id)
+    if (!hit || !d.types[hit.bp]?.pub) continue
+    const act = d.blueprints[hit.bp].act[hit.activity]
+    const made = act.prod?.find(([p]) => p === id)
+    if (!made || !act.mat?.length) continue
+    out[id] = { product: id, portion: made[1], mats: act.mat, time: act.time, activity: hit.activity === 'reaction' ? 'reaction' : 'manufacturing' }
+    for (const [m] of act.mat) queue.push(m)
+  }
+  return out
 }
 
 const ASTEROID_CATEGORY = 25

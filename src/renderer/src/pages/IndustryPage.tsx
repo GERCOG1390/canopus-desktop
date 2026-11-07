@@ -14,8 +14,9 @@ import Moons from './Moons'
 import PiCalculator from './PiCalculator'
 import Invention from './Invention'
 import OrePlan from './OrePlan'
+import ProductionChain from './ProductionChain'
 
-type Tab = 'calc' | 'invention' | 'ore' | 'jobs' | 'pi' | 'picalc' | 'structures' | 'moons'
+type Tab = 'calc' | 'chain' | 'invention' | 'ore' | 'jobs' | 'pi' | 'picalc' | 'structures' | 'moons'
 
 export default function IndustryPage() {
   const { pageArg } = useApp()
@@ -28,6 +29,7 @@ export default function IndustryPage() {
       <Tabs
         tabs={[
           { id: 'calc', label: 'Калькулятор производства' },
+          { id: 'chain', label: 'Цепочка' },
           { id: 'invention', label: 'Инвенция' },
           { id: 'ore', label: 'Руда под минералы' },
           { id: 'jobs', label: 'Мои работы' },
@@ -41,6 +43,7 @@ export default function IndustryPage() {
       />
       {tab === 'calc' && <Calculator />}
       {tab === 'invention' && <Invention />}
+      {tab === 'chain' && <ProductionChain />}
       {tab === 'ore' && <OrePlan />}
       {tab === 'jobs' && <Jobs />}
       {tab === 'structures' && <Structures />}

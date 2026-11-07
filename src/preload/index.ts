@@ -67,6 +67,7 @@ const api: CanopusApi = {
     system: (id) => invoke('sde:system', id),
     wormholeTypes: () => invoke('sde:wormholeTypes'),
     piSchematics: () => invoke('sde:piSchematics'),
+    productionRecipes: (root: number) => invoke('sde:productionRecipes', root),
     compressedOres: () => invoke('sde:compressedOres'),
     inventableTypes: () => invoke('sde:inventableTypes'),
     inventionFor: (id) => invoke('sde:inventionFor', id),
