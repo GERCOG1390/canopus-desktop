@@ -384,6 +384,17 @@ export function regionList(): { id: number; n: L10n }[] {
     .sort((a, b) => a.n[0].localeCompare(b.n[0]))
 }
 
+/** Volume as it's hauled (packaged where that differs) and what the type itself holds. */
+export function haulVolumes(ids: number[]): Record<number, { vol: number; cap: number }> {
+  const d = need()
+  const out: Record<number, { vol: number; cap: number }> = {}
+  for (const id of ids) {
+    const t = d.types[id]
+    if (t) out[id] = { vol: t.pvol ?? t.vol ?? 0, cap: t.cap ?? 0 }
+  }
+  return out
+}
+
 const ASTEROID_CATEGORY = 25
 
 /** Compressed ores sold on the market, with what they refine into. */

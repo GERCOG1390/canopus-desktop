@@ -11,8 +11,9 @@ import { TypeLink } from '../components/TypeLink'
 import { searchSystemsSde } from '../lib/sde'
 import { fmtIsk, fmtNum, roundSec } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
+import HaulPlanner from './HaulPlanner'
 
-type Tab = 'galaxy' | 'route' | 'jump' | 'thera' | 'wormholes'
+type Tab = 'haul' | 'galaxy' | 'route' | 'jump' | 'thera' | 'wormholes'
 type Flag = 'shortest' | 'secure' | 'insecure'
 interface Sys {
   id: number
@@ -29,6 +30,7 @@ export default function MapPage() {
         tabs={[
           { id: 'galaxy', label: 'Галактика' },
           { id: 'route', label: 'Маршрут' },
+          { id: 'haul', label: 'Перевозка' },
           { id: 'jump', label: 'Прыжки капиталов' },
           { id: 'thera', label: 'Thera / Turnur' },
           { id: 'wormholes', label: 'Вормхолы' }
@@ -38,6 +40,7 @@ export default function MapPage() {
       />
       {tab === 'galaxy' && <GalaxyMap currentId={intel.system?.id ?? current?.id} />}
       {tab === 'route' && <RoutePlanner />}
+      {tab === 'haul' && <HaulPlanner />}
       {tab === 'jump' && <JumpPlanner />}
       {tab === 'thera' && <WormholeConnections />}
       {tab === 'wormholes' && <Wormholes />}

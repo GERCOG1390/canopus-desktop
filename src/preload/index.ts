@@ -69,6 +69,7 @@ const api: CanopusApi = {
     piSchematics: () => invoke('sde:piSchematics'),
     productionRecipes: (root: number) => invoke('sde:productionRecipes', root),
     regions: () => invoke('sde:regions'),
+    haulVolumes: (ids: number[]) => invoke('sde:haulVolumes', ids),
     compressedOres: () => invoke('sde:compressedOres'),
     inventableTypes: () => invoke('sde:inventableTypes'),
     inventionFor: (id) => invoke('sde:inventionFor', id),

@@ -311,6 +311,7 @@ function registerIpc(): void {
   ipcMain.handle('sde:piSchematics', () => sde.piSchematics())
   ipcMain.handle('sde:productionRecipes', (_e, root: number) => sde.productionRecipes(root))
   ipcMain.handle('sde:regions', () => sde.regionList())
+  ipcMain.handle('sde:haulVolumes', (_e, ids: number[]) => sde.haulVolumes(ids))
   ipcMain.handle('sde:compressedOres', () => sde.compressedOres())
   ipcMain.handle('sde:inventableTypes', () => sde.inventableTypes())
   ipcMain.handle('sde:inventionFor', (_e, id: number) => sde.inventionFor(id))
