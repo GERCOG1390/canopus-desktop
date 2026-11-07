@@ -171,6 +171,30 @@ export interface MutaRange {
   max: number
 }
 
+/** What inventing a T2 item takes: one source blueprint (T1 copy or relic) per way of inventing it */
+export interface InventionData {
+  product: number
+  /** The T2 blueprint */
+  blueprint: number
+  unitsPerRun: number
+  /** Manufacturing seconds per run */
+  time: number
+  materials: [number, number][]
+  sources: {
+    source: number
+    baseChance: number
+    /** Runs of the invented blueprint with no decryptor */
+    baseRuns: number
+    /** Invention seconds */
+    time: number
+    materials: [number, number][]
+    /** Science skills, then the encryption skill */
+    sciences: number[]
+    encryption: number
+  }[]
+  decryptors: { id: number; chance: number; me: number; te: number; runs: number }[]
+}
+
 /** A mutaplasmid applying to a module */
 export interface MutaOption {
   id: number

@@ -18,7 +18,7 @@ import type { WidgetSettings, WidgetView } from './widgets'
 import type { ClientWindow, PreviewSettings } from './previews'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
 import type { AgentQuery } from './agents'
-import type { AgentRow, CampaignDef, CampaignObjectiveDef, ColonySite, GalaxyData, JumpHop, MutaOption, PiSchematic, WormholeType } from './sde'
+import type { AgentRow, InventionData, CampaignDef, CampaignObjectiveDef, ColonySite, GalaxyData, JumpHop, MutaOption, PiSchematic, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
@@ -126,6 +126,9 @@ export interface CanopusApi {
     wormholeTypes(): Promise<WormholeType[]>
     /** Planetary industry schematics by id. */
     piSchematics(): Promise<Record<number, PiSchematic>>
+    /** Items that can be invented. */
+    inventableTypes(): Promise<number[]>
+    inventionFor(productId: number): Promise<InventionData | null>
     /** Mission agents for a query, and how many match in all. */
     agents(q: AgentQuery): Promise<{ total: number; list: AgentRow[] }>
     /** Modules a mutaplasmid applies to. */

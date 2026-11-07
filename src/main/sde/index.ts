@@ -26,7 +26,7 @@ import type {
 } from '../../shared/sde'
 import type { FittableType } from '../../shared/fit'
 import { filterAgents, type AgentQuery } from '../../shared/agents'
-import { SDE_FORMAT, type AgentRow, type MutaOption, type MutaRange } from '../../shared/sde'
+import { SDE_FORMAT, type AgentRow, type InventionData, type MutaOption, type MutaRange } from '../../shared/sde'
 import { buildSde, latestBuild } from './build'
 
 /** requiredSkillN attribute → requiredSkillNLevel attribute */
@@ -354,6 +354,54 @@ export function agents(q: AgentQuery): { total: number; list: AgentRow[] } {
       jumps: jumps?.get(a.s)
     }))
   }
+}
+
+const DECRYPTOR_GROUP = 1304
+
+/** Items that can be invented (T2 products of blueprints with an invention activity). */
+export function inventableTypes(): number[] {
+  const d = need()
+  const out = new Set<number>()
+  for (const bp of Object.values(d.blueprints)) {
+    for (const [t2] of bp.act.invention?.prod ?? []) {
+      const product = d.blueprints[t2]?.act.manufacturing?.prod?.[0]?.[0]
+      if (product) out.add(product)
+    }
+  }
+  return [...out]
+}
+
+/** What inventing this item takes, or null when it isn't invented. */
+export function inventionFor(productId: number): InventionData | null {
+  const d = need()
+  const made = blueprintForProduct(productId)
+  if (!made || made.activity !== 'manufacturing' || !made.data.prod?.length) return null
+  const sources: InventionData['sources'] = []
+  for (const [id, bp] of Object.entries(d.blueprints)) {
+    const inv = bp.act.invention
+    const out = inv?.prod?.find(([t]) => t === made.bp)
+    if (!inv || !out) continue
+    const skills = (inv.skills ?? []).map(([s]) => s)
+    const encryption = skills.find((s) => /Encryption Methods/.test(d.types[s]?.n[0] ?? '')) ?? 0
+    sources.push({
+      source: Number(id),
+      baseChance: out[2] ?? 0,
+      baseRuns: out[1],
+      time: inv.time,
+      materials: inv.mat ?? [],
+      sciences: skills.filter((s) => s !== encryption),
+      encryption
+    })
+  }
+  if (!sources.length) return null
+  const decryptors = Object.values(d.types)
+    .filter((t) => t.g === DECRYPTOR_GROUP && t.pub && d.dogma[t.id]?.a[1112])
+    .map((t) => {
+      const a = d.dogma[t.id].a
+      return { id: t.id, chance: a[1112], me: a[1113] ?? 0, te: a[1114] ?? 0, runs: a[1124] ?? 0 }
+    })
+    .sort((a, b) => a.chance - b.chance)
+  return { product: productId, blueprint: made.bp, unitsPerRun: made.data.prod[0][1], time: made.data.time, materials: made.data.mat ?? [], sources, decryptors }
 }
 
 /** Modules a mutaplasmid applies to. */

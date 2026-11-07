@@ -3,6 +3,24 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  'Этот предмет не изобретается': 'This item is not invented',
+  'Инвенция': 'Invention',
+  'Что изобретаем': 'Item to invent',
+  'Источник': 'Source',
+  'Копия T1, ISK за попытку': 'T1 copy, ISK per attempt',
+  'Навыки изобретения': 'Invention skills',
+  'Сравнение декрипторов': 'Decryptors compared',
+  'Декриптор': 'Decryptor',
+  'Без декриптора': 'No decryptor',
+  'Шанс': 'Chance',
+  'Себестоимость за шт': 'Cost per unit',
+  'Прибыль с чертежа': 'Profit per blueprint',
+  'Лучший выбор': 'Best choice',
+  'Датакоры на попытку': 'Datacores per attempt',
+  'Инвенция на чертёж': 'Invention per blueprint',
+  'Выберите T2-предмет: калькулятор покажет шанс, себестоимость и лучший декриптор.': 'Pick a T2 item: the calculator shows the chance, the cost and the best decryptor.',
+  'Цена продажи': 'Sale price',
+  'Прибыль считается по Jita sell, с учётом неудачных попыток: расход на попытку делится на шанс. Стоимость работы инвенции приблизительная (2% стоимости предмета по EVE University), время и навыки ускорения не учтены.': 'Profit is at Jita sell and pays for the failed attempts: the cost of an attempt is divided by the chance. The invention job cost is approximate (2% of the item value, per EVE University); time and speed skills are not counted.',
   'Отдел добычи': 'Mining',
   'Середина': 'Middle',
   'Капитал': 'Net worth',
@@ -1880,6 +1898,8 @@ export const EXACT: Record<string, string> = {
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
   // ---- 1.3
+  [/^база ([\d.]+%)$/, 'base $1'],
+  [/^(\d+) шт за прогон$/, '$1 per run'],
   [/^\(\+(\d+) импланты\)$/, '(+$1 implants)'],
   [/^Агентов: (\d+)$/, 'Agents: $1'],
   [/^· стеков: ([\d\s,]+)$/, '· stacks: $1'],

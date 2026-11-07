@@ -12,8 +12,9 @@ import { useAsync, useTick } from '../lib/useAsync'
 import Structures from './Structures'
 import Moons from './Moons'
 import PiCalculator from './PiCalculator'
+import Invention from './Invention'
 
-type Tab = 'calc' | 'jobs' | 'pi' | 'picalc' | 'structures' | 'moons'
+type Tab = 'calc' | 'invention' | 'jobs' | 'pi' | 'picalc' | 'structures' | 'moons'
 
 export default function IndustryPage() {
   const { pageArg } = useApp()
@@ -26,6 +27,7 @@ export default function IndustryPage() {
       <Tabs
         tabs={[
           { id: 'calc', label: 'Калькулятор производства' },
+          { id: 'invention', label: 'Инвенция' },
           { id: 'jobs', label: 'Мои работы' },
           { id: 'pi', label: 'Мои колонии' },
           { id: 'picalc', label: 'Расчёт планетарки' },
@@ -36,6 +38,7 @@ export default function IndustryPage() {
         onChange={setTab}
       />
       {tab === 'calc' && <Calculator />}
+      {tab === 'invention' && <Invention />}
       {tab === 'jobs' && <Jobs />}
       {tab === 'structures' && <Structures />}
       {tab === 'moons' && <Moons />}
