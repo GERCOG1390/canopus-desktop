@@ -288,6 +288,8 @@ function registerIpc(): void {
   ipcMain.handle('shell:openExternal', (_e, url: string) => openExternal(url))
   ipcMain.handle('notify:history', () => notifier.notifyHistory())
   ipcMain.handle('ratting:events', () => combatlog.combatLogEvents())
+  ipcMain.handle('combatReport:logs', () => combatlog.combatLogs())
+  ipcMain.handle('combatReport:fights', (_e, file: string) => combatlog.combatFights(file))
   ipcMain.handle('store:get', (_e, key: string) => storeGet(key))
   ipcMain.handle('store:set', (_e, key: string, value: unknown) => storeSet(key, value))
   ipcMain.handle('notify:checkNow', () => notifier.checkNow())

@@ -7,6 +7,7 @@ import { esi, imageUrl, resolveIds, resolveNames, systemInfo, type SystemInfo } 
 import { fmtAgo, fmtIsk, fmtNum } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 import BattleReportTab from './BattleReport'
+import CombatLogReport from './CombatLogReport'
 import Wars from './Wars'
 
 interface Pilot {
@@ -66,7 +67,7 @@ async function searchPilots(q: string, characterId: number | null): Promise<Pilo
   return (await resolveIds([query])).characters ?? []
 }
 
-type Tab = 'pilot' | 'wars' | 'battle'
+type Tab = 'pilot' | 'wars' | 'battle' | 'log'
 
 export default function PvpPage() {
   const { pageArg } = useApp()
@@ -79,6 +80,7 @@ export default function PvpPage() {
       <Tabs
         tabs={[
           { id: 'pilot', label: 'Пилот' },
+          { id: 'log', label: 'Разбор по логу' },
           { id: 'battle', label: 'Разбор боя' },
           { id: 'wars', label: 'Войны' }
         ]}
@@ -86,6 +88,7 @@ export default function PvpPage() {
         onChange={setTab}
       />
       {tab === 'pilot' && <PilotTab />}
+      {tab === 'log' && <CombatLogReport />}
       {tab === 'battle' && <BattleReportTab />}
       {tab === 'wars' && <Wars />}
     </div>

@@ -2,8 +2,9 @@
 // bounties and system changes, for the ratting tracker. The format is the same in every client language:
 // colours mark outgoing (cyan) and incoming (red) damage, <localized hint="…"> carries English names.
 
-import { closeSync, existsSync, openSync, readdirSync, readSync, statSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
+import { buildFights, parseCombatLine, type Fight } from '../shared/combatReport'
 import type { CombatLogEvent } from '../shared/ratting'
 import { defaultLogDir } from './intel'
 import { loadSettings } from './storage'
@@ -133,3 +134,31 @@ export const restartCombatLog = (): void => watcher?.restart()
 
 /** Everything parsed from the current log file (for a window opened later). */
 export const combatLogEvents = (): CombatLogEvent[] => watcher?.events ?? []
+
+/** Newest logs looked through for fights */
+const REPORT_LOGS = 60
+
+const readLines = (file: string): string[] => readFileSync(file, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/)
+
+/** This character's game logs that have combat in them, newest first. */
+export function combatLogs(): { file: string; modified: number; lines: number }[] {
+  const dir = gamelogDir()
+  if (!dir) return []
+  const charId = loadSettings().activeCharacterId
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.txt') && (!charId || f.endsWith(`_${charId}.txt`)))
+    .map((file) => ({ file, modified: statSync(join(dir, file)).mtimeMs }))
+    .sort((a, b) => b.modified - a.modified)
+    .slice(0, REPORT_LOGS)
+    .map((l) => ({ ...l, lines: readLines(join(dir, l.file)).filter((x) => x.includes('(combat)')).length }))
+    .filter((l) => l.lines > 0)
+}
+
+/** The fights of one log. The name comes from the page, so only a plain file name in the log folder will do. */
+export function combatFights(file: string): Fight[] {
+  const dir = gamelogDir()
+  if (!dir || basename(file) !== file || !file.endsWith('.txt')) return []
+  const path = join(dir, file)
+  if (!existsSync(path)) return []
+  return buildFights(readLines(path).flatMap((l) => parseCombatLine(l) ?? []))
+}

@@ -123,6 +123,10 @@ const api: CanopusApi = {
     get: (key) => invoke('store:get', key),
     set: (key, value) => invoke('store:set', key, value)
   },
+  combatReport: {
+    logs: () => invoke('combatReport:logs'),
+    fights: (file) => invoke('combatReport:fights', file)
+  },
   ratting: {
     events: () => invoke('ratting:events'),
     onEvents: (listener) => on('ratting:events', listener),

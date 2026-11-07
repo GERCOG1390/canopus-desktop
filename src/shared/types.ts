@@ -1,6 +1,7 @@
 // Types shared between the main process, preload and renderer.
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
+import type { Fight } from './combatReport'
 import type { Recipe } from './prodChain'
 import type { NpcFaction, NpcReport } from './npc'
 import type { AbyssFaction, AbyssReport, AbyssWeather } from './abyss'
@@ -167,6 +168,11 @@ export interface CanopusApi {
   store: {
     get<T = unknown>(key: string): Promise<T | null>
     set(key: string, value: unknown): Promise<void>
+  }
+  combatReport: {
+    /** This character's game logs with combat in them, newest first. */
+    logs(): Promise<{ file: string; modified: number; lines: number }[]>
+    fights(file: string): Promise<Fight[]>
   }
   ratting: {
     /** Events parsed from the current game log. */
