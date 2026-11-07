@@ -2,8 +2,10 @@
 // published formulas, and the fight itself stepped through time (shared/combatTimeline.ts).
 
 import type { AppliedWeapon, CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
-import { application, ewarEfficiency, runTimeline, stackingPenalty, type Combatant, type Geometry, type Orders, type Tactical, type Timeline } from '../../shared/combatTimeline'
+import { fightProblems, rate, searchAdvice, type Candidate, type CombatAdvice, type Rated } from '../../shared/combatAdvice'
+import { application, ewarEfficiency, isSentry, runTimeline, stackingPenalty, type Combatant, type Geometry, type Orders, type Tactical, type Timeline } from '../../shared/combatTimeline'
 import type { FitStats, TacticalModule } from '../../shared/fit'
+import { chargesFor } from '../sde'
 import { calculateFit } from './index'
 
 function direction(att: FitStats, def: FitStats, g: Geometry): CombatDirection {
@@ -327,4 +329,84 @@ export function defaults(a: CombatPilot, b: CombatPilot): { speedA: number; spee
   const sa = calculateFit(a.fit, a.skills)
   const sb = calculateFit(b.fit, b.skills)
   return { speedA: sa.navigation.maxVelocity, speedB: sb.navigation.maxVelocity, sigA: sa.navigation.signatureRadius, sigB: sb.navigation.signatureRadius }
+}
+
+/** Ranges to try, up to what the weapons reach; a fit with only flying drones has no such limit. */
+const RANGE_STEPS = [1, 2.5, 5, 7.5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 100, 125, 150, 200, 250].map((km) => km * 1000)
+
+function rangesFor(s: FitStats, current: number): number[] {
+  let reach = 0
+  for (const w of s.offense.weapons) {
+    if (w.kind === 'turret' || isSentry(w)) reach = Math.max(reach, (w.optimal ?? 0) + 2 * (w.falloff ?? 0))
+    else if (w.kind === 'missile' || w.kind === 'vorton') reach = Math.max(reach, w.optimal ?? 0)
+    else if (w.kind === 'drone') reach = Math.max(reach, 30_000)
+  }
+  const steps = reach > 0 ? RANGE_STEPS.filter((r) => r <= reach * 1.05) : []
+  return [...new Set([...(steps.length ? steps : [RANGE_STEPS[0]]), current])].sort((x, y) => x - y)
+}
+
+/** Runs a fight per option: weapons' ammo, range, flying mode and propulsion against the opponent as set. */
+export async function advise(a: CombatPilot, b: CombatPilot, sc: CombatScenario): Promise<CombatAdvice> {
+  const B = new Side(b)
+  const wantB = sc.propB ?? B.prop?.fitOn ?? false
+  const enemy = combatant(B, wantB)
+  const hpOf = (s: FitStats) => ({ shield: s.defense.shield.hp, armor: s.defense.armor.hp, hull: s.defense.hull.hp })
+  const baseA = new Side(a)
+  const hp = { a: hpOf(baseA.base), b: hpOf(B.base) }
+
+  // The weapons that have charges loaded, and what else they could load.
+  const loaded = new Map<number, number>()
+  for (const m of a.fit.modules) if (m.chargeTypeId && baseA.base.offense.weapons.some((w) => w.typeId === m.typeId)) loaded.set(m.typeId, m.chargeTypeId)
+  const charges: Record<number, number[]> = {}
+  for (const typeId of loaded.keys()) charges[typeId] = chargesFor(typeId)
+  const startAmmo = Object.fromEntries(loaded)
+
+  // A side per ammo set, kept: the fit is only worked out once for each.
+  const sides = new Map<string, Side>()
+  const sideFor = (ammo: Record<number, number>): Side => {
+    const key = JSON.stringify(Object.entries(ammo).sort())
+    let side = sides.get(key)
+    if (!side) {
+      side = new Side({ ...a, fit: { ...a.fit, modules: a.fit.modules.map((m) => (m.typeId in ammo ? { ...m, chargeTypeId: ammo[m.typeId] } : m)) } })
+      sides.set(key, side)
+    }
+    return side
+  }
+  const mine = (c: Candidate): Orders => ({ behavior: c.behavior, range: c.range, heading: sc.headingA, speed: 1e6, wantProp: c.prop, useEwar: sc.ewarA !== false, sig: sc.sigA })
+  const theirs: Orders = { behavior: sc.behaviorB ?? 'free', range: sc.rangeB ?? sc.distance, heading: sc.headingB, speed: sc.speedB, wantProp: wantB, useEwar: sc.ewarB !== false, sig: sc.sigB }
+  const fightAgainst = (c: Candidate, opp: Orders): Timeline => runTimeline(combatant(sideFor(c.ammo), c.prop), enemy, mine(c), opp, sc.distance)
+
+  const wantA = sc.propA ?? baseA.prop?.fitOn ?? false
+  const start: Candidate = { behavior: 'keep', range: sc.rangeA ?? sc.distance, ammo: startAmmo, prop: wantA }
+  const found = await searchAdvice({
+    start,
+    rangesFor: (ammo) => rangesFor(sideFor(ammo).base, sc.rangeA ?? sc.distance),
+    charges,
+    canProp: !!baseA.prop,
+    fight: (c) => fightAgainst(c, theirs),
+    hp,
+    pause: () => new Promise((resolve) => setImmediate(resolve))
+  })
+
+  // What's flown now, as it's set up.
+  const now = simulate(a, b, sc)
+  const current = rate(start, now.timeline, hp)
+  const alreadyBest = found.best.score <= current.score + 0.005
+
+  // The same choice if the opponent doesn't do as assumed: comes at you, or keeps away at its own longest reach.
+  let kiteRange = 0
+  for (const w of B.base.offense.weapons) if (w.kind === 'turret' || w.kind === 'missile' || w.kind === 'vorton') kiteRange = Math.max(kiteRange, w.optimal ?? 0)
+  kiteRange = kiteRange || sc.distance
+  const flat = { speed: 1e6, heading: sc.headingB, wantProp: !!B.prop, useEwar: sc.ewarB !== false, sig: sc.sigB }
+  const enemyFull = combatant(B, !!B.prop)
+  const reaction = (o: Orders): Rated => rate(found.best.candidate, runTimeline(combatant(sideFor(found.best.candidate.ammo), found.best.candidate.prop), enemyFull, mine(found.best.candidate), o, sc.distance), hp)
+  return {
+    current,
+    best: found.best,
+    alreadyBest,
+    alternatives: found.alternatives,
+    ifOpponent: { rushes: reaction({ ...flat, behavior: 'approach', range: 500 }), kites: reaction({ ...flat, behavior: 'keep', range: kiteRange }), kiteRange },
+    problems: fightProblems(now),
+    tried: found.tried
+  }
 }

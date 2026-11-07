@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
+import type { Candidate, CombatAdvice, Problem, Rated } from '../../shared/combatAdvice'
 import type { Behavior, Timeline, TimelineEvent, TimelinePoint } from '../../shared/combatTimeline'
 import type { FitSpec, FittableType, SavedFit } from '../../shared/fit'
 import { AppProvider, useApp, useLang } from './AppContext'
@@ -265,6 +266,16 @@ function Simulator() {
             </Card>
             <Summary r={result} />
           </div>
+          <AdviceCard
+            you={you ?? attacker!}
+            defender={defender!}
+            sc={sc}
+            onApply={(c) => {
+              setAmmoA((a) => ({ ...a, ...c.ammo }))
+              set({ behaviorA: c.behavior, rangeA: c.range })
+              setProp('a', c.prop)
+            }}
+          />
           <FightCard r={result} sc={sc} set={set} />
           <div className="combat-sides">
             <DirectionCard title="Вы → противник" d={result.ab} />
@@ -894,6 +905,147 @@ const EVENT_TEXT: Record<TimelineEvent['kind'], string> = {
 const toughness = (side: CombatSideInfo, p: TimelinePoint['a']): number => {
   const total = side.hp.shield + side.hp.armor + side.hp.hull
   return total ? ((p.s * side.hp.shield + p.a * side.hp.armor + p.h * side.hp.hull) / total) * 100 : 0
+}
+
+function resultText(r: Rated): string {
+  if (r.winner === 'a') return `победа за ${duration(r.end)}, останется ${Math.round(r.leftA * 100)}%`
+  if (r.winner === 'b') return `поражение за ${duration(r.end)}, у противника останется ${Math.round(r.leftB * 100)}%`
+  if (r.winner === 'both') return `оба погибают на ${duration(r.end)}`
+  return `никто не погибает: у вас ${Math.round(r.leftA * 100)}%, у противника ${Math.round(r.leftB * 100)}%`
+}
+
+const resultClass = (r: Rated): string => (r.winner === 'a' ? 'good' : r.winner === 'b' ? 'bad' : '')
+
+const DAMAGE_NAMES = ['ЭМ', 'термика', 'кинетика', 'взрыв']
+
+function ChargeName({ id }: { id: number }) {
+  const lang = useLang()
+  const t = useTypeBasic(id)
+  return <span translate="no">{tn(t?.n, lang)}</span>
+}
+
+function ProblemLine({ p }: { p: Problem }) {
+  const lang = useLang()
+  const weapon = useTypeBasic(p.code === 'application' ? p.typeId : 0)
+  switch (p.code) {
+    case 'application':
+      return (
+        <>
+          <span translate="no">{tn(weapon?.n, lang)}</span> {`попадает лишь на ${p.percent}%, мешает: ${translate(p.limit)}`}
+        </>
+      )
+    case 'weakResist':
+      return <>{`Основной урон противника: ${translate(DAMAGE_NAMES[p.damage])}, ${p.share}%. ${translate(LAYER_NAMES[p.layer])} держит этот тип только на ${p.resist}%.`}</>
+    case 'capEmpty':
+      return <>{`Накопитель пустеет на ${duration(p.t)}: модули встают.`}</>
+    case 'propBlocked':
+      return <>{`MWD выключается скрамблером на ${duration(p.t)}.`}</>
+    case 'lostRange':
+      return <>{`Цель уходит из досягаемости на ${duration(p.t)}.`}</>
+    case 'reload':
+      return <>{`Оружие уходит на перезарядку на ${duration(p.t)}, урон в этот момент падает.`}</>
+    case 'outgunned':
+      return <>{`Противник наносит больше: ${p.theirs} DPS против ваших ${p.mine}.`}</>
+    case 'lessTank':
+      return <>{`У противника больше EHP: ${p.theirs.toLocaleString(locale())} против ваших ${p.mine.toLocaleString(locale())}.`}</>
+  }
+}
+
+/** Tries the options by fighting them; only on request, and forgotten when the setup changes. */
+function AdviceCard({ you, defender, sc, onApply }: { you: CombatPilot; defender: CombatPilot; sc: CombatScenario; onApply: (c: Candidate) => void }) {
+  const [state, setState] = useState<{ advice?: CombatAdvice; busy?: boolean; error?: string }>({})
+  const key = JSON.stringify([you.fit, defender.fit, sc])
+  useEffect(() => setState({}), [key])
+  const run = () => {
+    setState({ busy: true })
+    window.api.combat.advise(you, defender, sc).then(
+      (advice) => setState({ advice }),
+      (e: Error) => setState({ error: e.message })
+    )
+  }
+  const a = state.advice
+  const ammoChanged = a ? Object.entries(a.best.candidate.ammo).filter(([id, charge]) => a.current.candidate.ammo[Number(id)] !== charge) : []
+  const flying = (c: Candidate) => `${translate(c.behavior === 'orbit' ? 'Орбита' : 'Держать дистанцию')}, ${km(c.range)}`
+  return (
+    <Card title="Что делать">
+      <div className="row">
+        <button onClick={run} disabled={!!state.busy}>
+          {state.busy ? 'Перебираю варианты…' : 'Подобрать лучшее'}
+        </button>
+        <span className="muted small">Перебор дистанций, боеприпасов и MWD/AB настоящими боями. Противник ведёт себя так, как задано ниже.</span>
+      </div>
+      {state.error && <p className="warn-text small">{state.error}</p>}
+      {a && (
+        <>
+          {a.alreadyBest ? (
+            <p>
+              <b>Лучше текущего варианта не нашлось.</b> <span className={resultClass(a.current)}>{resultText(a.current)}</span>
+            </p>
+          ) : (
+            <>
+              <p>
+                <b>{flying(a.best.candidate)}</b>
+                {ammoChanged.map(([id, charge]) => (
+                  <span key={id}>
+                    {' · '}
+                    <ChargeName id={charge} />
+                  </span>
+                ))}
+                {a.best.candidate.prop !== a.current.candidate.prop && (
+                  <>
+                    {' · '}
+                    <span>{a.best.candidate.prop ? 'включить MWD/AB' : 'выключить MWD/AB'}</span>
+                  </>
+                )}
+              </p>
+              <p className="small">
+                <span className={resultClass(a.best)}>{resultText(a.best)}</span>
+                <span className="muted">
+                  {' · '}
+                  <span>сейчас:</span> <span>{resultText(a.current)}</span>
+                </span>
+              </p>
+              <button className="ghost small" onClick={() => onApply(a.best.candidate)}>
+                Применить
+              </button>
+            </>
+          )}
+          {a.best.winner !== 'a' && <p className="warn-text small">Если противник ведёт себя так, этот бой не выигрывается ни на какой дистанции и ни с какими зарядами: дело в самом фите. Что мешает, смотрите ниже.</p>}
+          <table className="table compact">
+            <tbody>
+              <tr>
+                <td className="muted small">Если противник пойдёт в ближний бой</td>
+                <td className={resultClass(a.ifOpponent.rushes)}>{resultText(a.ifOpponent.rushes)}</td>
+              </tr>
+              <tr>
+                <td className="muted small">{`Если противник будет держаться на ${km(a.ifOpponent.kiteRange)}`}</td>
+                <td className={resultClass(a.ifOpponent.kites)}>{resultText(a.ifOpponent.kites)}</td>
+              </tr>
+              {a.alternatives.map((r, i) => (
+                <tr key={i}>
+                  <td className="muted small">{`Ещё вариант: ${flying(r.candidate)}`}</td>
+                  <td className={resultClass(r)}>{resultText(r)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {a.problems.length > 0 && (
+            <>
+              <div className="muted small">Что мешает сейчас</div>
+              <ul className="combat-effects">
+                {a.problems.map((p, i) => (
+                  <li key={i}>
+                    <ProblemLine p={p} />
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="muted small">{`Проверено боёв: ${a.tried}. Фит не меняется: совет только про то, как лететь и чем стрелять. Навыки к боеприпасам не проверяются.`}</p>
+        </>
+      )}
+    </Card>
+  )
 }
 
 function FightCard({ r, sc, set }: { r: CombatResult; sc: CombatScenario; set: (p: Partial<CombatScenario>) => void }) {

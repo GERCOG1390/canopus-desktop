@@ -3,6 +3,20 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  'сейчас:': 'now:',
+  'включить MWD/AB': 'turn MWD/AB on',
+  'выключить MWD/AB': 'turn MWD/AB off',
+  'Если противник ведёт себя так, этот бой не выигрывается ни на какой дистанции и ни с какими зарядами: дело в самом фите. Что мешает, смотрите ниже.': "Against an opponent doing this, the fight can't be won at any range or with any ammo: it's the fit itself. See what holds you back below.",
+  'Что делать': 'What to do',
+  'Подобрать лучшее': 'Find the best',
+  'Перебираю варианты…': 'Trying the options…',
+  'Перебор дистанций, боеприпасов и MWD/AB настоящими боями. Противник ведёт себя так, как задано ниже.': 'Tries ranges, ammo and MWD/AB by running the fight. The opponent does what is set below.',
+  'Лучше текущего варианта не нашлось.': 'Nothing better than the current choice.',
+  'Если противник пойдёт в ближний бой': 'If the opponent closes in',
+  'Что мешает сейчас': 'What holds you back now',
+  'термика': 'thermal',
+  'кинетика': 'kinetic',
+  'взрыв': 'explosive',
   'Ваши сетки, подсветка, скрамблеры и нейты включены': 'Your webs, painters, scramblers and neuts on',
   'Его сетки, подсветка, скрамблеры и нейты включены': 'Their webs, painters, scramblers and neuts on',
   'Ход боя': 'The fight',
@@ -2123,6 +2137,21 @@ export const EXACT: Record<string, string> = {
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
   // ---- 1.3
+  [/^победа за (.+), останется (\d+)%$/, 'a win in $1 with $2% left'],
+  [/^поражение за (.+), у противника останется (\d+)%$/, 'a loss in $1, the opponent keeps $2%'],
+  [/^оба погибают на (.+)$/, 'both die at $1'],
+  [/^никто не погибает: у вас (\d+)%, у противника (\d+)%$/, 'nobody dies: you $1%, the opponent $2%'],
+  [/^Если противник будет держаться на (.+)$/, 'If the opponent keeps at $1'],
+  [/^Ещё вариант: (.+)$/, 'Another choice: $1'],
+  [/^попадает лишь на (\d+)%, мешает: (.+)$/, 'lands only $1%, limited by: $2'],
+  [/^Основной урон противника: (.+), (\d+)%\. (.+) держит этот тип только на (\d+)%\.$/, "The opponent's main damage: $1, $2%. $3 resists it only $4%."],
+  [/^Накопитель пустеет на (.+): модули встают\.$/, 'The capacitor empties at $1: modules stop.'],
+  [/^MWD выключается скрамблером на (.+)\.$/, 'A scrambler shuts the MWD off at $1.'],
+  [/^Цель уходит из досягаемости на (.+)\.$/, 'The target leaves weapon reach at $1.'],
+  [/^Оружие уходит на перезарядку на (.+), урон в этот момент падает\.$/, 'Weapons go to reload at $1, damage drops then.'],
+  [/^Противник наносит больше: (\d+) DPS против ваших (\d+)\.$/, 'The opponent deals more: $1 DPS against your $2.'],
+  [/^У противника больше EHP: (.+) против ваших (.+)\.$/, 'The opponent has more EHP: $1 against your $2.'],
+  [/^Проверено боёв: (\d+)\. Фит не меняется: совет только про то, как лететь и чем стрелять\. Навыки к боеприпасам не проверяются\.$/, 'Fights tried: $1. The fit stays as it is: this is only how to fly and what to fire. Ammo skills are not checked.'],
   [/^Вы побеждаете за (.+), у вас осталось (\d+)%$/, 'You win in $1 with $2% left'],
   [/^Вы проигрываете за (.+), у противника осталось (\d+)%$/, 'You lose in $1, the opponent has $2% left'],
   [/^Оба погибают на (.+)$/, 'Both die at $1'],

@@ -1,6 +1,7 @@
 // Types shared between the main process, preload and renderer.
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
+import type { CombatAdvice } from './combatAdvice'
 import type { Fight } from './combatReport'
 import type { Recipe } from './prodChain'
 import type { NpcFaction, NpcReport } from './npc'
@@ -274,6 +275,8 @@ export interface CanopusApi {
     getAttacker(): Promise<CombatPilot | null>
     onAttacker(listener: (a: CombatPilot) => void): () => void
     simulate(a: CombatPilot, b: CombatPilot, scenario: CombatScenario): Promise<CombatResult>
+    /** Tries ranges, flying modes, ammo and propulsion by running the fight. */
+    advise(a: CombatPilot, b: CombatPilot, scenario: CombatScenario): Promise<CombatAdvice>
     defaults(a: CombatPilot, b: CombatPilot): Promise<{ speedA: number; speedB: number; sigA: number; sigB: number }>
   }
   fit: {

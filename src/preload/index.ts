@@ -184,7 +184,8 @@ const api: CanopusApi = {
     getAttacker: () => invoke('combat:getAttacker'),
     onAttacker: (listener) => on('combat:attacker', listener),
     simulate: (a, b, scenario) => invoke('combat:simulate', a, b, scenario),
-    defaults: (a, b) => invoke('combat:defaults', a, b)
+    defaults: (a, b) => invoke('combat:defaults', a, b),
+    advise: (a, b, scenario) => invoke('combat:advise', a, b, scenario)
   },
   fit: {
     calculate: (spec, skills) => invoke('fit:calculate', spec, skills),
