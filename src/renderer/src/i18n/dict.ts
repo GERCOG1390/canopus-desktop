@@ -2,6 +2,39 @@
 // Wording follows the English EVE client where the game has a term for it.
 
 export const EXACT: Record<string, string> = {
+  // ---- 1.3
+  'Отдел добычи': 'Mining',
+  'Середина': 'Middle',
+  'Капитал': 'Net worth',
+  'Мутаплазмиды': 'Mutaplasmids',
+  'Служба безопасности': 'Security',
+  'Отдел сбыта': 'Distribution',
+  'Исследования': 'R&D',
+  'Локаторы': 'Locators',
+  'Отдел': 'Division',
+  'Корпорация или агент': 'Corporation or agent',
+  'Только хайсек': 'Highsec only',
+  'Подходящих агентов нет.': 'No agents match.',
+  'Агент': 'Agent',
+  'Открыть карточку агента в клиенте игры': "Open the agent's card in the game client",
+  'Показаны 150 ближайших.': 'The nearest 150 are shown.',
+  '· в космосе': '· in space',
+  'Ордера на продажу': 'Sell orders',
+  'Эскроу buy-ордеров': 'Buy order escrow',
+  'Импланты в голове': 'Implants in the head',
+  'Импланты в джамп-клонах': 'Implants in jump clones',
+  'Ассеты и импланты — по Jita sell (копии чертежей не считаются); ордера на продажу — по их цене; buy-ордера — по ISK в эскроу.': 'Assets and implants at Jita sell (blueprint copies count as nothing); sell orders at their own price; buy orders by the ISK held in escrow.',
+  'Самые дорогие предметы': 'Most valuable items',
+  'В базе SDE нет мутаплазмидов. Обновите базу в «Настройках» (раздел SDE).': 'The SDE database has no mutaplasmids. Update it in Settings (SDE section).',
+  'Модуль': 'Module',
+  'К этому модулю мутаплазмиды не применяются.': 'No mutaplasmid applies to this module.',
+  'Худший': 'Worst',
+  'Лучший': 'Best',
+  'Макс.': 'Max',
+  'Исходный': 'Original',
+  'Ролл': 'Roll',
+  'Изменение': 'Change',
+  'Каждый атрибут роллится независимо между минимальным и максимальным множителем мутаплазмида от значения исходного модуля. Поставьте ползунок туда, куда выпал ваш ролл, — или посмотрите, что дадут лучший и худший.': "Each attribute rolls independently between the mutaplasmid's minimum and maximum multiplier of the original module's value. Set the slider to where your roll landed — or see what the best and worst give.",
   // ---- navigation & shell
   Персонаж: 'Character',
   Разведка: 'Intel',
@@ -1846,6 +1879,12 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  // ---- 1.3
+  [/^\(\+(\d+) импланты\)$/, '(+$1 implants)'],
+  [/^Агентов: (\d+)$/, 'Agents: $1'],
+  [/^· стеков: ([\d\s,]+)$/, '· stacks: $1'],
+  [/^· ордеров: (\d+)$/, '· orders: $1'],
+  [/^· клонов: (\d+)$/, '· clones: $1'],
   // ---- 1.2
   [/^Расчёт с пробными уровнями навыков \((\d+)\) — стрелки показывают разницу со всеми навыками V\.$/, 'Trial skill levels ($1) — the arrows show the difference from all skills at V.'],
   [/^Расчёт с пробными уровнями навыков \((\d+)\) — стрелки показывают разницу с вашими реальными навыками\.$/, 'Trial skill levels ($1) — the arrows show the difference from your real skills.'],
@@ -2127,6 +2166,7 @@ export const PATTERNS: [RegExp, string][] = [
 
 /** Units and short words translated anywhere after a number. */
 export const TOKENS: [RegExp, string][] = [
+  [/ импланты\)/g, ' implants)'],
   [/(\d)д (?=\d)/g, '$1d '],
   [/(\d)ч(?![а-яё])/gi, '$1h'],
   [/(\d)м (?=\d)/g, '$1m '],

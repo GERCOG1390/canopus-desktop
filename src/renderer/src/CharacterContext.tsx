@@ -64,7 +64,8 @@ function observedRate(queue: QueueEntry[] | null): { skill: number; rate: number
 }
 
 export function CharacterProvider({ children }: { children: ReactNode }) {
-  const { active } = useApp()
+  const { active, sde } = useApp()
+  const sdeReady = sde.state === 'ready'
   const [nonce, setNonce] = useState(0)
   const [state, setState] = useState<Omit<CharacterData, 'reload' | 'level'>>({
     characterId: null,
@@ -113,10 +114,15 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
         // attributes always add up to 99 (5 × 17 + 14), so a larger sum means implants are included.
         let esiIncludesImplants: boolean
         const observed = observedRate(queue)
-        if (observed) {
-          const [primary, secondary] = await window.api.sde
-            .dogmaAttrs([observed.skill], [180, 181])
-            .then((d) => [d[observed.skill][180], d[observed.skill][181]])
+        // No SDE yet (first launch, or rebuilding after an update): this runs again when it is ready.
+        const training = observed
+          ? await window.api.sde
+              .dogmaAttrs([observed.skill], [180, 181])
+              .then((d) => [d[observed.skill][180], d[observed.skill][181]])
+              .catch(() => null)
+          : null
+        if (observed && training) {
+          const [primary, secondary] = training
           const rate = (a: CharAttributes) => (a[primary] ?? 0) + (a[secondary] ?? 0) / 2
           esiIncludesImplants = Math.abs(rate(base) - observed.rate) < Math.abs(rate(withImplants) - observed.rate)
         } else {
@@ -144,7 +150,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [active?.id, nonce])
+  }, [active?.id, nonce, sdeReady])
 
   const reload = useCallback(() => setNonce((n) => n + 1), [])
   const level = useCallback((skillId: number) => state.skills?.get(skillId)?.active ?? 0, [state.skills])

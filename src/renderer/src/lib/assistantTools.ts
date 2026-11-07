@@ -2,6 +2,7 @@
 // SDE, market, routes, intel) and the app actions it may take (open a page, load a fit). The model gets
 // numbers computed here instead of guessing them; actions in the game itself ask the user first.
 
+import { decodeEsiName } from '../../../shared/esiText'
 import type { ToolDef } from '../../../shared/assistant'
 import type { CombatPilot } from '../../../shared/combat'
 import type { FitSpec, FitStats, SkillSource } from '../../../shared/fit'
@@ -35,7 +36,7 @@ async function currentShipFit(c: CharacterAuth, skills: SkillSource): Promise<Fi
   const inside = assets.filter((a) => a.location_id === ship.ship_item_id)
   const fit = await fromEsiItems(
     ship.ship_type_id,
-    ship.ship_name || 'Current ship',
+    decodeEsiName(ship.ship_name) || 'Current ship',
     inside.map((a) => ({ typeId: a.type_id, flag: a.location_flag, qty: a.quantity }))
   )
   return launchDrones(fit, skills)

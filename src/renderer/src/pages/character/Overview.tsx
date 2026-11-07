@@ -1,3 +1,4 @@
+import { decodeEsiName } from '../../../../shared/esiText'
 import { useCharacter } from '../../CharacterContext'
 import { AttrIcon } from '../../components/Icon'
 import { Card, Empty, ErrorBox, Loading, ProgressBar, Sec, Stat } from '../../components/ui'
@@ -95,7 +96,7 @@ export default function Overview({ id }: { id: number }) {
               <img src={imageUrl.typeRender(ship.ship_type_id, 128)} width={96} height={96} alt="" />
               <div>
                 <TypeLink id={ship.ship_type_id} icon={false} />
-                <div className="muted">{ship.ship_name}</div>
+                <div className="muted">{decodeEsiName(ship.ship_name)}</div>
               </div>
             </div>
           )}

@@ -10,16 +10,18 @@ import Contacts from './Contacts'
 import Calendar from './Calendar'
 import Fittings from './Fittings'
 import Overview from './Overview'
+import Wealth from './Wealth'
 import Reputation from './Reputation'
 import Skills from './Skills'
 import SkillPlanner from './SkillPlanner'
 import Wallet from './Wallet'
 
-type Tab = 'all' | 'overview' | 'skills' | 'plan' | 'clones' | 'fits' | 'assets' | 'blueprints' | 'wallet' | 'contracts' | 'contacts' | 'calendar' | 'reputation'
+type Tab = 'all' | 'overview' | 'wealth' | 'skills' | 'plan' | 'clones' | 'fits' | 'assets' | 'blueprints' | 'wallet' | 'contracts' | 'contacts' | 'calendar' | 'reputation'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'all', label: 'Все персонажи' },
   { id: 'overview', label: 'Обзор' },
+  { id: 'wealth', label: 'Капитал' },
   { id: 'skills', label: 'Навыки' },
   { id: 'plan', label: 'План навыков' },
   { id: 'clones', label: 'Импланты и клоны' },
@@ -51,6 +53,7 @@ export default function CharacterPage() {
         />
       )}
       {tab === 'overview' && <Overview id={id} />}
+      {tab === 'wealth' && <Wealth id={id} />}
       {tab === 'skills' && <Skills />}
       {tab === 'plan' && <SkillPlanner />}
       {tab === 'clones' && <Clones id={id} />}

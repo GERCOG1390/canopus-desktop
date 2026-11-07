@@ -13,8 +13,10 @@ import { useAsync, useTick } from '../lib/useAsync'
 import Mining from './Mining'
 import Campaigns from './Campaigns'
 import Freelance from './Freelance'
+import Agents from './Agents'
+import Mutaplasmids from './Mutaplasmids'
 
-type Tab = 'campaigns' | 'freelance' | 'sigs' | 'ratting' | 'mining' | 'abyss'
+type Tab = 'campaigns' | 'freelance' | 'agents' | 'sigs' | 'ratting' | 'mining' | 'abyss' | 'muta'
 
 export default function ActivitiesPage() {
   const [tab, setTab] = useState<Tab>('sigs')
@@ -24,10 +26,12 @@ export default function ActivitiesPage() {
         tabs={[
           { id: 'campaigns', label: 'Кампании' },
           { id: 'freelance', label: 'Фриланс' },
+          { id: 'agents', label: 'Агенты' },
           { id: 'sigs', label: 'Сигнатуры' },
           { id: 'ratting', label: 'Крабинг' },
           { id: 'mining', label: 'Добыча' },
-          { id: 'abyss', label: 'Абиссы' }
+          { id: 'abyss', label: 'Абиссы' },
+          { id: 'muta', label: 'Мутаплазмиды' }
         ]}
         value={tab}
         onChange={setTab}
@@ -38,6 +42,8 @@ export default function ActivitiesPage() {
       {tab === 'ratting' && <RattingTracker />}
       {tab === 'mining' && <Mining />}
       {tab === 'abyss' && <AbyssTracker />}
+      {tab === 'agents' && <Agents />}
+      {tab === 'muta' && <Mutaplasmids />}
     </div>
   )
 }

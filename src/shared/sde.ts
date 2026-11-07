@@ -60,7 +60,7 @@ export interface DogmaEffect {
 }
 
 /** Bumped whenever the DB layout changes, forcing a rebuild from the SDE zip. */
-export const SDE_FORMAT = 9
+export const SDE_FORMAT = 10
 
 export interface CampaignDef {
   t: L10n
@@ -128,6 +128,55 @@ export interface SdeDb {
   schematics: Record<number, PiSchematic>
   /** Planet types in each solar system (one entry per planet, for "where can I build this colony") */
   systemPlanets: Record<number, number[]>
+  /** NPC corporations: name, faction */
+  npcCorps: Record<number, { n: L10n; f?: number }>
+  /** NPC corporation divisions (Security, Distribution…) */
+  divisions: Record<number, L10n>
+  /** Mission agents with the system they sit in */
+  agents: SdeAgent[]
+  /** Mutaplasmids: a: [attribute, min, max] multipliers; m: [modules it applies to, the abyssal module it makes] */
+  mutaplasmids: Record<number, { a: [number, number, number][]; m: [number[], number][] }>
+}
+
+/** n: name, c: corporation, d: division, l: level, s: system; loc: finds players; st: in a station (otherwise in space) */
+export interface SdeAgent {
+  id: number
+  n: string
+  c: number
+  d?: number
+  l: number
+  s: number
+  loc?: 1
+  st?: 1
+}
+
+/** An agent as the page shows it */
+export interface AgentRow extends SdeAgent {
+  corp: L10n
+  div: L10n
+  sys: string
+  sec: number
+  jumps?: number
+}
+
+/** One attribute a mutaplasmid rolls, with the module's own value */
+export interface MutaRange {
+  attr: number
+  name: L10n
+  unit?: number
+  unitName: L10n
+  high: boolean
+  base: number
+  min: number
+  max: number
+}
+
+/** A mutaplasmid applying to a module */
+export interface MutaOption {
+  id: number
+  n: L10n
+  result: number
+  ranges: MutaRange[]
 }
 
 /** A system for planetary colonies: its planets by type and which needed raw resources it lacks. */

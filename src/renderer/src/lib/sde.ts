@@ -1,4 +1,5 @@
 import { useEffect, useReducer } from 'react'
+import { createBasicsCache } from '../../../shared/basicsCache'
 import type { L10n, TypeBasic } from '../../../shared/sde'
 
 export type Lang = 0 | 1
@@ -8,71 +9,28 @@ export const tn = (n: L10n | undefined, lang: Lang): string => (n ? n[lang] || n
 
 // ---------- Batched type-name cache shared by every <TypeLink> ----------
 
-const cache = new Map<number, TypeBasic>()
-const requested = new Set<number>()
-const listeners = new Set<() => void>()
-let queue = new Set<number>()
-let scheduled = false
+const basics = createBasicsCache<TypeBasic>((ids) => window.api.sde.basics(ids))
 
-function notify(): void {
-  listeners.forEach((l) => l())
-}
-
-async function flush(): Promise<void> {
-  scheduled = false
-  const ids = [...queue]
-  queue = new Set()
-  if (!ids.length) return
-  try {
-    const res = await window.api.sde.basics(ids)
-    Object.values(res).forEach((b) => cache.set(b.id, b))
-  } catch {
-    // SDE not ready yet: allow a retry once it is.
-    ids.forEach((id) => requested.delete(id))
-  }
-  notify()
-}
-
-export function requestBasics(ids: Iterable<number>): void {
-  for (const id of ids) {
-    if (!id || cache.has(id) || requested.has(id)) continue
-    requested.add(id)
-    queue.add(id)
-  }
-  if (queue.size && !scheduled) {
-    scheduled = true
-    setTimeout(() => void flush(), 0)
-  }
-}
-
-export function primeBasics(map: Record<number, TypeBasic>): void {
-  Object.values(map).forEach((b) => cache.set(b.id, b))
-}
-
-export const getBasic = (id: number): TypeBasic | undefined => cache.get(id)
-
+export const requestBasics = (ids: Iterable<number>): void => basics.request(ids)
+export const primeBasics = (map: Record<number, TypeBasic>): void => basics.prime(map)
+export const getBasic = (id: number): TypeBasic | undefined => basics.get(id)
 /** Re-request anything that failed while the SDE was still downloading. */
-export function retryMissing(): void {
-  requested.clear()
-  notify()
-}
+export const retryMissing = (): void => basics.retry()
 
 export function useTypeBasic(id: number): TypeBasic | undefined {
   const [, force] = useReducer((x: number) => x + 1, 0)
   useEffect(() => {
-    listeners.add(force)
-    return () => void listeners.delete(force)
+    return basics.subscribe(force)
   }, [])
-  if (id && !cache.has(id)) requestBasics([id])
-  return cache.get(id)
+  if (id && !basics.has(id)) requestBasics([id])
+  return basics.get(id)
 }
 
 /** Loads names for many IDs at once and re-renders when they arrive. */
 export function useTypeBasics(ids: number[]): (id: number) => TypeBasic | undefined {
   const [, force] = useReducer((x: number) => x + 1, 0)
   useEffect(() => {
-    listeners.add(force)
-    return () => void listeners.delete(force)
+    return basics.subscribe(force)
   }, [])
   requestBasics(ids)
   return getBasic

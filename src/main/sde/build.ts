@@ -111,7 +111,11 @@ export async function buildSde(
     campaignObjectives: {},
     jobTypes: {},
     schematics: {},
-    systemPlanets: {}
+    systemPlanets: {},
+    npcCorps: {},
+    divisions: {},
+    agents: [],
+    mutaplasmids: {}
   }
   const descriptions: Record<number, L10n> = {}
 
@@ -120,6 +124,10 @@ export async function buildSde(
   const constellationClass = new Map<number, number>()
   const regionClass = new Map<number, number>()
   const systemEffect = new Map<number, number>()
+  // An agent sits in a station (its system comes from npcStations) or in space (agentsInSpace).
+  const stationSystem = new Map<number, number>()
+  const spaceAgentSystem = new Map<number, number>()
+  const agentRows: Row[] = []
 
   const handlers: Record<string, Handler> = {
     types: (r) => {
@@ -279,6 +287,27 @@ export async function buildSde(
     },
     icons: (r) => {
       if (r.iconFile) db.icons[r._key] = String(r.iconFile).toLowerCase()
+    },
+    npcStations: (r) => {
+      if (r.solarSystemID) stationSystem.set(r._key, r.solarSystemID)
+    },
+    agentsInSpace: (r) => {
+      if (r.solarSystemID) spaceAgentSystem.set(r._key, r.solarSystemID)
+    },
+    npcCorporations: (r) => {
+      db.npcCorps[r._key] = { n: l10n(r.name), ...(r.factionID ? { f: r.factionID } : {}) }
+    },
+    npcCorporationDivisions: (r) => {
+      db.divisions[r._key] = l10n(r.name)
+    },
+    npcCharacters: (r) => {
+      if (r.agent && r.corporationID) agentRows.push(r)
+    },
+    dynamicItemAttributes: (r) => {
+      db.mutaplasmids[r._key] = {
+        a: ((r.attributeIDs ?? []) as Row[]).map((x) => [x._key, x.min, x.max]),
+        m: ((r.inputOutputMapping ?? []) as Row[]).map((x) => [x.applicableTypes ?? [], x.resultingType])
+      }
     }
   }
 
@@ -291,6 +320,22 @@ export async function buildSde(
     if (wc) s.wc = wc
     const fx = systemEffect.get(Number(id))
     if (fx) s.fx = fx
+  }
+
+  for (const r of agentRows) {
+    const inStation = stationSystem.get(r.locationID)
+    const system = inStation ?? spaceAgentSystem.get(r._key)
+    if (!system) continue
+    db.agents.push({
+      id: r._key,
+      n: l10n(r.name)[0],
+      c: r.corporationID,
+      ...(r.agent.divisionID ? { d: r.agent.divisionID } : {}),
+      l: r.agent.level ?? 1,
+      s: system,
+      ...(r.agent.isLocator ? { loc: 1 as const } : {}),
+      ...(inStation ? { st: 1 as const } : {})
+    })
   }
 
   const dbPath = `${dir}/sde-${build.buildNumber}.json`

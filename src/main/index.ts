@@ -13,6 +13,7 @@ import type { NpcFaction } from '../shared/npc'
 import type { AbyssFaction, AbyssWeather } from '../shared/abyss'
 import type { CombatPilot, CombatScenario } from '../shared/combat'
 import { handleIconScheme, registerIconScheme } from './icons'
+import type { AgentQuery } from '../shared/agents'
 import type { FitSpec, SkillSource } from '../shared/fit'
 import type { IntelSettings, OverlaySummary } from '../shared/intel'
 import * as intel from './intel'
@@ -308,6 +309,9 @@ function registerIpc(): void {
   ipcMain.handle('sde:system', (_e, id: number) => sde.system(id))
   ipcMain.handle('sde:wormholeTypes', () => sde.wormholeTypes())
   ipcMain.handle('sde:piSchematics', () => sde.piSchematics())
+  ipcMain.handle('sde:agents', (_e, q: AgentQuery) => sde.agents(q))
+  ipcMain.handle('sde:mutableTypes', () => sde.mutableTypes())
+  ipcMain.handle('sde:mutaplasmidsFor', (_e, typeId: number) => sde.mutaplasmidsFor(typeId))
   ipcMain.handle('sde:systemPlanets', (_e, ids: number[]) => sde.systemPlanets(ids))
   ipcMain.handle('sde:colonySites', (_e, from: number, radius: number, needs: number[][]) => sde.colonySites(from, radius, needs))
   ipcMain.handle('sde:jumpRoute', (_e, from: number, to: number, range: number) => sde.jumpRoute(from, to, range))

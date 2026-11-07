@@ -17,7 +17,8 @@ import type { FreelanceFilter } from './freelance'
 import type { WidgetSettings, WidgetView } from './widgets'
 import type { ClientWindow, PreviewSettings } from './previews'
 import type { ChannelInfo, ClipboardEvent, IntelReport, IntelSettings, LogEvent, OverlaySummary } from './intel'
-import type { CampaignDef, CampaignObjectiveDef, ColonySite, GalaxyData, JumpHop, PiSchematic, WormholeType } from './sde'
+import type { AgentQuery } from './agents'
+import type { AgentRow, CampaignDef, CampaignObjectiveDef, ColonySite, GalaxyData, JumpHop, MutaOption, PiSchematic, WormholeType } from './sde'
 import type { InfoBundle, L10n, MarketLevel, SdeStatus, SkillCatalogGroup, SkillReq, SystemBasic, TypeBasic } from './sde'
 
 export interface RequestOptions {
@@ -125,6 +126,11 @@ export interface CanopusApi {
     wormholeTypes(): Promise<WormholeType[]>
     /** Planetary industry schematics by id. */
     piSchematics(): Promise<Record<number, PiSchematic>>
+    /** Mission agents for a query, and how many match in all. */
+    agents(q: AgentQuery): Promise<{ total: number; list: AgentRow[] }>
+    /** Modules a mutaplasmid applies to. */
+    mutableTypes(): Promise<number[]>
+    mutaplasmidsFor(typeId: number): Promise<MutaOption[]>
     /** Planet types in each of the given solar systems. */
     systemPlanets(ids: number[]): Promise<Record<number, number[]>>
     /** Systems within a radius for colonies needing these planet types (one list per raw resource). */

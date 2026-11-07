@@ -25,7 +25,8 @@ import type {
   ColonySite
 } from '../../shared/sde'
 import type { FittableType } from '../../shared/fit'
-import { SDE_FORMAT } from '../../shared/sde'
+import { filterAgents, type AgentQuery } from '../../shared/agents'
+import { SDE_FORMAT, type AgentRow, type MutaOption, type MutaRange } from '../../shared/sde'
 import { buildSde, latestBuild } from './build'
 
 /** requiredSkillN attribute → requiredSkillNLevel attribute */
@@ -330,6 +331,65 @@ export function colonySites(fromId: number, radius: number, needs: number[][], l
     out.push({ id, n: s.n, sec: s.sec, jumps, planets, missing })
   }
   return out.sort((a, b) => a.missing.length - b.missing.length || a.jumps - b.jumps || b.sec - a.sec).slice(0, limit)
+}
+
+/** Mission agents for a query, nearest first when an origin is given. */
+export function agents(q: AgentQuery): { total: number; list: AgentRow[] } {
+  const d = need()
+  const jumps = q.from ? systemsWithin(q.from, 200) : undefined
+  const none: L10n = ['', '']
+  const { total, list } = filterAgents(d.agents ?? [], q, {
+    sec: (s) => d.systems[s]?.sec ?? -1,
+    corpName: (c) => d.npcCorps?.[c]?.n ?? none,
+    jumps
+  })
+  return {
+    total,
+    list: list.map((a) => ({
+      ...a,
+      corp: d.npcCorps?.[a.c]?.n ?? none,
+      div: (a.d && d.divisions?.[a.d]) || none,
+      sys: d.systems[a.s]?.n ?? '',
+      sec: d.systems[a.s]?.sec ?? 0,
+      jumps: jumps?.get(a.s)
+    }))
+  }
+}
+
+/** Modules a mutaplasmid applies to. */
+export function mutableTypes(): number[] {
+  const out = new Set<number>()
+  for (const m of Object.values(need().mutaplasmids ?? {})) for (const [sources] of m.m) for (const id of sources) out.add(id)
+  return [...out]
+}
+
+/** The mutaplasmids for a module, weakest name first, with the attributes the module actually has. */
+export function mutaplasmidsFor(typeId: number): MutaOption[] {
+  const d = need()
+  const own = d.dogma[typeId]?.a ?? {}
+  const out: MutaOption[] = []
+  for (const [id, m] of Object.entries(d.mutaplasmids ?? {})) {
+    const result = m.m.find(([sources]) => sources.includes(typeId))?.[1]
+    if (!result) continue
+    const ranges: MutaRange[] = m.a
+      .filter(([attr]) => own[attr] !== undefined)
+      .map(([attr, min, max]) => {
+        const info = d.attributes[attr]
+        return {
+          attr,
+          name: info?.dn?.[0] ? info.dn : ([info?.name ?? String(attr), info?.name ?? String(attr)] as L10n),
+          unit: info?.u,
+          unitName: (info?.u && d.units[info.u]) || (['', ''] as L10n),
+          high: !!info?.high,
+          base: own[attr],
+          min,
+          max
+        }
+      })
+      .sort((a, b) => a.name[0].localeCompare(b.name[0]))
+    out.push({ id: Number(id), n: d.types[Number(id)]?.n ?? [id, id], result, ranges })
+  }
+  return out.sort((a, b) => a.n[0].localeCompare(b.n[0]))
 }
 
 /** All wormhole types ("Wormhole C247") with their destination class and mass / time limits. */

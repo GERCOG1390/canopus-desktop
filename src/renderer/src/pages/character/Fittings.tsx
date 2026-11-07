@@ -1,3 +1,4 @@
+import { decodeEsiName } from '../../../../shared/esiText'
 import { useState } from 'react'
 import { useLang } from '../../AppContext'
 import { FitView, type FitItem } from '../../components/FitView'
@@ -69,10 +70,10 @@ export default function Fittings({ id }: { id: number }) {
           <ErrorBox error={current.error} />
         ) : current.data ? (
           current.data.items ? (
-            <FitView shipTypeId={current.data.ship.ship_type_id} name={current.data.ship.ship_name} items={current.data.items} />
+            <FitView shipTypeId={current.data.ship.ship_type_id} name={decodeEsiName(current.data.ship.ship_name)} items={current.data.items} />
           ) : (
             <>
-              <TypeLink id={current.data.ship.ship_type_id} /> <span className="muted">{current.data.ship.ship_name}</span>
+              <TypeLink id={current.data.ship.ship_type_id} /> <span className="muted">{decodeEsiName(current.data.ship.ship_name)}</span>
               <ScopeHint scope="esi-assets.read_assets.v1" />
             </>
           )

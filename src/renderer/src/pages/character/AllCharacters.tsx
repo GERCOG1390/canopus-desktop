@@ -1,6 +1,7 @@
 // Every logged-in character on one screen: where they are and in what, the skill queue, ISK,
 // industry, PI, jump fatigue and the clone jump timer. For alts and multiboxing.
 
+import { decodeEsiName } from '../../../../shared/esiText'
 import { useEffect, useState } from 'react'
 import { useApp } from '../../AppContext'
 import type { CharacterAuth } from '../../../../shared/types'
@@ -67,7 +68,7 @@ export async function loadRow(c: CharacterAuth): Promise<Row> {
     online: online?.online,
     system: sys ? { id: sys.system_id, name: sys.name, sec: sys.security_status } : undefined,
     docked: location ? !!(location.station_id || location.structure_id) : undefined,
-    ship: ship ? { type: ship.ship_type_id, name: ship.ship_name } : undefined,
+    ship: ship ? { type: ship.ship_type_id, name: decodeEsiName(ship.ship_name) } : undefined,
     queueEnd: queue ? (queueEnds?.length ? Math.max(...queueEnds) : null) : undefined,
     wallet,
     jobs: jobs
