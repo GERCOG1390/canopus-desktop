@@ -15,8 +15,9 @@ import { fmtDate, fmtIsk, fmtNum } from '../lib/format'
 import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/market'
 import { getBasic, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
+import PublicContracts from './PublicContracts'
 
-type Tab = 'prices' | 'appraisal' | 'arbitrage' | 'lp' | 'orders' | 'trades' | 'alerts' | 'sp'
+type Tab = 'contracts' | 'prices' | 'appraisal' | 'arbitrage' | 'lp' | 'orders' | 'trades' | 'alerts' | 'sp'
 
 export default function MarketPage() {
   const { pageArg } = useApp()
@@ -32,6 +33,7 @@ export default function MarketPage() {
           { id: 'appraisal', label: 'Оценка лута' },
           { id: 'arbitrage', label: 'Арбитраж' },
           { id: 'lp', label: 'LP-магазин' },
+          { id: 'contracts', label: 'Контракты' },
           { id: 'orders', label: 'Мои ордера' },
           { id: 'trades', label: 'Мои сделки' },
           { id: 'alerts', label: 'Оповещения' },
@@ -43,6 +45,7 @@ export default function MarketPage() {
       {tab === 'prices' && <Prices />}
       {tab === 'appraisal' && <Appraisal />}
       {tab === 'arbitrage' && <Arbitrage />}
+      {tab === 'contracts' && <PublicContracts />}
       {tab === 'lp' && <LpStore />}
       {tab === 'orders' && <MyOrders />}
       {tab === 'trades' && <Trades />}

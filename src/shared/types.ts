@@ -128,6 +128,8 @@ export interface CanopusApi {
     /** Planetary industry schematics by id. */
     piSchematics(): Promise<Record<number, PiSchematic>>
     compressedOres(): Promise<CompressedOre[]>
+    /** Regions that have markets and contracts. */
+    regions(): Promise<{ id: number; n: L10n }[]>
     /** Recipes of an item and everything under it. */
     productionRecipes(root: number): Promise<Record<number, Recipe>>
     /** Items that can be invented. */

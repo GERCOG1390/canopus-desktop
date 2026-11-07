@@ -376,6 +376,14 @@ export function productionRecipes(root: number): Record<number, Recipe> {
   return out
 }
 
+/** Regions with contracts and markets: wormhole, abyssal and other special ones have ids from 11 000 000. */
+export function regionList(): { id: number; n: L10n }[] {
+  return Object.entries(need().regions)
+    .map(([id, n]) => ({ id: Number(id), n }))
+    .filter((r) => r.id < 11_000_000)
+    .sort((a, b) => a.n[0].localeCompare(b.n[0]))
+}
+
 const ASTEROID_CATEGORY = 25
 
 /** Compressed ores sold on the market, with what they refine into. */

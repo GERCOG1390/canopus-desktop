@@ -3,6 +3,29 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  'Или сузьте цену и название: старые контракты просматриваются последними.': 'Or narrow the price and title: older contracts come last.',
+  'Публичные контракты': 'Public contracts',
+  'Что продаётся (необязательно)': 'What is for sale (optional)',
+  'Цена от, млн ISK': 'Price from, M ISK',
+  'Цена до, млн ISK': 'Price to, M ISK',
+  'В названии': 'In the title',
+  'Искать': 'Search',
+  'Загружаю список контрактов…': 'Loading the contract list…',
+  'Выберите регион и нажмите «Искать». Предмет можно не указывать: тогда покажутся самые выгодные контракты.': 'Pick a region and press Search. Without an item you get the best deals.',
+  'Ничего не нашлось.': 'Nothing found.',
+  'Подошло под фильтры': 'Passed the filters',
+  'Просмотрено': 'Looked into',
+  'самые свежие': 'the newest',
+  'Найдено': 'Found',
+  'Выгоднее всего': 'Best deal',
+  'Дешевле всего': 'Cheapest',
+  'Содержимое': 'Contents',
+  'В Jita': 'At Jita',
+  'Выгода': 'Saving',
+  'аукцион, выкуп': 'auction, buyout',
+  'аукцион, старт': 'auction, opening bid',
+  'Просит взамен:': 'Asks in return:',
+  'Выгода считается по лучшей цене продажи в Jita и не учитывает налог, перевозку и то, что большую партию одной ценой не продать. Копии чертежей и предметы без цены в Jita в стоимость не входят. Цена аукциона — выкуп, а если его нет, начальная ставка: итог может оказаться выше. Перед покупкой проверьте контракт в игре, продавцы подменяют похожие предметы.': "The saving uses the best Jita sell and leaves out tax, hauling and that a large lot won't all sell at one price. Blueprint copies and items with no Jita price aren't in the value. An auction's price is its buyout or, without one, the opening bid: it may end higher. Check the contract in the game before buying: sellers swap in similar items.",
   'Цепочка': 'Chain',
   'ME чертежа, %': 'Blueprint ME, %',
   'ME компонентов, %': 'Component ME, %',
@@ -1976,6 +1999,12 @@ export const EXACT: Record<string, string> = {
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
   // ---- 1.3
+  [/^Смотреть дальше: ещё ([\d,\s ]+)$/, 'Look further: $1 more'],
+  [/^Без отбора по предмету \((.+)\)$/, 'No item filter ($1)'],
+  [/^Просмотрено ([\d,\s ]+) из ([\d,\s ]+)$/, 'Looked into $1 of $2'],
+  [/^Не открылось контрактов: (\d+)$/, 'Contracts that did not open: $1'],
+  [/^Всего позиций: (\d+)$/, 'Lines in all: $1'],
+  [/^без цены: (\d+)$/, 'no price: $1'],
   [/^материалы (.+) · работы (.+)$/, 'materials $1 · jobs $2'],
   [/^работ: (\d+)$/, 'jobs: $1'],
   [/^Нет цены на рынке, в сумму не вошло: (\d+)$/, 'No market price, not in the total: $1'],
