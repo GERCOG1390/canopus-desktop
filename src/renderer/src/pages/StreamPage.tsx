@@ -93,6 +93,15 @@ export default function StreamPage() {
         <p className="muted small">Задержка системы защищает от «стрим-снайпинга»: зрители не увидят, где вы сейчас.</p>
       </Card>
 
+      {!status.running && (
+        <div className="stream-catalog">
+          {STREAM_WIDGETS.map((w) => (
+            <Card key={w} title={WIDGET_INFO[w][0]}>
+              <p className="muted small">{WIDGET_INFO[w][1]}</p>
+            </Card>
+          ))}
+        </div>
+      )}
       {status.running && status.url && (
         <div className="stream-widgets">
           {STREAM_WIDGETS.map((w) => {

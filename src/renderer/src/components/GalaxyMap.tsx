@@ -2,6 +2,7 @@
 // links, region and system labels, kills in the last hour, a route, fresh intel reports and your
 // current system. three.js / WebGL; labels are HTML placed over the canvas every frame.
 
+import { Glyph } from './Glyph'
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
@@ -18,6 +19,8 @@ import { GameButton } from './GameButton'
 import { SCOPE, setDestinationInGame } from '../lib/gameActions'
 
 /** How many system names to show when zoomed in, nearest to the centre of the view first. */
+const PENCIL_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/></svg>'
+
 const SYSTEM_LABELS = 40
 /** Camera distance (ly) below which system names appear. */
 const SYSTEM_LABEL_DIST = 28
@@ -397,12 +400,12 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
       return div
     })
 
-    // Camera: the whole of New Eden, tilted.
+    // Camera: the whole of New Eden from nearly above, so it fills the frame instead of lying as a strip.
     const box = new THREE.Box3().setFromBufferAttribute(geo.getAttribute('position') as THREE.BufferAttribute)
     const radius = box.getBoundingSphere(new THREE.Sphere()).radius
     const home = () => {
       controls.target.copy(centre)
-      camera.position.copy(centre).add(new THREE.Vector3(0, radius * 0.95, radius * 0.7))
+      camera.position.copy(centre).add(new THREE.Vector3(0, radius * 1.06, radius * 0.25))
       camera.up.set(0, 1, 0)
     }
     home()
@@ -496,7 +499,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
       if (note) {
         const nl = document.createElement('div')
         nl.className = 'gx-tip-note'
-        nl.textContent = `✎ ${note.split('\n')[0].slice(0, 80)}`
+        nl.textContent = note.split('\n')[0].slice(0, 80)
         t.append(nl)
       }
       el.style.cursor = 'pointer'
@@ -601,12 +604,12 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
         }
         if (!shown) div.style.opacity = '0'
       }
-      // ✎ next to systems with a note.
+      // A pencil next to systems with a note.
       const noted = Object.keys(marksRef.current.notes)
       while (noteMarks.length < noted.length) {
         const div = document.createElement('div')
         div.className = 'gx-note'
-        div.textContent = '✎'
+        div.innerHTML = PENCIL_SVG
         labelLayer.appendChild(div)
         noteMarks.push(div)
       }
@@ -970,7 +973,7 @@ export function GalaxyMap({ currentId }: { currentId?: number | null }) {
               <i className="gx-mark" style={{ '--mark': 'var(--muted)' } as CSSProperties} /> избегать
             </span>
           )}
-          {Object.keys(marks.notes).length > 0 && <span>✎ заметка</span>}
+          {Object.keys(marks.notes).length > 0 && <span><Glyph name="edit" size={12} /> <span>заметка</span></span>}
           {reach && (
             <span>
               <i style={{ background: REACH_COLOR }} /> в досягаемости прыжка

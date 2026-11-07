@@ -1,6 +1,7 @@
 // Fleet management through ESI: the fleet the character is in, its wings, squads and members,
 // and — for the fleet boss — MOTD, free move, invites, kicks, moves and renames.
 
+import { Glyph } from '../components/Glyph'
 import { compareFleet } from '../../../shared/fleetDoctrine'
 import { fromEft } from '../lib/fitting'
 import { STORE_KEY as DOCTRINES_KEY, splitEft, type Doctrine } from './Doctrines'
@@ -173,7 +174,7 @@ function Fleet({ who }: { who: CharacterAuth }) {
                         confirm={`Удалить сквад «${sq.name}»? (только пустой)`}
                         action={() => esi(`/fleets/${fleetId}/squads/${sq.id}/`, { method: 'DELETE', characterId: who.id }).then(reload)}
                       >
-                        ✕
+                        <Glyph name="close" size={14} />
                       </GameButton>
                     )}
                   </div>
@@ -207,7 +208,7 @@ function Rename({ name, canWrite, onRename }: { name: string; canWrite: boolean;
         {name}
         {canWrite && (
           <button className="ghost small" title="Переименовать" onClick={() => setEdit(name)}>
-            ✎
+            <Glyph name="edit" size={13} />
           </button>
         )}
       </span>
@@ -219,7 +220,7 @@ function Rename({ name, canWrite, onRename }: { name: string; canWrite: boolean;
         OK
       </button>
       <button className="ghost small" onClick={() => setEdit(null)}>
-        ✕
+        <Glyph name="close" size={14} />
       </button>
     </span>
   )

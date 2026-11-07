@@ -1,3 +1,4 @@
+import { Glyph } from '../components/Glyph'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { FitSpec, FitStats, FittableType, LayerStats, ModuleState, SavedFit, SkillSource, Slot } from '../../../shared/fit'
 import type { SkillReq } from '../../../shared/sde'
@@ -344,14 +345,14 @@ function Editor() {
           Инструменты
         </button>
         <button className="ghost" title="Открыть окно симуляции боя с этим фитом" onClick={() => void window.api.combat.open({ fit: f, skills })}>
-          ⚔ Симуляция боя
+          <Glyph name="swords" size={14} /> Симуляция боя
         </button>
         <button
           className="ghost"
           title="Весь фит и его характеристики на одной картинке — скопировать или сохранить PNG"
           onClick={() => void window.api.fitShot.open({ fit: f, skills, pilotName: mode === 'char' ? active?.name : undefined })}
         >
-          📷 Снимок фита
+          <Glyph name="camera" size={14} /> Снимок фита
         </button>
         <button className="ghost" onClick={() => setFit(null)}>
           Закрыть
@@ -467,7 +468,7 @@ function Editor() {
                   ×+1
                 </button>
                 <button className="ghost small danger" onClick={() => updateFit((x) => ({ ...x, drones: x.drones.filter((_, j) => j !== i) }))}>
-                  ✕
+                  <Glyph name="close" size={14} />
                 </button>
               </div>
             ))}
@@ -495,7 +496,7 @@ function Editor() {
                   <TypeLink id={id} size={24} />
                   <span className="grow" />
                   <button className="ghost small danger" onClick={() => updateFit((x) => ({ ...x, implants: x.implants.filter((y) => y !== id) }))}>
-                    ✕
+                    <Glyph name="close" size={14} />
                   </button>
                 </div>
               ))}
@@ -634,9 +635,9 @@ function ModuleRow({
           ⓘ
         </button>
       )}
-      {problems.length > 0 && <span className="bad" title={problems.join('\n')}>⚠</span>}
+      {problems.length > 0 && <span className="bad" title={problems.join('\n')}><Glyph name="alert" size={13} /></span>}
       <button className="ghost small danger" onClick={onRemove} title={count > 1 ? 'Снять один модуль' : 'Снять модуль'}>
-        ✕
+        <Glyph name="close" size={14} />
       </button>
     </div>
   )
@@ -1053,7 +1054,7 @@ function StatsPanel({
       {s.problems.length > 0 && (
         <div className="warn-box">
           {s.problems.map((p, i) => (
-            <div key={i}>⚠ {p}</div>
+            <div key={i}><Glyph name="alert" size={13} /> {p}</div>
           ))}
         </div>
       )}

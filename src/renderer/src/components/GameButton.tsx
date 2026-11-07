@@ -1,3 +1,4 @@
+import { Glyph } from './Glyph'
 import { useState, type ReactNode } from 'react'
 import { useApp } from '../AppContext'
 import type { CharacterAuth } from '../../../shared/types'
@@ -13,7 +14,7 @@ export function GameButton({
   children,
   title,
   className = 'ghost',
-  done = '✓',
+  done = <Glyph name="check" size={13} />,
   confirm
 }: {
   scope: string
@@ -22,7 +23,7 @@ export function GameButton({
   title?: string
   className?: string
   /** Shown briefly after success */
-  done?: string
+  done?: ReactNode
   /** Ask before doing it (deleting something in the game) */
   confirm?: string
 }) {
@@ -52,7 +53,7 @@ export function GameButton({
     <button className={`${className} game-btn ${state.error ? 'has-error' : ''}`} disabled={!allowed || state.busy} title={hint} onClick={() => void run()}>
       {children}
       {state.ok && <span className="good"> {done}</span>}
-      {state.error && <span className="bad"> ⚠</span>}
+      {state.error && <span className="bad"> <Glyph name="alert" size={13} /></span>}
     </button>
   )
 }

@@ -1,3 +1,4 @@
+import { Glyph } from '../components/Glyph'
 import { Fragment, useEffect, useState } from 'react'
 import { useApp } from '../AppContext'
 import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat, Tabs } from '../components/ui'
@@ -218,7 +219,7 @@ function RoutePlanner() {
             <div className="warn-box">
               {pathCamps.map(({ sys, camp }) => (
                 <div key={`${sys.system_id}-${camp.gate}`}>
-                  {'⚠ '}
+                  <Glyph name="alert" size={13} />{' '}
                   <b>{sys.name}</b>
                   {`: кемп на воротах в `}
                   <SystemName id={camp.to} />

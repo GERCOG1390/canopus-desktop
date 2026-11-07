@@ -24,7 +24,18 @@ const PATHS = {
   rows: 'M4 6h16M4 12h16M4 18h16',
   assistant: 'M4 5h16v11H10l-5 4v-4H4zM8 9.5h8M8 12.5h5',
   alert: 'M12 3l10 18H2zM12 10v5M12 18v.5',
-  heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z'
+  heart: 'M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z',
+  close: 'M6 6l12 12M18 6L6 18',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  edit: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
+  swords: 'M4 4l10.5 10.5M4 4h3.5M4 4v3.5M20 4L9.5 14.5M20 4h-3.5M20 4v3.5M6.5 13.5l4 4M4.5 19.5l3.5-3.5M17.5 13.5l-4 4M19.5 19.5L16 16',
+  camera: 'M4 8h4l2-3h4l2 3h4v11H4zM12 16.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  flame: 'M12 3c1 4 5 5.5 5 10.5a5 5 0 0 1-10 0C7 11 8.5 10 9 8c1.2.6 2 1.7 2.2 3C12 9 12.6 6 12 3z',
+  snow: 'M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9',
+  copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
+  play: 'M7 5l12 7-12 7z',
+  pause: 'M8 5v14M16 5v14',
+  gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1'
 } as const
 
 export type GlyphName = keyof typeof PATHS
@@ -32,7 +43,7 @@ export type GlyphName = keyof typeof PATHS
 export function Glyph({ name, size = 18, className = '' }: { name: GlyphName; size?: number; className?: string }) {
   return (
     <svg
-      className={className}
+      className={`glyph ${className}`}
       width={size}
       height={size}
       viewBox="0 0 24 24"

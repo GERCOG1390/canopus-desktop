@@ -87,12 +87,6 @@ export default function SettingsPage() {
           контакты, управление флотом, календарь. Canopus ничего не делает в игре сам — только по вашей кнопке.
         </p>
         <ErrorBox error={error} />
-        {extra.data && (
-          <details className="small">
-            <summary className="muted">Для владельца приложения Canopus: какие разрешения должны быть включены на developers.eveonline.com</summary>
-            <div className="mono small">{extra.data.join(' ')}</div>
-          </details>
-        )}
       </Card>
 
 
@@ -149,6 +143,12 @@ export default function SettingsPage() {
           ESI (CCP Games), zKillboard, EVE-Scout, Fuzzwork Market &amp; SDE. EVE Online и все связанные материалы — собственность CCP hf. Canopus не аффилирован с CCP.
         </p>
       </Card>
+      {extra.data && (
+          <details className="small">
+            <summary className="muted">Для владельца приложения Canopus: какие разрешения должны быть включены на developers.eveonline.com</summary>
+            <div className="mono small">{extra.data.join(' ')}</div>
+          </details>
+      )}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { Glyph } from './Glyph'
 import { useEffect, useMemo, useState } from 'react'
 import type { BlueprintActivity, Bonus, InfoBundle, InfoModifier, ReqNode, SkillReq } from '../../../shared/sde'
 import { useApp, useLang } from '../AppContext'
@@ -49,7 +50,7 @@ export function InfoPanel() {
           </button>
           <span className="muted small grow">Информация</span>
           <button className="ghost small" onClick={close} title="Закрыть (Esc)">
-            ✕
+            <Glyph name="close" size={14} />
           </button>
         </div>
         <InfoView key={typeId} typeId={typeId} />
@@ -532,7 +533,7 @@ function SkillTab({ b, lang }: { b: InfoBundle; lang: Lang }) {
             return (
               <tr key={l} className={have >= l ? 'done' : ''}>
                 <td>
-                  {ROMAN[l]} {have >= l && <span className="st ok">✔</span>}
+                  {ROMAN[l]} {have >= l && <span className="st ok"><Glyph name="check" size={12} /></span>}
                 </td>
                 <td className="num">{fmtNum(spForLevel(s.rank, l))}</td>
                 {rate > 0 && <td className="num">{have >= l ? '—' : fmtDuration(trainingMs(s.rank, l, state?.sp ?? 0, rate))}</td>}
@@ -587,12 +588,12 @@ function MasteryTab({ b, lang }: { b: InfoBundle; lang: Lang }) {
         return (
           <details key={l.level} className="mastery" open={open === l.level} onToggle={(e) => (e.currentTarget.open ? setOpen(l.level) : open === l.level && setOpen(null))}>
             <summary>
-              {char.skills && <span className={`st ${done ? 'ok' : 'no'}`}>{done ? '✔' : '✖'}</span>} Мастерство {ROMAN[l.level]}
+              {char.skills && <span className={`st ${done ? 'ok' : 'no'}`}><Glyph name={done ? 'check' : 'close'} size={12} /></span>} Мастерство {ROMAN[l.level]}
             </summary>
             {l.certs.map((c) => (
               <div key={c.id} className="cert">
                 <div className="cert-title">
-                  {char.skills && <span className={`st ${met(c.skills) ? 'ok' : 'no'}`}>{met(c.skills) ? '✔' : '✖'}</span>} {tn(c.n, lang)}
+                  {char.skills && <span className={`st ${met(c.skills) ? 'ok' : 'no'}`}><Glyph name={met(c.skills) ? 'check' : 'close'} size={12} /></span>} {tn(c.n, lang)}
                 </div>
                 <ul className="cert-skills">
                   {c.skills.map(([id, lvl]) => (

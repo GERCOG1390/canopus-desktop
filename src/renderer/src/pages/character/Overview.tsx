@@ -1,7 +1,7 @@
 import { decodeEsiName } from '../../../../shared/esiText'
 import { useCharacter } from '../../CharacterContext'
 import { AttrIcon } from '../../components/Icon'
-import { Card, Empty, ErrorBox, Loading, ProgressBar, Sec, Stat } from '../../components/ui'
+import { Card, CountUp, Empty, ErrorBox, Loading, ProgressBar, Sec, Stat } from '../../components/ui'
 import { TypeLink } from '../../components/TypeLink'
 import { ATTR_NAMES } from '../../lib/dogma'
 import { esi, imageUrl, resolveLocations, resolveNames, systemInfo } from '../../lib/esi'
@@ -69,6 +69,7 @@ export default function Overview({ id }: { id: number }) {
           </button>
         }
       >
+        {ship && <img className="hero-render" src={imageUrl.typeRender(ship.ship_type_id, 512)} alt="" />}
         <div className="hero-body">
           <img className="portrait" src={imageUrl.portrait(id, 256)} alt="" />
           <div className="hero-main">
@@ -93,7 +94,6 @@ export default function Overview({ id }: { id: number }) {
           </div>
           {ship && (
             <div className="hero-ship">
-              <img src={imageUrl.typeRender(ship.ship_type_id, 128)} width={96} height={96} alt="" />
               <div>
                 <TypeLink id={ship.ship_type_id} icon={false} />
                 <div className="muted">{decodeEsiName(ship.ship_name)}</div>
@@ -104,8 +104,8 @@ export default function Overview({ id }: { id: number }) {
       </Card>
 
       <div className="stats-row">
-        <Stat label="Кошелёк" value={wallet == null ? '—' : fmtIsk(wallet, true)} sub={wallet == null ? 'нет доступа' : fmtIsk(wallet)} />
-        <Stat label="Всего SP" value={fmtNum(char.totalSp)} sub={char.unallocatedSp ? `Нераспределено: ${fmtNum(char.unallocatedSp)}` : `${char.skills?.size ?? 0} навыков`} />
+        <Stat label="Кошелёк" value={wallet == null ? '—' : <CountUp value={wallet} format={(v) => fmtIsk(v, true)} />} sub={wallet == null ? 'нет доступа' : fmtIsk(wallet)} />
+        <Stat label="Всего SP" value={<CountUp value={char.totalSp ?? 0} format={(v) => fmtNum(Math.round(v))} />} sub={char.unallocatedSp ? `Нераспределено: ${fmtNum(char.unallocatedSp)}` : `${char.skills?.size ?? 0} навыков`} />
         <Stat
           label="Местоположение"
           value={

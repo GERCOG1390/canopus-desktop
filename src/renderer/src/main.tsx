@@ -27,6 +27,17 @@ document.addEventListener('click', (e) => {
   }
 })
 
+// The image server has no icon for some items (SKINs, for one): a quiet hexagon instead of a broken picture.
+const NO_ICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#74767b" stroke-width="1.4" stroke-linejoin="round"><path d="M12 3l7.8 4.5v9L12 21l-7.8-4.5v-9z"/></svg>')}`
+document.addEventListener(
+  'error',
+  (e) => {
+    const img = e.target
+    if (img instanceof HTMLImageElement && img.src !== NO_ICON) img.src = NO_ICON
+  },
+  true
+)
+
 // Every window (main, overlay, combat simulator) takes the theme and density from the settings.
 void window.api.settings.get().then(applyAppearance)
 window.api.onSettingsChanged(() => void window.api.settings.get().then(applyAppearance))

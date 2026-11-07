@@ -1,3 +1,4 @@
+import { Glyph } from '../components/Glyph'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useIntel } from '../IntelContext'
 import { Card, Empty, Stat, Tabs } from '../components/ui'
@@ -645,7 +646,7 @@ function AbyssTracker() {
                     <td className={`num ${r.loot - r.filament >= 0 ? 'good' : 'bad'}`}>{fmtIsk(r.loot - r.filament, true)}</td>
                     <td>
                       <button className="ghost small danger" onClick={() => saveRuns(runs.filter((x) => x.id !== r.id))}>
-                        ✕
+                        <Glyph name="close" size={14} />
                       </button>
                     </td>
                   </tr>

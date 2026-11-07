@@ -44,7 +44,7 @@ export default function Skills() {
         </select>
         <span className="muted small">Нажмите на навык — откроется полная информация и то, что он открывает.</span>
       </div>
-      <div className="grid-cards">
+      <div className="skill-columns">
         {data.map((g) => {
           const list = g.skills.filter((s) => {
             const st = skills.get(s.id)

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { adaptRah, application, dependsOnStayingAway, applyDamage, isSentry, rahResist, recharge, runTimeline, stackedMultiplier, TIMELINE_MAX_SEC, turretMultiplier } from './combatTimeline.ts'
+import { frameAt, adaptRah, application, dependsOnStayingAway, applyDamage, isSentry, rahResist, recharge, runTimeline, stackedMultiplier, TIMELINE_MAX_SEC, turretMultiplier } from './combatTimeline.ts'
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`)
 const layer = (hp, r = 0) => ({ hp, resist: [r, r, r, r], ehp: hp })
@@ -514,4 +514,31 @@ test('approach: closes on a slower ship running away at its top speed difference
   // 845 m/s of closing: well inside 40 s from 21 km, then matches its speed.
   close(r.series.find((p) => p.t >= 60).distance, 1000, 1000)
   close(r.series.find((p) => p.t >= 120).b.v, 225, 20)
+})
+
+test('the replay: every point knows where the ships were, and it agrees with the distance', () => {
+  const r = runTimeline(craft(300, 5), craft(1000, 8), orders({ behavior: 'orbit', range: 8000, speed: 300 }), orders({ behavior: 'orbit', range: 8000, speed: 1000 }), 8000)
+  assert.ok(r.series.length > 10)
+  for (const p of r.series) close(Math.hypot(p.pos.bx - p.pos.ax, p.pos.by - p.pos.ay), p.distance, 1e-6)
+  // They do move.
+  const first = r.series[0].pos
+  const last = r.series.at(-1).pos
+  assert.ok(Math.hypot(last.bx - first.bx, last.by - first.by) > 100)
+})
+
+test('the replay: a moment between two points is in between them', () => {
+  const series = [
+    { t: 0, distance: 1000, transversal: 0, pos: { ax: 0, ay: 0, bx: 1000, by: 0 }, a: { s: 1, a: 1, h: 1, c: 1, v: 0, dealt: 0 }, b: { s: 1, a: 1, h: 1, c: 1, v: 0, dealt: 7 } },
+    { t: 2, distance: 3000, transversal: 0, pos: { ax: 100, ay: 0, bx: 3100, by: 0 }, a: { s: 0, a: 1, h: 1, c: 0.5, v: 10, dealt: 5 }, b: { s: 1, a: 1, h: 1, c: 1, v: 0, dealt: 9 } }
+  ]
+  const m = frameAt(series, 1)
+  close(m.distance, 2000)
+  close(m.pos.ax, 50)
+  close(m.a.s, 0.5)
+  close(m.a.c, 0.75)
+  // Damage is what happened in that second, not a blend.
+  assert.equal(m.a.dealt, 5)
+  assert.equal(frameAt(series, -5).t, 0)
+  assert.equal(frameAt(series, 99).t, 2)
+  assert.equal(frameAt([series[0]], 1).t, 0)
 })

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { TypeLink } from '../../components/TypeLink'
-import { Card, Empty, ErrorBox, Loading, Stat, Tabs } from '../../components/ui'
+import { Card, Empty, ErrorBox, Loading, Stat, Tabs, CountUp } from '../../components/ui'
 import { esi, resolveLocations, resolveNames } from '../../lib/esi'
 import { LocationName } from '../../components/LocationName'
 import { fmtDate, fmtIsk, fmtNum } from '../../lib/format'
@@ -91,10 +91,10 @@ export default function Wallet({ id }: { id: number }) {
   return (
     <>
       <div className="stats-row">
-        <Stat label="Баланс" value={fmtIsk(data.balance, true)} sub={fmtIsk(data.balance)} />
-        <Stat label="Доход за 30 дней" value={<span className="good">{fmtIsk(income, true)}</span>} />
-        <Stat label="Расход за 30 дней" value={<span className="bad">{fmtIsk(expense, true)}</span>} />
-        <Stat label="Итого за 30 дней" value={fmtIsk(income + expense, true)} />
+        <Stat label="Баланс" value={<CountUp value={data.balance} format={(v) => fmtIsk(v, true)} />} sub={fmtIsk(data.balance)} />
+        <Stat label="Доход за 30 дней" value={<span className="good"><CountUp value={income} format={(v) => fmtIsk(v, true)} /></span>} />
+        <Stat label="Расход за 30 дней" value={<span className="bad"><CountUp value={expense} format={(v) => fmtIsk(v, true)} /></span>} />
+        <Stat label="Итого за 30 дней" value={<span className={income + expense < 0 ? 'bad' : 'good'}><CountUp value={income + expense} format={(v) => fmtIsk(v, true)} /></span>} />
       </div>
 
       <Card

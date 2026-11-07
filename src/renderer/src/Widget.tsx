@@ -1,6 +1,7 @@
 // Overlay mini-windows over the game: timers of every character, a quick Jita price lookup, and
 // the characters' wallets. Same frame as the intel overlay; drag by the header, resize by the edges.
 
+import { Glyph } from './components/Glyph'
 import { useEffect, useState, type ReactNode } from 'react'
 import type { CharacterAuth } from '../../shared/types'
 import type { WidgetView } from '../../shared/widgets'
@@ -32,7 +33,7 @@ export default function Widget({ view }: { view: WidgetView }) {
         <span className="ov-system">{translate(TITLES[view])}</span>
         <span className="ov-actions">
           <button title={translate('Скрыть')} onClick={() => void window.api.widgets.set(view, false)}>
-            ✕
+            <Glyph name="close" size={14} />
           </button>
         </span>
       </div>
@@ -91,7 +92,7 @@ function Timers({ chars }: { chars: CharacterAuth[] }) {
             <td translate="no">{r.name.split(' ')[0]}</td>
             <td>{r.queueEnd === null ? <span className="bad">{translate('пусто')}</span> : left(r.queueEnd, now)}</td>
             <td>{!r.pi?.planets || r.pi.earliest === null ? '—' : left(r.pi.earliest, now)}</td>
-            <td>{r.jobs ? (r.jobs.ready ? <span className="good">{`✔ ${r.jobs.ready}`}</span> : r.jobs.active || '—') : '—'}</td>
+            <td>{r.jobs ? (r.jobs.ready ? <span className="good"><Glyph name="check" size={12} /> {r.jobs.ready}</span> : r.jobs.active || '—') : '—'}</td>
           </tr>
         ))}
       </tbody>
@@ -142,7 +143,7 @@ function Price({ lang }: { lang: Lang }) {
           <div className="muted" translate="no">
             {picked.name}{' '}
             <button className="gx-link" onClick={() => (setPicked(null), setQ(''))}>
-              ✕
+              <Glyph name="close" size={14} />
             </button>
           </div>
           {!price ? (
@@ -152,13 +153,13 @@ function Price({ lang }: { lang: Lang }) {
               <div>
                 {translate('Продажа')} <b>{fmtIsk(price.sell)}</b>{' '}
                 <button className="ghost small" onClick={() => copy(price.sell, 'sell')}>
-                  {copied === 'sell' ? '✔' : '⧉'}
+                  <Glyph name={copied === 'sell' ? 'check' : 'copy'} size={12} />
                 </button>
               </div>
               <div>
                 {translate('Покупка')} <b>{fmtIsk(price.buy)}</b>{' '}
                 <button className="ghost small" onClick={() => copy(price.buy, 'buy')}>
-                  {copied === 'buy' ? '✔' : '⧉'}
+                  <Glyph name={copied === 'buy' ? 'check' : 'copy'} size={12} />
                 </button>
               </div>
             </>

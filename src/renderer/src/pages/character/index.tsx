@@ -18,21 +18,21 @@ import Wallet from './Wallet'
 
 type Tab = 'all' | 'overview' | 'wealth' | 'skills' | 'plan' | 'clones' | 'fits' | 'assets' | 'blueprints' | 'wallet' | 'contracts' | 'contacts' | 'calendar' | 'reputation'
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'all', label: 'Все персонажи' },
-  { id: 'overview', label: 'Обзор' },
-  { id: 'wealth', label: 'Капитал' },
-  { id: 'skills', label: 'Навыки' },
-  { id: 'plan', label: 'План навыков' },
-  { id: 'clones', label: 'Импланты и клоны' },
-  { id: 'fits', label: 'Корабль и фиты' },
-  { id: 'assets', label: 'Ассеты' },
-  { id: 'blueprints', label: 'Чертежи' },
-  { id: 'wallet', label: 'Кошелёк' },
-  { id: 'contracts', label: 'Контракты' },
-  { id: 'contacts', label: 'Контакты' },
-  { id: 'calendar', label: 'Календарь' },
-  { id: 'reputation', label: 'Репутация' }
+const TABS: { id: Tab; label: string; group: string }[] = [
+  { id: 'overview', label: 'Обзор', group: 'Обзор' },
+  { id: 'all', label: 'Все персонажи', group: 'Обзор' },
+  { id: 'skills', label: 'Навыки', group: 'Развитие' },
+  { id: 'plan', label: 'План навыков', group: 'Развитие' },
+  { id: 'clones', label: 'Импланты и клоны', group: 'Развитие' },
+  { id: 'fits', label: 'Корабль и фиты', group: 'Имущество' },
+  { id: 'assets', label: 'Ассеты', group: 'Имущество' },
+  { id: 'blueprints', label: 'Чертежи', group: 'Имущество' },
+  { id: 'wallet', label: 'Кошелёк', group: 'Деньги' },
+  { id: 'wealth', label: 'Капитал', group: 'Деньги' },
+  { id: 'contracts', label: 'Мои контракты', group: 'Деньги' },
+  { id: 'contacts', label: 'Контакты', group: 'Связи' },
+  { id: 'reputation', label: 'Репутация', group: 'Связи' },
+  { id: 'calendar', label: 'Календарь', group: 'Связи' }
 ]
 
 export default function CharacterPage() {

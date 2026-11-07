@@ -1,6 +1,7 @@
 // Fitting tools: which skills pay off most for a fit, price optimizer, the abyss planner, side-by-side fit
 // comparison, and the fits people actually fly (recent losses on zKillboard).
 
+import { Glyph } from '../components/Glyph'
 import { useMemo, useState } from 'react'
 import type { FitSpec, FitStats, SavedFit, SkillSource } from '../../../shared/fit'
 import { useApp, useLang } from '../AppContext'
@@ -42,7 +43,7 @@ export function FitTools({
       className="fit-tools"
       actions={
         <button className="ghost small" onClick={() => setTool(null)}>
-          ✕
+          <Glyph name="close" size={14} />
         </button>
       }
     >
@@ -245,7 +246,7 @@ function CompareFits({ fit, skills }: { fit: FitSpec; skills: SkillSource }) {
                   </div>
                   {i > 0 && (
                     <button className="ghost small" onClick={() => setOthers((o) => o.filter((_, k) => k !== i - 1))}>
-                      ✕
+                      <Glyph name="close" size={14} />
                     </button>
                   )}
                 </th>

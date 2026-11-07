@@ -2,6 +2,7 @@
 // depends on it (CCP's Developer License, section 4.4, allows ISK donations; the app stays the same for
 // everyone). The card sits in Settings; the heart in the sidebar opens the same thing as a dialog.
 
+import { Glyph } from './Glyph'
 import { useEffect, useState } from 'react'
 import { imageUrl } from '../lib/esi'
 import { openInfoInGame, SCOPE } from '../lib/gameActions'
@@ -75,7 +76,7 @@ export function SupportDialog({ onClose }: { onClose: () => void }) {
         <div className="support-title-row">
           <h2 id="support-title">Поддержать Canopus</h2>
           <button className="ghost small" onClick={onClose} aria-label="Закрыть">
-            ✕
+            <Glyph name="close" size={14} />
           </button>
         </div>
         <SupportBody />

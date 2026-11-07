@@ -29,15 +29,15 @@ export default function MarketPage() {
     <div className="page">
       <Tabs
         tabs={[
-          { id: 'prices', label: 'Цены' },
-          { id: 'appraisal', label: 'Оценка лута' },
-          { id: 'arbitrage', label: 'Арбитраж' },
-          { id: 'lp', label: 'LP-магазин' },
-          { id: 'contracts', label: 'Контракты' },
-          { id: 'orders', label: 'Мои ордера' },
-          { id: 'trades', label: 'Мои сделки' },
-          { id: 'alerts', label: 'Оповещения' },
-          { id: 'sp', label: 'Инжекторы и SP' }
+          { id: 'prices', label: 'Цены', group: 'Цены' },
+          { id: 'appraisal', label: 'Оценка лута', group: 'Цены' },
+          { id: 'alerts', label: 'Оповещения', group: 'Цены' },
+          { id: 'arbitrage', label: 'Арбитраж', group: 'Заработок' },
+          { id: 'lp', label: 'LP-магазин', group: 'Заработок' },
+          { id: 'contracts', label: 'Публичные контракты', group: 'Заработок' },
+          { id: 'sp', label: 'Инжекторы и SP', group: 'Заработок' },
+          { id: 'orders', label: 'Мои ордера', group: 'Мои сделки' },
+          { id: 'trades', label: 'История сделок', group: 'Мои сделки' }
         ]}
         value={tab}
         onChange={setTab}

@@ -1,3 +1,4 @@
+import { Glyph } from './Glyph'
 import type { SkillReq } from '../../../shared/sde'
 import { useCharacter, type CharacterData } from '../CharacterContext'
 import { spPerMinute, trainingMs } from '../lib/dogma'
@@ -45,9 +46,9 @@ export function LevelPips({ have, need, trained }: { have: number; need?: number
 }
 
 export function SkillStatusIcon({ have, need }: { have: number; need: number }) {
-  if (have >= need) return <span className="st ok" title="Изучено">✔</span>
+  if (have >= need) return <span className="st ok" title="Изучено"><Glyph name="check" size={12} /></span>
   if (have > 0) return <span className="st part" title={`Изучено до ${ROMAN[have]}`}>◐</span>
-  return <span className="st no" title="Не изучено">✖</span>
+  return <span className="st no" title="Не изучено"><Glyph name="close" size={12} /></span>
 }
 
 /** Summary + list of missing skills for a set of requirements. */
@@ -58,11 +59,11 @@ export function MissingSkillsBox({ reqs, title = 'Требования' }: { req
     return <div className="muted small">Войдите персонажем, чтобы сравнить с вашими навыками.</div>
   }
   const { list, totalMs } = missingSkills(reqs, char)
-  if (!list.length) return <div className="ok-box">✔ {title}: все навыки изучены</div>
+  if (!list.length) return <div className="ok-box"><Glyph name="check" size={13} /> {title}: все навыки изучены</div>
   return (
     <div className="warn-box">
       <div>
-        ✖ Не хватает навыков: {list.length} · изучить за <b>{fmtDuration(totalMs)}</b>
+        <Glyph name="alert" size={13} /> Не хватает навыков: {list.length} · изучить за <b>{fmtDuration(totalMs)}</b>
       </div>
       <ul className="missing">
         {list.map((m) => (

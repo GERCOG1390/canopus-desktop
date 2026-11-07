@@ -376,8 +376,11 @@ function registerIpc(): void {
   ipcMain.handle('fit:metrics', (_e, spec: FitSpec, skills: SkillSource) => dogma.fitMetrics(dogma.calculateFit(spec, skills)))
   ipcMain.handle('fit:skillGains', (_e, spec: FitSpec, levels: Record<number, number>) => dogma.skillGains(spec, levels))
 
-  ipcMain.handle('combat:open', (_e, attacker: CombatPilot) => {
-    combatAttacker = attacker
+  ipcMain.handle('combat:open', (_e, attacker?: CombatPilot) => {
+    if (attacker) {
+      combatAttacker = attacker
+      if (combatWindow && !combatWindow.isDestroyed()) combatWindow.webContents.send('combat:attacker', attacker)
+    }
     openCombatWindow()
   })
   ipcMain.handle('combat:setAttacker', (_e, attacker: CombatPilot) => {

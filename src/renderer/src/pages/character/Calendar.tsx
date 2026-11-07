@@ -1,5 +1,6 @@
 // EVE calendar: upcoming events, details and the response (accept / maybe / decline).
 
+import { Glyph } from '../../components/Glyph'
 import { useState } from 'react'
 import { useApp } from '../../AppContext'
 import { GameButton } from '../../components/GameButton'
@@ -59,7 +60,7 @@ function EventRow({ id, e, open, onToggle, onChanged }: { id: number; e: EventSu
       <tr className={`clickable ${e.importance ? 'important' : ''}`} onClick={onToggle}>
         <td className="nowrap">{fmtDate(e.event_date)}</td>
         <td translate="no">
-          {e.importance ? '❗ ' : ''}
+          {e.importance ? <><Glyph name="alert" size={12} /> </> : null}
           {e.title}
         </td>
         <td className={`small ${e.event_response === 'accepted' ? 'good' : e.event_response === 'declined' ? 'bad' : 'muted'}`}>{RESPONSE_LABEL[e.event_response ?? 'not_responded']}</td>

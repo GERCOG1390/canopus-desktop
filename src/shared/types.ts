@@ -267,8 +267,8 @@ export interface CanopusApi {
     capture(rect: { x: number; y: number; width: number; height: number }, to: 'clipboard' | 'file', name: string): Promise<boolean>
   }
   combat: {
-    /** Open (or focus) the simulator window with this fit as "your" side. */
-    open(attacker: CombatPilot): Promise<void>
+    /** Open (or focus) the simulator window, with this fit as "your" side if one is given. */
+    open(attacker?: CombatPilot): Promise<void>
     /** Keep the simulator's "your" side in sync with the fitting tool. */
     setAttacker(attacker: CombatPilot): Promise<void>
     isOpen(): Promise<boolean>

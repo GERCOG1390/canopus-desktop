@@ -120,7 +120,26 @@ export default function ProductionChain() {
         </div>
       </Card>
       {!item ? (
-        <Empty>Выберите предмет, чтобы увидеть всю цепочку: что запускать и что покупать.</Empty>
+        <Empty
+          icon="industry"
+          actions={['Rifter', 'Hobgoblin II', 'Fernite Carbide'].map((name) => (
+            <button
+              key={name}
+              className="ghost small"
+              translate="no"
+              onClick={() =>
+                void searchTypesSde(name, lang).then((found) => {
+                  const hit = found.find((t) => t.name === name) ?? found[0]
+                  if (hit) void choose(hit)
+                })
+              }
+            >
+              {name}
+            </button>
+          ))}
+        >
+          Выберите предмет, чтобы увидеть всю цепочку: что запускать и что покупать.
+        </Empty>
       ) : data.loading || indices.loading ? (
         <Loading />
       ) : data.error || indices.error ? (

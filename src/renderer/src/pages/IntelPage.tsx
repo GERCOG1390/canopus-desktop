@@ -1,3 +1,4 @@
+import { Glyph } from '../components/Glyph'
 import { useEffect, useMemo, useState } from 'react'
 import type { RadarKill, RadarStatus } from '../../../shared/radar'
 import { WIDGET_VIEWS, type WidgetView } from '../../../shared/widgets'
@@ -28,7 +29,7 @@ export default function IntelPage() {
         tabs={[
           { id: 'local', label: 'Локал' },
           { id: 'dscan', label: 'D-scan' },
-          { id: 'fleet', label: 'Флот' },
+          { id: 'fleet', label: 'Состав флота' },
           { id: 'channels', label: 'Каналы разведки' },
           { id: 'radar', label: 'Радар убийств' },
           { id: 'settings', label: 'Настройки разведки' }
@@ -170,7 +171,7 @@ function LocalTab() {
                 >
                   <img src={g.kind === 'alliance' ? imageUrl.allianceLogo(g.id, 32) : imageUrl.corpLogo(g.id, 32)} width={18} height={18} alt="" />
                   {g.ticker} <b>{g.count}</b>
-                  {g.danger > 0 && <span className="bad"> ⚠{g.danger}</span>}
+                  {g.danger > 0 && <span className="bad"> <Glyph name="alert" size={12} />{g.danger}</span>}
                 </button>
               ))}
             </div>
@@ -333,7 +334,7 @@ function DscanTab() {
             <div className="warn-box">
               {notable.map(([g, n]) => (
                 <div key={g}>
-                  ⚠ {NOTABLE_GROUPS[g]}: <b>{n}</b>
+                  <Glyph name="alert" size={12} /> {NOTABLE_GROUPS[g]}: <b>{n}</b>
                 </div>
               ))}
             </div>
@@ -699,7 +700,7 @@ function RadarTab() {
       </Card>
       <Card title="За последний час">
         {!kills.length ? (
-          <Empty>{r.enabled ? 'Рядом и на маршруте пока тихо.' : 'Включите радар, чтобы видеть убийства рядом.'}</Empty>
+          <Empty icon={r.enabled ? 'intel' : 'star'}>{r.enabled ? 'Рядом и на маршруте пока тихо.' : 'Включите радар, чтобы видеть убийства рядом.'}</Empty>
         ) : (
           <ul className="radar-list">
             {kills.map((k) => (

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
 import type { Candidate, CombatAdvice, Problem, Rated } from '../../shared/combatAdvice'
-import type { Behavior, Timeline, TimelineEvent, TimelinePoint } from '../../shared/combatTimeline'
+import { frameAt, type Behavior, type Timeline, type TimelineEvent, type TimelinePoint } from '../../shared/combatTimeline'
 import type { FitSpec, FittableType, SavedFit } from '../../shared/fit'
 import { AppProvider, useApp, useLang } from './AppContext'
 import { ChargePicker } from './components/ChargePicker'
 import { AttrIcon } from './components/Icon'
-import { Card, Empty, SearchBox } from './components/ui'
+import { Glyph } from './components/Glyph'
+import { Card, CountUp, SearchBox } from './components/ui'
 import { imageUrl } from './lib/esi'
 import { fmtNum } from './lib/format'
 import { chargesFor, fromEft, fromEsiItems, loadCatalog, toEft } from './lib/fitting'
@@ -137,6 +138,11 @@ function Simulator() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [result])
   const [picking, setPicking] = useState(false)
+  const [pickingYou, setPickingYou] = useState(false)
+  // A moment of the fight being replayed on the map; null: the map shows the setup.
+  const [replay, setReplay] = useState<number | null>(null)
+  const timeline = result?.timeline
+  useEffect(() => setReplay(null), [timeline])
   // Opponent's direction on the map is only for the picture: the physics depends on distance and headings.
   const [bearing, setBearing] = useState(0)
 
@@ -144,21 +150,37 @@ function Simulator() {
     <div className="combat">
       <header className="combat-head">
         <h1>Симуляция боя</h1>
-        <p className="muted small">
-          Перетаскивайте противника на карте, чтобы менять дистанцию, и стрелки скорости, чтобы задать курс и скорость. Расчёт — по игровым формулам,
-          средние значения без случайных промахов.
-        </p>
       </header>
 
       <div className="combat-versus">
         <Card className="combat-side-card side-a">
-          <div className="combat-side-title">Вы</div>
-          {attacker ? (
+          <div className="combat-side-title">
+            Вы
+            {attacker && (
+              <button className="ghost small" onClick={() => setPickingYou(!pickingYou)}>
+                {pickingYou ? 'Готово' : 'Сменить'}
+              </button>
+            )}
+          </div>
+          {attacker && (
             <ShipLabel id={attacker.fit.shipTypeId} name={attacker.fit.name} sub={attacker.skills.mode === 'all5' ? 'Навыки: все V' : 'Навыки: ваш персонаж'} />
-          ) : (
-            <Empty>Откройте фит во вкладке «Фитинг» и нажмите «Симуляция боя».</Empty>
           )}
-          {you && (
+          {(!attacker || pickingYou) && (
+            <>
+              {!attacker && <p className="muted small">Выберите свой корабль или откройте фит во вкладке «Фитинг» и нажмите «Симуляция боя».</p>}
+              <OpponentPicker
+                attacker={null}
+                defender={attacker}
+                own
+                lang={lang}
+                onPick={(p) => {
+                  setAttacker(p)
+                  setPickingYou(false)
+                }}
+              />
+            </>
+          )}
+          {you && !pickingYou && (
             <AmmoPanel
               fit={you.fit}
               onCharge={(moduleId, charge) => setAmmoA((a) => ({ ...a, [moduleId]: charge }))}
@@ -166,8 +188,8 @@ function Simulator() {
               onReset={Object.keys(ammoA).length ? () => setAmmoA({}) : undefined}
             />
           )}
-          {result && <SideStats info={result.a} />}
-          {result && attacker && defender && (
+          {result && !pickingYou && <SideStats info={result.a} />}
+          {result && attacker && defender && !pickingYou && (
             <Tactics info={result.a} ewar={sc.ewarA !== false} onProp={(on) => setProp('a', on)} onEwar={(on) => set({ ewarA: on })} own="Ваши" />
           )}
         </Card>
@@ -231,7 +253,12 @@ function Simulator() {
         <>
           <div className="combat-main">
             <Card className="combat-map-card">
-              <TacticalMap sc={sc} set={set} r={result} bearing={bearing} setBearing={setBearing} maxSpeed={maxSpeed} />
+              <div className="combat-orders">
+                <OrdersBox title="Вы" behavior={sc.behaviorA ?? 'free'} range={sc.rangeA} distance={sc.distance} onChange={(b, range) => set({ behaviorA: b, rangeA: range })} />
+                <OrdersBox title="Противник" behavior={sc.behaviorB ?? 'free'} range={sc.rangeB} distance={sc.distance} onChange={(b, range) => set({ behaviorB: b, rangeB: range })} />
+              </div>
+              <Player end={result.timeline.end} t={replay} setT={setReplay} />
+              <TacticalMap sc={sc} set={set} r={result} bearing={bearing} setBearing={setBearing} maxSpeed={maxSpeed} replay={replay} />
               <div className="combat-presets">
                 <span className="muted small">Быстро:</span>
                 <button className="ghost small" onClick={() => set({ speedA: 0, headingB: 90, speedB: result.b.maxVelocity, behaviorA: 'stop', behaviorB: 'orbit', rangeB: undefined })}>
@@ -264,19 +291,21 @@ function Simulator() {
                 <p className="muted small">Курс считается от линии «вы → противник»: 0° — вдоль неё (к противнику для вас, от вас для него), 90° и 270° — поперёк в разные стороны.</p>
               </details>
             </Card>
-            <Summary r={result} />
+            <div className="combat-side-col">
+              <Summary r={result} />
+              <AdviceCard
+                you={you ?? attacker!}
+                defender={defender!}
+                sc={sc}
+                onApply={(c) => {
+                  setAmmoA((a) => ({ ...a, ...c.ammo }))
+                  set({ behaviorA: c.behavior, rangeA: c.range })
+                  setProp('a', c.prop)
+                }}
+              />
+            </div>
           </div>
-          <AdviceCard
-            you={you ?? attacker!}
-            defender={defender!}
-            sc={sc}
-            onApply={(c) => {
-              setAmmoA((a) => ({ ...a, ...c.ammo }))
-              set({ behaviorA: c.behavior, rangeA: c.range })
-              setProp('a', c.prop)
-            }}
-          />
-          <FightCard r={result} sc={sc} set={set} />
+          <FightCard r={result} cursor={replay} onSeek={setReplay} />
           <div className="combat-sides">
             <DirectionCard title="Вы → противник" d={result.ab} />
             <DirectionCard title="Противник → вы" d={result.ba} />
@@ -324,7 +353,9 @@ function SummaryLine({ title, d, cls, average }: { title: string; d: CombatDirec
     <div className={`combat-line ${cls}`}>
       <div className="combat-line-title">{title}</div>
       <div className="combat-line-main">
-        <b>{n1(d.applied)}</b>
+        <b>
+          <CountUp value={d.applied} format={n1} />
+        </b>
         <span className="muted">{`DPS на старте из ${n1(d.paperDps)}`}</span>
       </div>
       <div className="combat-bar">
@@ -359,7 +390,8 @@ function TacticalMap({
   r,
   bearing,
   setBearing,
-  maxSpeed
+  maxSpeed,
+  replay
 }: {
   sc: CombatScenario
   set: (p: Partial<CombatScenario>) => void
@@ -367,6 +399,7 @@ function TacticalMap({
   bearing: number
   setBearing: (b: number) => void
   maxSpeed: { a: number; b: number }
+  replay: number | null
 }) {
   const W = 760
   const H = 480
@@ -380,10 +413,22 @@ function TacticalMap({
     if (!drag) setView(niceRange(Math.max(sc.distance / 0.6, 5_000)))
   }, [sc.distance, drag])
 
-  const k = R / view
+  // The replay frames the whole fight once, so the picture doesn't jump about while it plays.
+  const series = r.timeline.series
+  const world = useMemo(() => {
+    const xs = series.flatMap((p) => [p.pos.ax, p.pos.bx])
+    const ys = series.flatMap((p) => [p.pos.ay, p.pos.by])
+    const x = (Math.min(...xs) + Math.max(...xs)) / 2
+    const y = (Math.min(...ys) + Math.max(...ys)) / 2
+    return { x, y, reach: Math.max(1000, Math.max(...xs) - x, Math.max(...ys) - y) * 1.15 }
+  }, [series])
+  const frame = replay === null ? null : frameAt(series, replay)
+  const k = frame ? (R - 20) / world.reach : R / view
   const rad = Math.PI / 180
-  const bx = cx + Math.cos(bearing * rad) * sc.distance * k
-  const by = cy - Math.sin(bearing * rad) * sc.distance * k
+  const ax = frame ? cx + (frame.pos.ax - world.x) * k : cx
+  const ay = frame ? cy - (frame.pos.ay - world.y) * k : cy
+  const bx = frame ? cx + (frame.pos.bx - world.x) * k : cx + Math.cos(bearing * rad) * sc.distance * k
+  const by = frame ? cy - (frame.pos.by - world.y) * k : cy - Math.sin(bearing * rad) * sc.distance * k
   const vRef = Math.max(maxSpeed.a, maxSpeed.b, 100)
   const ARROW_MIN = 20
   const ARROW_LEN = 110
@@ -405,7 +450,7 @@ function TacticalMap({
   }
   const norm = (deg: number) => ((deg % 360) + 360) % 360
   const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
-    if (!drag) return
+    if (!drag || frame) return
     const p = toSvg(e)
     if (drag === 'b') {
       const dx = p.x - cx
@@ -428,17 +473,33 @@ function TacticalMap({
 
   const rings = (side: 'a' | 'b') => {
     const info = side === 'a' ? r.a : r.b
-    const x = side === 'a' ? cx : bx
-    const y = side === 'a' ? cy : by
-    return info.ranges.map((g, i) => (
-      <g key={`${side}${i}`} className={`ring ring-${side}`}>
-        <circle cx={x} cy={y} r={g.optimal * k} />
-        {g.falloff ? <circle cx={x} cy={y} r={(g.optimal + g.falloff) * k} className="falloff" /> : null}
-        <text x={x} y={y + g.optimal * k + 12} textAnchor="middle">
-          {`${g.kind === 'missile' ? 'ракеты' : 'оптимал'} ${km(g.optimal)}`}
-        </text>
-      </g>
-    ))
+    const x = side === 'a' ? ax : bx
+    const y = side === 'a' ? ay : by
+    return info.ranges.map((g, i) => {
+      // The label goes where the ring is on the map: under it, over it or at its side.
+      const ring = g.optimal * k
+      const spot = (
+        [
+          [x, y + ring + 13, 'middle'],
+          [x, y - ring - 6, 'middle'],
+          [x + ring * 0.72 + 5, y + ring * 0.72, 'start'],
+          [x - ring * 0.72 - 5, y + ring * 0.72, 'end'],
+          [x + ring * 0.72 + 5, y - ring * 0.72, 'start'],
+          [x - ring * 0.72 - 5, y - ring * 0.72, 'end']
+        ] as [number, number, 'middle' | 'start' | 'end'][]
+      ).find(([lx, ly, anchor]) => ly > 16 && ly < H - 34 && (anchor === 'middle' ? lx > 60 && lx < W - 60 : anchor === 'start' ? lx < W - 110 : lx > 110))
+      return (
+        <g key={`${side}${i}`} className={`ring ring-${side}`}>
+          <circle cx={x} cy={y} r={ring} />
+          {g.falloff ? <circle cx={x} cy={y} r={(g.optimal + g.falloff) * k} className="falloff" /> : null}
+          {spot && (
+            <text x={spot[0]} y={spot[1]} textAnchor={spot[2]}>
+              {`${g.kind === 'missile' ? 'ракеты' : 'оптимал'} ${km(g.optimal)}`}
+            </text>
+          )}
+        </g>
+      )
+    })
   }
   const maxRing = (side: 'a' | 'b') => {
     const info = side === 'a' ? r.a : r.b
@@ -451,7 +512,55 @@ function TacticalMap({
       />
     )
   }
-  const scaleKm = [1, 2, 5, 10, 20, 25, 50, 100].map((v) => v * 1000).find((v) => v * k >= 60) ?? 100_000
+  const scaleKm = [1, 2, 5, 10, 20, 25, 50, 100, 200, 500].map((v) => v * 1000).find((v) => v * k >= 60) ?? 500_000
+  // The speed labels sit past the arrow's tip, on its side of the ship.
+  const tipLabel = (from: { x: number; y: number }, tip: { x: number; y: number }) => ({
+    x: Math.max(8, Math.min(W - 8, tip.x + (tip.x >= from.x ? 11 : -11))),
+    y: tip.y + (tip.y >= from.y ? 18 : -10),
+    anchor: (tip.x >= from.x ? 'start' : 'end') as 'start' | 'end'
+  })
+  const la = tipLabel({ x: cx, y: cy }, ta)
+  const lb = tipLabel({ x: bx, y: by }, tb)
+  // The distance sits off the line between the ships, on whichever side the speed labels leave free.
+  const nx = (cy - by) / Math.max(1, Math.hypot(bx - cx, by - cy))
+  const ny = (bx - cx) / Math.max(1, Math.hypot(bx - cx, by - cy))
+  const midX = (cx + bx) / 2
+  const midY = (cy + by) / 2
+  const crowded = (x: number, y: number) => [la, lb].some((l) => Math.abs(l.x - x) < 80 && Math.abs(l.y - y) < 18)
+  const offset = crowded(midX + nx * 16, midY - Math.abs(ny) * 16 - 4) ? 26 : -16
+  const distLabel = { x: midX + (offset < 0 ? nx * 16 : -nx * 26), y: midY + (offset < 0 ? -Math.abs(ny) * 16 - 4 : Math.abs(ny) * 26 + 10) }
+  const died = (side: 'a' | 'b') => r.timeline.events.find((e) => e.side === side && e.kind === 'dead')?.t
+  const dead = (side: 'a' | 'b') => {
+    const at = died(side)
+    return frame !== null && at !== undefined && frame.t >= at
+  }
+  const trail = (side: 'a' | 'b') =>
+    frame
+      ? series
+          .filter((p) => p.t <= frame.t)
+          .map((p, i) => {
+            const x = cx + ((side === 'a' ? p.pos.ax : p.pos.bx) - world.x) * k
+            const y = cy - ((side === 'a' ? p.pos.ay : p.pos.by) - world.y) * k
+            return `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`
+          })
+          .join(' ')
+      : ''
+  const hpRings = (x: number, y: number, f: TimelinePoint['a'], key: string) => (
+    <g key={key} transform={`rotate(-90 ${x} ${y})`}>
+      {(
+        [
+          ['hp-s', 21, f.s],
+          ['hp-a', 25, f.a],
+          ['hp-h', 29, f.h]
+        ] as [string, number, number][]
+      ).map(([cls, radius, share]) => (
+        <g key={cls}>
+          <circle cx={x} cy={y} r={radius} className="hp hp-track" />
+          <circle cx={x} cy={y} r={radius} className={`hp ${cls}`} pathLength={100} strokeDasharray={`${Math.max(0, share) * 100} 100`} />
+        </g>
+      ))}
+    </g>
+  )
 
   return (
     <svg
@@ -479,42 +588,160 @@ function TacticalMap({
       ))}
       {rings('a')}
       {rings('b')}
-      <line x1={cx} y1={cy} x2={bx} y2={by} className="los" />
-      <text x={(cx + bx) / 2} y={(cy + by) / 2 - 8} textAnchor="middle" className="los-label">
-        {km(sc.distance)}
-      </text>
-      {maxRing('a')}
-      {maxRing('b')}
-      <line x1={cx} y1={cy} x2={ta.x} y2={ta.y} className="vec vec-a" markerEnd="url(#arrow-a)" />
-      <line x1={bx} y1={by} x2={tb.x} y2={tb.y} className="vec vec-b" markerEnd="url(#arrow-b)" />
-      <g className="ship ship-a">
-        <circle cx={cx} cy={cy} r={17} />
-        <image href={imageUrl.typeIcon(r.a.shipTypeId, 64)} x={cx - 16} y={cy - 16} width={32} height={32} clipPath="url(#ship-icon-clip)" />
-        <circle cx={cx} cy={cy} r={17} className="ship-ring" />
+      {frame ? (
+        <>
+          <path d={trail('a')} className="trail trail-a" />
+          <path d={trail('b')} className="trail trail-b" />
+          <line x1={ax} y1={ay} x2={bx} y2={by} className="los" />
+          {frame.a.dealt > 0 && !dead('a') && !dead('b') && <line x1={ax} y1={ay} x2={bx} y2={by} className="beam beam-a" />}
+          {frame.b.dealt > 0 && !dead('a') && !dead('b') && <line x1={bx} y1={by} x2={ax} y2={ay} className="beam beam-b" />}
+          <text x={(ax + bx) / 2} y={(ay + by) / 2 - 10} textAnchor="middle" className="los-label">
+            {km(frame.distance)}
+          </text>
+          {hpRings(ax, ay, frame.a, 'hp-a')}
+          {hpRings(bx, by, frame.b, 'hp-b')}
+          {(['a', 'b'] as const).map((side) => {
+            const at = died(side)
+            const age = at === undefined ? -1 : frame.t - at
+            if (age < 0 || age > 3) return null
+            const speed = Math.max(0.2, r.timeline.end / 60)
+            const grow = Math.min(1, age / (1.2 * speed))
+            return <circle key={side} cx={side === 'a' ? ax : bx} cy={side === 'a' ? ay : by} r={18 + grow * 42} className="blast" opacity={(1 - grow) * 0.8} />
+          })}
+          {(['a', 'b'] as const).map((side) => {
+            const x = side === 'a' ? ax : bx
+            const y = side === 'a' ? ay : by
+            const recent = r.timeline.events.filter((e) => e.side === side && e.t <= frame.t && frame.t - e.t <= Math.max(3, r.timeline.end / 12)).slice(-2)
+            return recent.map((e, i) => (
+              <text key={`${side}${e.kind}${e.t}`} x={x} y={y - 38 - i * 16} textAnchor="middle" className={`ev-label ev-${side}`}>
+                {EVENT_TEXT[e.kind]}
+              </text>
+            ))
+          })}
+          <text x={W - 12} y={20} textAnchor="end" className="rp-legend">
+            <tspan fill="var(--dmg-em)">{'● '}</tspan>
+            <tspan>щит</tspan>
+            <tspan fill="var(--warn)">{'  ● '}</tspan>
+            <tspan>броня</tspan>
+            <tspan fill="var(--bad-fill)">{'  ● '}</tspan>
+            <tspan>корпус</tspan>
+          </text>
+        </>
+      ) : (
+        <>
+          <line x1={cx} y1={cy} x2={bx} y2={by} className="los" />
+          <text x={distLabel.x} y={distLabel.y} textAnchor="middle" className="los-label">
+            {km(sc.distance)}
+          </text>
+          {maxRing('a')}
+          {maxRing('b')}
+          <line x1={cx} y1={cy} x2={ta.x} y2={ta.y} className="vec vec-a" markerEnd="url(#arrow-a)" />
+          <line x1={bx} y1={by} x2={tb.x} y2={tb.y} className="vec vec-b" markerEnd="url(#arrow-b)" />
+        </>
+      )}
+      <g className={`ship ship-a ${dead('a') ? 'dead' : ''}`}>
+        <circle cx={ax} cy={ay} r={17} />
+        <image href={imageUrl.typeIcon(r.a.shipTypeId, 64)} x={ax - 16} y={ay - 16} width={32} height={32} clipPath="url(#ship-icon-clip)" />
+        <circle cx={ax} cy={ay} r={17} className="ship-ring" />
       </g>
-      <g className="ship ship-b draggable" onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('b'))}>
+      <g className={`ship ship-b ${frame ? '' : 'draggable'} ${dead('b') ? 'dead' : ''}`} onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('b'))}>
         <circle cx={bx} cy={by} r={17} />
         <image href={imageUrl.typeIcon(r.b.shipTypeId, 64)} x={bx - 16} y={by - 16} width={32} height={32} clipPath="url(#ship-icon-clip)" />
         <circle cx={bx} cy={by} r={17} className="ship-ring" />
       </g>
-      <circle cx={ta.x} cy={ta.y} r={8} className="handle handle-a" onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('va'))} />
-      <circle cx={tb.x} cy={tb.y} r={8} className="handle handle-b" onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('vb'))} />
-      <text x={ta.x + 10} y={ta.y - 8} className="vec-label vec-label-a">
-        {r.a.speed < sc.speedA - 0.5 ? `${fmtNum(r.a.speed)} м/с под сеткой` : `${fmtNum(sc.speedA)} м/с`}
-      </text>
-      <text x={tb.x + 10} y={tb.y - 8} className="vec-label vec-label-b">
-        {r.b.speed < sc.speedB - 0.5 ? `${fmtNum(r.b.speed)} м/с под сеткой` : `${fmtNum(sc.speedB)} м/с`}
-      </text>
+      {!frame && (
+        <>
+          <circle cx={ta.x} cy={ta.y} r={8} className="handle handle-a" onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('va'))} />
+          <circle cx={tb.x} cy={tb.y} r={8} className="handle handle-b" onPointerDown={(e) => (e.currentTarget.ownerSVGElement?.setPointerCapture(e.pointerId), setDrag('vb'))} />
+          <text x={la.x} y={la.y} textAnchor={la.anchor} className="vec-label vec-label-a">
+            {r.a.speed < sc.speedA - 0.5 ? `${fmtNum(r.a.speed)} м/с под сеткой` : `${fmtNum(sc.speedA)} м/с`}
+          </text>
+          <text x={lb.x} y={lb.y} textAnchor={lb.anchor} className="vec-label vec-label-b">
+            {r.b.speed < sc.speedB - 0.5 ? `${fmtNum(r.b.speed)} м/с под сеткой` : `${fmtNum(sc.speedB)} м/с`}
+          </text>
+        </>
+      )}
       <g className="map-scale">
         <line x1={16} y1={H - 16} x2={16 + scaleKm * k} y2={H - 16} />
         <text x={16} y={H - 22}>
           {km(scaleKm)}
         </text>
       </g>
-      <text x={W - 12} y={H - 14} textAnchor="end" className="map-hint">
-        Тяните противника и концы стрелок
-      </text>
+      {!frame && (
+        <text x={W - 12} y={20} textAnchor="end" className="map-hint">
+          Тяните противника и концы стрелок
+        </text>
+      )}
     </svg>
+  )
+}
+
+const PLAY_SPEEDS = [1, 2, 4, 8, 16, 32]
+
+/** Plays the fight on the map; the slider also takes you to any moment. */
+function Player({ end, t, setT }: { end: number; t: number | null; setT: (t: number | null) => void }) {
+  const [playing, setPlaying] = useState(false)
+  // By default a fight of any length plays in about twenty seconds.
+  const [speed, setSpeed] = useState(1)
+  useEffect(() => setSpeed(PLAY_SPEEDS.find((s) => end / s <= 20) ?? 32), [end])
+  useEffect(() => {
+    if (t === null) setPlaying(false)
+  }, [t])
+  useEffect(() => {
+    if (!playing) return
+    let raf = 0
+    let last = performance.now()
+    let now = t ?? 0
+    const step = (at: number) => {
+      now = Math.min(end, now + ((at - last) / 1000) * speed)
+      last = at
+      setT(now)
+      if (now >= end) setPlaying(false)
+      else raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, speed, end])
+  const start = () => {
+    if (t === null || t >= end) setT(0)
+    setPlaying(true)
+  }
+  if (t === null)
+    return (
+      <div className="combat-player">
+        <button onClick={start}>
+          <Glyph name="play" size={13} /> Проиграть бой
+        </button>
+        <span className="time">{duration(end)}</span>
+      </div>
+    )
+  return (
+    <div className="combat-player">
+      <button className="ghost small" title={playing ? 'Пауза' : 'Играть'} onClick={() => (playing ? setPlaying(false) : start())}>
+        <Glyph name={playing ? 'pause' : 'play'} size={13} />
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={end}
+        step={0.1}
+        value={t}
+        onChange={(e) => {
+          setPlaying(false)
+          setT(Number(e.target.value))
+        }}
+      />
+      <span className="time">{`${translate(duration(t))} / ${translate(duration(end))}`}</span>
+      {[1, 4, 16].concat(PLAY_SPEEDS.includes(speed) && ![1, 4, 16].includes(speed) ? [speed] : []).sort((a, b) => a - b).map((s) => (
+        <button key={s} className={`ghost small speed ${s === speed ? 'active' : ''}`} onClick={() => setSpeed(s)}>
+          {`×${s}`}
+        </button>
+      ))}
+      <button className="ghost small" onClick={() => setT(null)}>
+        К расстановке
+      </button>
+    </div>
   )
 }
 
@@ -584,14 +811,19 @@ function EffectLine({ e }: { e: CombatEffect }) {
 function SideStats({ info }: { info: CombatSideInfo }) {
   return (
     <div className="combat-sidestats">
-      <div className="kv-list">
-        <span>Скорость</span>
-        <b>{info.webbedVelocity < info.maxVelocity - 0.5 ? `${n1(info.webbedVelocity)} из ${n1(info.maxVelocity)} м/с` : `${n1(info.maxVelocity)} м/с`}</b>
-        <span>Сигнатура</span>
-        <b>{`${n1(info.signature)} м`}</b>
-        <span>EHP</span>
-        <b>{fmtNum(info.ehp)}</b>
+      <div className="combat-keystats">
+        <span>
+          <span className="muted">Скорость</span> <b>{info.webbedVelocity < info.maxVelocity - 0.5 ? `${n1(info.webbedVelocity)} из ${n1(info.maxVelocity)} м/с` : `${n1(info.maxVelocity)} м/с`}</b>
+        </span>
+        <span>
+          <span className="muted">Сигнатура</span> <b>{`${n1(info.signature)} м`}</b>
+        </span>
+        <span>
+          <span className="muted">EHP</span> <b>{fmtNum(info.ehp)}</b>
+        </span>
       </div>
+      <details className="combat-more">
+        <summary className="muted small">Резисты и HP</summary>
       <table className="table compact combat-resists">
         <thead>
           <tr>
@@ -621,6 +853,7 @@ function SideStats({ info }: { info: CombatSideInfo }) {
           ))}
         </tbody>
       </table>
+      </details>
     </div>
   )
 }
@@ -631,11 +864,14 @@ function OpponentPicker({
   attacker,
   defender,
   onPick,
-  lang
+  lang,
+  own
 }: {
   attacker: CombatPilot | null
   defender: CombatPilot | null
   onPick: (p: CombatPilot) => void
+  /** Picking your own side */
+  own?: boolean
   lang: 0 | 1
 }) {
   const { active } = useApp()
@@ -680,7 +916,7 @@ function OpponentPicker({
 
   return (
     <div className="combat-picker">
-      {!defender && <p className="muted small">Выберите корабль противника: пустой корпус, сохранённый фит или фит в формате EFT, который можно отредактировать.</p>}
+      {!defender && !own && <p className="muted small">Выберите корабль противника: пустой корпус, сохранённый фит или фит в формате EFT, который можно отредактировать.</p>}
       <div className="browser-tabs">
         {(
           [
@@ -688,7 +924,7 @@ function OpponentPicker({
             ['saved', 'Сохранённые в Canopus'],
             ['ship', 'Корабль'],
             ['eft', 'EFT / свой фит'],
-            ['mirror', 'Зеркало']
+            ...(own ? [] : [['mirror', 'Зеркало']])
           ] as [Tab, string][]
         ).map(([id, label]) => (
           <button key={id} className={`chip-btn ${tab === id ? 'active' : ''}`} onClick={() => setTab(id)}>
@@ -983,7 +1219,7 @@ function AdviceCard({ you, defender, sc, onApply }: { you: CombatPilot; defender
         <button onClick={run} disabled={!!state.busy}>
           {state.busy ? 'Перебираю варианты…' : 'Подобрать лучшее'}
         </button>
-        <span className="muted small">Перебор дистанций, боеприпасов и MWD/AB настоящими боями. Противник ведёт себя так, как задано ниже.</span>
+        <span className="muted small">Перебор дистанций, боеприпасов и MWD/AB настоящими боями. Противник ведёт себя так, как задано над картой.</span>
       </div>
       {state.error && <p className="warn-text small">{state.error}</p>}
       {a && (
@@ -1059,7 +1295,7 @@ function AdviceCard({ you, defender, sc, onApply }: { you: CombatPilot; defender
   )
 }
 
-function FightCard({ r, sc, set }: { r: CombatResult; sc: CombatScenario; set: (p: Partial<CombatScenario>) => void }) {
+function FightCard({ r, cursor, onSeek }: { r: CombatResult; cursor: number | null; onSeek: (t: number) => void }) {
   const tl = r.timeline
   const [hover, setHover] = useState<number | null>(null)
   const pts = tl.series
@@ -1074,13 +1310,9 @@ function FightCard({ r, sc, set }: { r: CombatResult; sc: CombatScenario; set: (
   )
   return (
     <Card title="Ход боя">
-      <div className="row">
-        <OrdersBox title="Вы" behavior={sc.behaviorA ?? 'free'} range={sc.rangeA} distance={sc.distance} onChange={(b, range) => set({ behaviorA: b, rangeA: range })} />
-        <OrdersBox title="Противник" behavior={sc.behaviorB ?? 'free'} range={sc.rangeB} distance={sc.distance} onChange={(b, range) => set({ behaviorB: b, rangeB: range })} />
-      </div>
       <div className="combat-chart">
-        {rows.map((row) => (
-          <FightRow key={row.title} row={row} pts={pts} end={tl.end} hover={hover} setHover={setHover} />
+        {rows.map((row, i) => (
+          <FightRow key={row.title} row={row} pts={pts} end={tl.end} hover={hover} setHover={setHover} cursor={cursor} onSeek={onSeek} events={i === 0 ? tl.events.filter((e) => e.kind === 'shieldDown' || e.kind === 'armorDown' || e.kind === 'dead') : []} />
         ))}
         <div className="combat-legend">
           <span className="legend-a">Вы</span>
@@ -1088,14 +1320,14 @@ function FightCard({ r, sc, set }: { r: CombatResult; sc: CombatScenario; set: (
           <span className="muted small">
             {at
               ? `${duration(at.t)} · ${Math.round(toughness(r.a, at.a))}% / ${Math.round(toughness(r.b, at.b))}% · ${km(at.distance)} · ${n1(at.a.v)} / ${n1(at.b.v)} м/с`
-              : 'Наведите на график, чтобы увидеть момент боя'}
+              : 'Наведите на график, чтобы увидеть момент боя; клик проиграет его на карте'}
           </span>
         </div>
       </div>
       {tl.a.armorResist && <RahLine who="Вы" resist={tl.a.armorResist} />}
       {tl.b.armorResist && <RahLine who="Противник" resist={tl.b.armorResist} />}
       {tl.events.length > 0 && (
-        <table className="table compact">
+        <table className="table compact combat-events">
           <tbody>
             {tl.events.map((e, i) => (
               <tr key={i}>
@@ -1126,7 +1358,7 @@ function RahLine({ who, resist }: { who: string; resist: number[] }) {
   )
 }
 
-function FightRow({ row, pts, end, hover, setHover }: { row: { title: string; a: number[]; b: number[] | null; max: number; fmt: (v: number) => string }; pts: TimelinePoint[]; end: number; hover: number | null; setHover: (i: number | null) => void }) {
+function FightRow({ row, pts, end, hover, setHover, cursor, onSeek, events }: { row: { title: string; a: number[]; b: number[] | null; max: number; fmt: (v: number) => string }; pts: TimelinePoint[]; end: number; hover: number | null; setHover: (i: number | null) => void; cursor: number | null; onSeek: (t: number) => void; events: TimelineEvent[] }) {
   const W = 900
   const H = 96
   const pad = { l: 50, r: 16, t: 8, b: 18 }
@@ -1149,6 +1381,11 @@ function FightRow({ row, pts, end, hover, setHover }: { row: { title: string; a:
           })
           setHover(best)
         }}
+        onClick={(e) => {
+          const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect()
+          const t = ((((e.clientX - rect.left) / rect.width) * W - pad.l) / (W - pad.l - pad.r)) * span
+          onSeek(Math.max(0, Math.min(end, t)))
+        }}
       >
         <line x1={pad.l} x2={W - pad.r} y1={y(0)} y2={y(0)} className="grid" />
         <line x1={pad.l} x2={W - pad.r} y1={y(row.max)} y2={y(row.max)} className="grid" />
@@ -1163,6 +1400,15 @@ function FightRow({ row, pts, end, hover, setHover }: { row: { title: string; a:
         </text>
         <path d={path(row.a)} className={row.b ? 'line-a' : 'line-a'} />
         {row.b && <path d={path(row.b)} className="line-b" />}
+        {events.map((e, i) => {
+          const near = pts.reduce((best, p, j) => (Math.abs(p.t - e.t) < Math.abs(pts[best].t - e.t) ? j : best), 0)
+          return (
+            <circle key={i} cx={x(e.t)} cy={y((e.side === 'a' ? row.a : row.b ?? row.a)[near])} r={4} className={`ev-dot-${e.side}`}>
+              <title>{`${duration(e.t)}: ${translate(EVENT_TEXT[e.kind])}`}</title>
+            </circle>
+          )
+        })}
+        {cursor !== null && <line x1={x(cursor)} x2={x(cursor)} y1={pad.t} y2={H - pad.b} className="marker" />}
         {hover !== null && pts[hover] && <line x1={x(pts[hover].t)} x2={x(pts[hover].t)} y1={pad.t} y2={H - pad.b} className="marker" />}
       </svg>
     </div>

@@ -2,6 +2,7 @@
 // fly it already and how long the others need to train, and what the fit and the whole doctrine
 // cost in Jita, with a multibuy list for the in-game market.
 
+import { Glyph } from '../components/Glyph'
 import { useEffect, useMemo, useState } from 'react'
 import type { FitSpec } from '../../../shared/fit'
 import type { SkillReq } from '../../../shared/sde'
@@ -261,7 +262,7 @@ function DoctrineView({ doctrine, characters, onEdit }: { doctrine: Doctrine; ch
                       return (
                         <td key={c.id}>
                           {g.missing === 0 ? (
-                            <span className="good">✔</span>
+                            <span className="good"><Glyph name="check" size={13} /></span>
                           ) : (
                             <span className="warn-text" title={`Не хватает уровней навыков: ${g.missing}`}>
                               {fmtDuration(g.ms)}

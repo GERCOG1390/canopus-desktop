@@ -1,3 +1,4 @@
+import { Glyph } from './components/Glyph'
 import { useEffect, useState } from 'react'
 import type { OverlaySummary, Threat } from '../../shared/intel'
 import type { Settings } from '../../shared/types'
@@ -105,7 +106,7 @@ export default function Overlay() {
             ⇄
           </button>
           <button title="Скрыть оверлей (Ctrl+Shift+L)" onClick={() => void window.api.intel.setOverlay({ enabled: false })}>
-            ✕
+            <Glyph name="close" size={14} />
           </button>
         </span>
       </div>

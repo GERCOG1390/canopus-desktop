@@ -1,5 +1,6 @@
 // Character contacts: list with standings, add by name, change standing, remove.
 
+import { Glyph } from '../../components/Glyph'
 import { useMemo, useState } from 'react'
 import { useApp } from '../../AppContext'
 import { GameButton } from '../../components/GameButton'
@@ -138,7 +139,7 @@ export default function Contacts({ id }: { id: number }) {
                           reload()
                         }}
                       >
-                        ✕
+                        <Glyph name="close" size={14} />
                       </GameButton>
                     </td>
                   </tr>

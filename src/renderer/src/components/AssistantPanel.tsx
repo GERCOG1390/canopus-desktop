@@ -1,6 +1,7 @@
 // The assistant panel: a chat docked on the right of the main window, next to whatever section is
 // open, so the fits and pages the assistant opens show up beside the conversation.
 
+import { Glyph } from './Glyph'
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { useApp } from '../AppContext'
 import { useCharacter } from '../CharacterContext'
@@ -71,13 +72,13 @@ export function AssistantPanel({ onClose }: { onClose: () => void }) {
         <span className="grow" />
         {s.tokens > 0 && <span className="muted small" title="Токены OpenAI в этом разговоре">{`${fmtNum(s.tokens)} ток.`}</span>}
         <button className="ghost small" title="Настройки помощника" onClick={() => setSetup(!setup)}>
-          ⚙
+          <Glyph name="gear" size={15} />
         </button>
         <button className="ghost small" title="Новый разговор" onClick={clearChat} disabled={s.busy}>
           ⟲
         </button>
         <button className="ghost small" title="Закрыть (Ctrl+J)" onClick={onClose}>
-          ✕
+          <Glyph name="close" size={14} />
         </button>
       </div>
 
@@ -170,7 +171,7 @@ function Setup({
         {gpt ? (
           <>
             <div className="small">
-              {gpt.plan ? '✔ ' : ''}
+              {gpt.plan ? <><Glyph name="check" size={12} /> </> : null}
               <span translate="no">{gpt.email ?? 'ChatGPT'}</span>
               {gpt.plan ? ` · ${translate('Используется план ChatGPT')}` : ''}
             </div>
@@ -218,7 +219,7 @@ function Setup({
         </label>
         {account.apiKey ? (
           <div className="row">
-            <span className="small">✔ Ключ сохранён</span>
+            <span className="small"><Glyph name="check" size={12} /> <span>Ключ сохранён</span></span>
             <button className="ghost small danger" onClick={() => run('key', window.api.assistant.clearKey())}>
               Удалить ключ
             </button>
@@ -339,7 +340,7 @@ function Entry({ e, onOpenFit, onRestore }: { e: ChatEntry; onOpenFit: (eft: str
           {e.steps.map((st) => (
             <details key={st.id} className="assistant-step">
               <summary className={st.result ? (st.result.startsWith('{"error"') ? 'bad' : '') : 'muted'}>
-                {st.result ? '✓' : '…'} {translate(TOOL_LABELS[st.name] ?? st.name)}
+                {st.result ? <Glyph name="check" size={12} /> : '…'} {translate(TOOL_LABELS[st.name] ?? st.name)}
               </summary>
               <pre>{st.args}</pre>
               {st.result && <pre>{st.result.length > 3000 ? st.result.slice(0, 3000) + '…' : st.result}</pre>}

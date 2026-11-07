@@ -1,6 +1,7 @@
 // Multi-client previews window: a live tile per EVE client (window capture, a few frames a second),
 // click a tile to bring that client to the front. The list follows clients opening and closing.
 
+import { Glyph } from './components/Glyph'
 import { useEffect, useRef, useState } from 'react'
 import type { ClientWindow, PreviewSettings } from '../../shared/previews'
 import { setUiLang, translate } from './i18n'
@@ -45,7 +46,7 @@ export default function Previews() {
         <span className="ov-system">{translate('Клиенты EVE')}</span>
         <span className="ov-actions">
           <button title={translate('Скрыть')} onClick={() => void window.api.previews.set({ enabled: false })}>
-            ✕
+            <Glyph name="close" size={14} />
           </button>
         </span>
       </div>

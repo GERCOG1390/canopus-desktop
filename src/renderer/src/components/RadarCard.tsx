@@ -2,6 +2,7 @@
 // (security, system, jumps, gate), how it was done (camp / bubbles / smartbombs) and by whom (alliance or
 // corporation, their ships and weapons). Used by the intel overlay, the radar mini-window and the Intel page.
 
+import { Glyph } from './Glyph'
 import type { RadarKill, RadarOrg } from '../../../shared/radar'
 import { imageUrl } from '../lib/esi'
 import { fmtIsk, roundSec, secColor } from '../lib/format'
@@ -76,7 +77,7 @@ export function RadarCard({ k, now = Date.now(), compact = false }: { k: RadarKi
         )}
         <div className="rk-line rk-killers">
           <span className="rk-sword" title="Атакующие">
-            ⚔
+            <Glyph name="swords" size={14} />
           </span>
           {(k.killers ?? []).map((o) => (
             <span key={o.id} className="rk-org" translate="no" title={o.name}>

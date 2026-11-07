@@ -60,7 +60,7 @@ const STATE: Record<string, [string, string]> = {
 }
 const stateLabel = (s: string) => {
   const [label, cls] = STATE[s] ?? [s, 'muted']
-  return <span className={cls}>{label}</span>
+  return <span className={`state-pill ${cls}`}>{label}</span>
 }
 
 const METHOD: Record<string, string> = {
@@ -99,12 +99,14 @@ export default function Campaigns() {
   return (
     <>
       {active && !active.scopes.includes(SCOPE) && <p className="muted small">Чтобы видеть свой вклад, войдите персонажем заново в «Настройках» — нужен новый доступ к активностям.</p>}
+      {!campaigns.some((c) => c.state === 'Active') && <p className="muted small">Сейчас ни одна кампания не идёт: ниже завершившиеся.</p>}
       {campaigns.map((c) => {
         const def = d?.campaigns[c.id]
         const target = def?.target || 1
         return (
           <Card
             key={c.id}
+            className={c.state === 'Active' ? '' : 'campaign-over'}
             title={def ? tn(def.t, lang) : c.id}
             actions={
               <button className="ghost small" onClick={() => setOpen(open === c.id ? null : c.id)}>

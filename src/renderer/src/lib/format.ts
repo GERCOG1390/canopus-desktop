@@ -1,3 +1,4 @@
+import { agoText } from '../../../shared/uiFormat'
 import { locale } from '../i18n'
 
 // Created per call so switching the UI language switches number formatting too.
@@ -32,14 +33,7 @@ export function fmtDuration(ms: number): string {
 export const fmtDate = (iso: string): string =>
   new Date(iso).toLocaleString(locale(), { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-export function fmtAgo(iso: string): string {
-  const ms = Date.now() - new Date(iso).getTime()
-  const m = Math.floor(ms / 60000)
-  if (m < 60) return `${m} мин назад`
-  const h = Math.floor(m / 60)
-  if (h < 48) return `${h} ч назад`
-  return `${Math.floor(h / 24)} дн назад`
-}
+export const fmtAgo = (iso: string): string => agoText(Date.now() - new Date(iso).getTime())
 
 /** In-game rounding: one decimal, except that any positive security below 0.05 shows as 0.1 (still lowsec). */
 export function roundSec(sec: number): number {

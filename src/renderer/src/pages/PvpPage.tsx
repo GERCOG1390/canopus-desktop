@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { FitView, type FitItem } from '../components/FitView'
 import { useApp } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
-import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat, Tabs } from '../components/ui'
+import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat, Tabs, CountUp } from '../components/ui'
 import { esi, imageUrl, resolveIds, resolveNames, systemInfo, type SystemInfo } from '../lib/esi'
 import { fmtAgo, fmtIsk, fmtNum } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
@@ -230,7 +230,7 @@ function PilotBoard({ pilot }: { pilot: Pilot }) {
       </Card>
 
       <div className="stats-row">
-        <Stat label="Уничтожено" value={fmtNum(stats.shipsDestroyed ?? 0)} sub={fmtIsk(stats.iskDestroyed ?? 0, true)} />
+        <Stat label="Уничтожено" value={<CountUp value={stats.shipsDestroyed ?? 0} format={(v) => fmtNum(Math.round(v))} />} sub={fmtIsk(stats.iskDestroyed ?? 0, true)} />
         <Stat label="Потеряно" value={fmtNum(stats.shipsLost ?? 0)} sub={fmtIsk(stats.iskLost ?? 0, true)} />
         <Stat label="ISK-эффективность" value={efficiency == null ? '—' : `${efficiency.toFixed(1)}%`} />
         <Stat label="Соло-киллов" value={fmtNum(stats.soloKills ?? 0)} sub={stats.dangerRatio !== undefined ? `Опасность ${stats.dangerRatio}% · в банде ${stats.gangRatio ?? 0}%` : undefined} />

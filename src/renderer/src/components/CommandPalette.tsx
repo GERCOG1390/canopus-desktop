@@ -65,6 +65,7 @@ export function CommandPalette({ pages, open, onClose }: { pages: NavPage[]; ope
       onClose()
     }
     const list: Entry[] = [
+      { key: 'combat', section: 'Команды', label: 'Симуляция боя', text: 'симуляция бой симулятор combat simulator', icon: 'swords', run: done(() => window.api.combat.open()) },
       { key: 'login', section: 'Команды', label: 'Добавить персонажа (EVE SSO)', text: 'войти персонаж sso login', icon: 'user', run: done(() => login()) },
       {
         key: 'overlay',

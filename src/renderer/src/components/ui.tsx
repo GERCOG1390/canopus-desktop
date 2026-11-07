@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { imageUrl } from '../lib/esi'
+import { Glyph, type GlyphName } from './Glyph'
 import { roundSec, secColor } from '../lib/format'
 
 export function Card({ title, actions, children, className = '' }: { title?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string }) {
@@ -16,11 +17,72 @@ export function Card({ title, actions, children, className = '' }: { title?: Rea
   )
 }
 
-export const Loading = ({ label = 'Загрузка…' }: { label?: string }) => <div className="muted loading">{label}</div>
+export const Loading = ({ label = 'Загрузка…' }: { label?: string }) => (
+  <div className="loading" role="status">
+    <div className="skeleton" />
+    <div className="skeleton" />
+    <div className="skeleton short" />
+    <span className="muted small">{label}</span>
+  </div>
+)
+
+const reducedMotion = (): boolean => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/** A number that runs to its value; each change runs from the number on screen. */
+export function CountUp({ value, format }: { value: number; format: (v: number) => string }) {
+  const [shown, setShown] = useState(reducedMotion() ? value : 0)
+  const now = useRef(shown)
+  useEffect(() => {
+    if (reducedMotion() || now.current === value) {
+      now.current = value
+      setShown(value)
+      return
+    }
+    const from = now.current
+    const start = performance.now()
+    let raf = 0
+    const step = (t: number) => {
+      const k = Math.min(1, (t - start) / 450)
+      const v = k >= 1 ? value : from + (value - from) * (1 - (1 - k) ** 3)
+      now.current = v
+      setShown(v)
+      if (k < 1) raf = requestAnimationFrame(step)
+    }
+    raf = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+  return <>{format(shown)}</>
+}
 
 export const ErrorBox = ({ error }: { error: string | null | undefined }) => (error ? <div className="error">{error}</div> : null)
 
-export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string }[]; value: T; onChange: (id: T) => void }) {
+/** With `group` on the tabs: a row of groups, and under it the tabs of the open group. */
+export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string; group?: string }[]; value: T; onChange: (id: T) => void }) {
+  const groups = [...new Set(tabs.map((t) => t.group).filter(Boolean))] as string[]
+  if (groups.length) {
+    const open = tabs.find((t) => t.id === value)?.group ?? groups[0]
+    const inside = tabs.filter((t) => t.group === open)
+    return (
+      <div className="tabs-grouped">
+        <div className="tabs">
+          {groups.map((g) => (
+            <button key={g} className={g === open ? 'tab active' : 'tab'} onClick={() => g !== open && onChange(tabs.find((t) => t.group === g)!.id)}>
+              {g}
+            </button>
+          ))}
+        </div>
+        {inside.length > 1 && (
+          <div className="subtabs">
+            {inside.map((t) => (
+              <button key={t.id} className={t.id === value ? 'subtab active' : 'subtab'} onClick={() => onChange(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
   return (
     <div className="tabs">
       {tabs.map((t) => (
@@ -60,7 +122,15 @@ export function ProgressBar({ value }: { value: number }) {
   )
 }
 
-export const Empty = ({ children }: { children: ReactNode }) => <div className="empty">{children}</div>
+export function Empty({ children, icon = 'star', actions }: { children: ReactNode; icon?: GlyphName; actions?: ReactNode }) {
+  return (
+    <div className="empty empty-state">
+      <Glyph name={icon} size={22} className="empty-icon" />
+      <div>{children}</div>
+      {actions && <div className="empty-actions">{actions}</div>}
+    </div>
+  )
+}
 
 /** Text input with an async suggestion dropdown. */
 export function SearchBox<T extends { id: number; name: string }>({

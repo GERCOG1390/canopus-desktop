@@ -4,6 +4,7 @@
 // Schematics and the taxable base value per tier come from the SDE; which planet types hold which raw
 // resource is not in the SDE and is the game's fixed table (EVE University, "Planets").
 
+import { Glyph } from '../components/Glyph'
 import { useMemo, useState } from 'react'
 import { useApp, useLang } from '../AppContext'
 import { uiLang } from '../i18n'
@@ -370,7 +371,7 @@ function ColonyFinder({ resources }: { resources: number[] }) {
                       ))}
                     </span>
                   ) : (
-                    <span className="good">✔ всё сырьё</span>
+                    <span className="good"><Glyph name="check" size={13} /> <span>всё сырьё</span></span>
                   )}
                 </td>
               </tr>

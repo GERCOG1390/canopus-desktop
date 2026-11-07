@@ -1,5 +1,6 @@
 // Wormholes: type database (SDE), J-space system lookup and a mass calculator for rolling holes.
 
+import { Glyph } from '../components/Glyph'
 import { useEffect, useMemo, useState } from 'react'
 import type { SystemBasic, WormholeType } from '../../../shared/sde'
 import { useLang } from '../AppContext'
@@ -303,16 +304,16 @@ function MassCalc({ hole }: { hole: WormholeType | null }) {
                   <td className="num">{`горячий ${tons(s.mass + s.prop)}`}</td>
                   <td className="nowrap">
                     <button className="ghost small" onClick={() => setJumps((j) => [...j, { ship: i, hot: false, out: true }])}>
-                      Туда ❄
+                      Туда <Glyph name="snow" size={13} />
                     </button>
                     <button className="ghost small" onClick={() => setJumps((j) => [...j, { ship: i, hot: true, out: true }])}>
-                      Туда 🔥
+                      Туда <Glyph name="flame" size={13} />
                     </button>
                     <button className="ghost small" onClick={() => setJumps((j) => [...j, { ship: i, hot: false, out: false }])}>
-                      Обратно ❄
+                      Обратно <Glyph name="snow" size={13} />
                     </button>
                     <button className="ghost small" onClick={() => setJumps((j) => [...j, { ship: i, hot: true, out: false }])}>
-                      Обратно 🔥
+                      Обратно <Glyph name="flame" size={13} />
                     </button>
                   </td>
                 </tr>
@@ -353,7 +354,7 @@ function MassCalc({ hole }: { hole: WormholeType | null }) {
                 <td>
                   <TypeLink id={ships[r.j.ship]?.typeId ?? 0} size={16} />
                 </td>
-                <td>{`${r.j.out ? 'туда' : 'обратно'} ${r.j.hot ? '🔥 горячим' : '❄ холодным'}`}</td>
+                <td><Glyph name={r.j.hot ? 'flame' : 'snow'} size={13} /> {`${r.j.out ? 'туда' : 'обратно'} ${r.j.hot ? 'горячим' : 'холодным'}`}</td>
                 <td className="num">{tons(r.m)}</td>
                 <td className="num">{`${fmtNum(Math.max(0, r.lo) / 1e6)}–${fmtNum(Math.max(0, r.hi) / 1e6)}`}</td>
                 <td className="small">

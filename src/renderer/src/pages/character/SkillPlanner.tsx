@@ -2,6 +2,7 @@
 // with the time for the character's attributes, the best remap, two remaps split along the plan
 // and +5 implants.
 
+import { Glyph } from '../../components/Glyph'
 import { useEffect, useMemo, useState } from 'react'
 import type { SavedFit } from '../../../../shared/fit'
 import { useApp, useLang } from '../../AppContext'
@@ -257,7 +258,7 @@ export default function SkillPlanner() {
                   </select>
                 )}
                 <button className="ghost small" onClick={() => setGoals((all) => all.filter((_, k) => k !== i))}>
-                  ✕
+                  <Glyph name="close" size={14} />
                 </button>
               </span>
             ))}

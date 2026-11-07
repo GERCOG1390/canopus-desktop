@@ -241,6 +241,14 @@ function Shell() {
             {PAGES.filter((p) => p.group === g).map((p) => (
               <NavButton key={p.id} p={p} badge={p.id === 'intel' ? dangerous : undefined} danger />
             ))}
+            {g === 'Бой' && (
+              <button className="nav" title="Открывается отдельным окном" onClick={() => void window.api.combat.open()}>
+                <span className="nav-icon">
+                  <Glyph name="swords" />
+                </span>
+                Симуляция боя
+              </button>
+            )}
           </Fragment>
         ))}
         <div className="grow" />
@@ -277,19 +285,19 @@ function Shell() {
             )}
             <h1>{current.label}</h1>
           </div>
-          <div className="grow" />
           <button className="palette-trigger" onClick={() => setPalette(true)}>
             <Glyph name="search" size={16} />
             <span className="grow">Найти предмет, раздел или команду…</span>
             <kbd>Ctrl K</kbd>
           </button>
-          <div className="grow" />
-          <ServerStatus />
-          <EveClock />
-          <button className={`assistant-toggle ${assistant ? 'active' : ''}`} title="Помощник (Ctrl+J)" onClick={() => setAssistant((v) => !v)}>
-            <Glyph name="assistant" size={16} />
-            Помощник
-          </button>
+          <div className="topbar-right">
+            <ServerStatus />
+            <EveClock />
+            <button className={`assistant-toggle ${assistant ? 'active' : ''}`} title="Помощник (Ctrl+J)" onClick={() => setAssistant((v) => !v)}>
+              <Glyph name="assistant" size={16} />
+              Помощник
+            </button>
+          </div>
         </header>
         <main className="content">
           <SdeBanner />

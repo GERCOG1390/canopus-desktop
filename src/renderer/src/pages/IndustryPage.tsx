@@ -28,15 +28,15 @@ export default function IndustryPage() {
     <div className="page">
       <Tabs
         tabs={[
-          { id: 'calc', label: 'Калькулятор производства' },
-          { id: 'chain', label: 'Цепочка' },
-          { id: 'invention', label: 'Инвенция' },
-          { id: 'ore', label: 'Руда под минералы' },
-          { id: 'jobs', label: 'Мои работы' },
-          { id: 'pi', label: 'Мои колонии' },
-          { id: 'picalc', label: 'Расчёт планетарки' },
-          { id: 'structures', label: 'Структуры' },
-          { id: 'moons', label: 'Луны' }
+          { id: 'calc', label: 'Калькулятор производства', group: 'Производство' },
+          { id: 'chain', label: 'Цепочка', group: 'Производство' },
+          { id: 'invention', label: 'Инвенция', group: 'Производство' },
+          { id: 'ore', label: 'Руда под минералы', group: 'Производство' },
+          { id: 'jobs', label: 'Мои работы', group: 'Производство' },
+          { id: 'pi', label: 'Мои колонии', group: 'Планеты' },
+          { id: 'picalc', label: 'Расчёт планетарки', group: 'Планеты' },
+          { id: 'structures', label: 'Структуры', group: 'Корпорация' },
+          { id: 'moons', label: 'Луны', group: 'Корпорация' }
         ]}
         value={tab}
         onChange={setTab}

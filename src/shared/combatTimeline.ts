@@ -227,6 +227,8 @@ export interface TimelinePoint {
   t: number
   distance: number
   transversal: number
+  /** Where the ships are, for the replay; only the gap between them means anything */
+  pos: { ax: number; ay: number; bx: number; by: number }
   /** Per side: shield, armor, hull and capacitor as a share 0–1, speed, and damage dealt in that second after resists */
   a: { s: number; a: number; h: number; c: number; v: number; dealt: number }
   b: { s: number; a: number; h: number; c: number; v: number; dealt: number }
@@ -710,6 +712,7 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
         t,
         distance: dNow,
         transversal,
+        pos: { ax: A.pos.x, ay: A.pos.y, bx: B.pos.x, by: B.pos.y },
         a: { ...fa, v: length(A.vel), dealt: A.dealtBucket },
         b: { ...fb, v: length(B.vel), dealt: B.dealtBucket }
       })
@@ -734,4 +737,26 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
   if (b.rah) B.outcome.armorResist = [...B.c.armor.resist]
   const winner = A.outcome.dead !== null && B.outcome.dead !== null ? 'both' : B.outcome.dead !== null ? 'a' : A.outcome.dead !== null ? 'b' : null
   return { winner, end, a: A.outcome, b: B.outcome, events, series }
+}
+
+/** The fight at any moment between its points. Damage isn't blended: it is what the coming point says was dealt. */
+export function frameAt(series: TimelinePoint[], t: number): TimelinePoint {
+  if (t <= series[0].t) return series[0]
+  const last = series[series.length - 1]
+  if (t >= last.t) return last
+  let hi = 1
+  while (series[hi].t < t) hi++
+  const p = series[hi - 1]
+  const q = series[hi]
+  const k = (t - p.t) / (q.t - p.t)
+  const mix = (a: number, b: number): number => a + (b - a) * k
+  const side = (x: TimelinePoint['a'], y: TimelinePoint['a']): TimelinePoint['a'] => ({ s: mix(x.s, y.s), a: mix(x.a, y.a), h: mix(x.h, y.h), c: mix(x.c, y.c), v: mix(x.v, y.v), dealt: y.dealt })
+  return {
+    t,
+    distance: Math.hypot(mix(p.pos.bx, q.pos.bx) - mix(p.pos.ax, q.pos.ax), mix(p.pos.by, q.pos.by) - mix(p.pos.ay, q.pos.ay)),
+    transversal: mix(p.transversal, q.transversal),
+    pos: { ax: mix(p.pos.ax, q.pos.ax), ay: mix(p.pos.ay, q.pos.ay), bx: mix(p.pos.bx, q.pos.bx), by: mix(p.pos.by, q.pos.by) },
+    a: side(p.a, q.a),
+    b: side(p.b, q.b)
+  }
 }
