@@ -1,5 +1,7 @@
 // Tray and Windows notifications about the characters' timers (skills, PI, industry, fatigue, market, clones).
 
+import type { PriceAlert } from './priceAlerts'
+
 export interface NotifySettings {
   /** Closing the window hides Canopus to the tray instead of quitting. */
   tray: boolean
@@ -19,6 +21,10 @@ export interface NotifySettings {
   structuresDiscord: boolean
   /** Game notifications: structure attacked / shields / armor lost / destroyed, moon extractions */
   gameNotifications: boolean
+  /** Price lines at Jita (Market → Alerts) */
+  priceAlerts: PriceAlert[]
+  /** Also post price alerts to the intel Discord webhook */
+  priceAlertsDiscord: boolean
 }
 
 export const DEFAULT_NOTIFY: NotifySettings = {
@@ -33,10 +39,12 @@ export const DEFAULT_NOTIFY: NotifySettings = {
   structures: true,
   structureFuelDays: 3,
   structuresDiscord: true,
-  gameNotifications: true
+  gameNotifications: true,
+  priceAlerts: [],
+  priceAlertsDiscord: false
 }
 
-export type NotifyKind = 'skills' | 'pi' | 'industry' | 'fatigue' | 'orders' | 'clone' | 'structure' | 'freelance'
+export type NotifyKind = 'price' | 'skills' | 'pi' | 'industry' | 'fatigue' | 'orders' | 'clone' | 'structure' | 'freelance'
 
 /** A notification that was shown (kept for the history in Settings). */
 export interface NotifyEvent {

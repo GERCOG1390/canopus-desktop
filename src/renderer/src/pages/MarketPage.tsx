@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import PriceAlerts from './PriceAlerts'
 import { useApp, useLang } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, RequireLogin, SearchBox, Sparkline, Stat, Tabs } from '../components/ui'
@@ -14,7 +15,7 @@ import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/m
 import { getBasic, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 
-type Tab = 'prices' | 'appraisal' | 'arbitrage' | 'lp' | 'orders' | 'trades'
+type Tab = 'prices' | 'appraisal' | 'arbitrage' | 'lp' | 'orders' | 'trades' | 'alerts'
 
 export default function MarketPage() {
   const { pageArg } = useApp()
@@ -31,7 +32,8 @@ export default function MarketPage() {
           { id: 'arbitrage', label: 'Арбитраж' },
           { id: 'lp', label: 'LP-магазин' },
           { id: 'orders', label: 'Мои ордера' },
-          { id: 'trades', label: 'Мои сделки' }
+          { id: 'trades', label: 'Мои сделки' },
+          { id: 'alerts', label: 'Оповещения' }
         ]}
         value={tab}
         onChange={setTab}
@@ -42,6 +44,7 @@ export default function MarketPage() {
       {tab === 'lp' && <LpStore />}
       {tab === 'orders' && <MyOrders />}
       {tab === 'trades' && <Trades />}
+      {tab === 'alerts' && <PriceAlerts />}
     </div>
   )
 }

@@ -12,6 +12,7 @@ import { loadSettings } from './storage'
 import { postDiscord } from './intel'
 import { matchesFreelance, type FreelanceJob } from '../shared/freelance'
 import * as sde from './sde'
+import { evaluateAlerts } from '../shared/priceAlerts'
 
 const ESI = 'https://esi.evetech.net/latest'
 const CHECK_EVERY_MS = 5 * 60_000
@@ -361,10 +362,37 @@ async function checkOrders(id: number, who: string): Promise<void> {
   }
 }
 
+const JITA_STATION = 60003760
+
+/** Price lines at Jita: announced once at each crossing (alerts re-arm when the price goes back). */
+async function checkPriceAlerts(): Promise<void> {
+  const cfg = loadSettings()
+  const alerts = cfg.notify.priceAlerts
+  if (!alerts.length) return
+  const ids = [...new Set(alerts.map((a) => a.typeId))]
+  const prices = new Map<number, { sell: number; buy: number }>()
+  for (let i = 0; i < ids.length; i += 200) {
+    const url = `https://market.fuzzwork.co.uk/aggregates/?station=${JITA_STATION}&types=${ids.slice(i, i + 200).join(',')}`
+    const raw = (await request(url, {})) as Record<string, { buy: { max: string }; sell: { min: string } }>
+    for (const [id, p] of Object.entries(raw)) prices.set(Number(id), { sell: +p.sell.min, buy: +p.buy.max })
+  }
+  const { fire, rearm } = evaluateAlerts(alerts, prices, (key) => !!seen[key])
+  for (const key of rearm) delete seen[key]
+  if (rearm.length) saveSeen()
+  const isk = (v: number): string => `${v.toLocaleString(en() ? 'en-US' : 'ru-RU', { maximumFractionDigits: 2 })} ISK`
+  for (const { alert, best } of fire) {
+    const sideText = alert.side === 'sell' ? t('продажа', 'sell') : t('покупка', 'buy')
+    const title = alert.dir === 'below' ? t(`${alert.name}: цена упала`, `${alert.name}: price fell`) : t(`${alert.name}: цена выросла`, `${alert.name}: price rose`)
+    const body = t(`Jita, ${sideText}: ${isk(best)} (порог ${isk(alert.price)})`, `Jita ${sideText}: ${isk(best)} (line ${isk(alert.price)})`)
+    if (announce(`price-${alert.id}`, 'price', 0, title, body) && cfg.notify.priceAlertsDiscord) postDiscord(cfg.intel.discord.webhook, title, body, 'structure')
+  }
+}
+
 async function checkAll(): Promise<void> {
   const cfg = loadSettings().notify
   checkedCorps = new Set()
   await checkFreelance().catch(() => {})
+  await checkPriceAlerts().catch(() => {})
   for (const c of auth.characters()) {
     const run = async (on: boolean, fn: (id: number, who: string) => Promise<void>) => {
       if (!on) return

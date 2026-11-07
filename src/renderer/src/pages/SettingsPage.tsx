@@ -283,7 +283,7 @@ function UpdateCard() {
   )
 }
 
-const NOTIFY_KINDS: [keyof Omit<NotifySettings, 'tray' | 'skillHours' | 'structureFuelDays' | 'structuresDiscord'>, string][] = [
+const NOTIFY_KINDS: [keyof Omit<NotifySettings, 'tray' | 'skillHours' | 'structureFuelDays' | 'structuresDiscord' | 'priceAlerts' | 'priceAlertsDiscord'>, string][] = [
   ['skills', 'Очередь навыков кончается или пуста'],
   ['pi', 'Экстракторы планетарки остановились'],
   ['industry', 'Работа в индустрии готова'],

@@ -3,6 +3,19 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  'Новое оповещение': 'New alert',
+  'Сторона': 'Side',
+  'Условие': 'Condition',
+  'Порог, ISK': 'Line, ISK',
+  'Лучшая продажа': 'Best sell',
+  'Лучшая покупка': 'Best buy',
+  'Упадёт до': 'Falls to',
+  'Вырастет до': 'Rises to',
+  'Сработало': 'Reached',
+  'Оповещений нет. Добавьте предмет и порог цены.': 'No alerts. Add an item and a price line.',
+  'Ждём': 'Waiting',
+  'Дублировать в Discord (вебхук разведки)': 'Also post to Discord (the intel webhook)',
+  'Цены Jita проверяются каждые 5 минут, пока Canopus запущен. Оповещение приходит один раз при достижении порога и снова срабатывает, когда цена уйдёт обратно и вернётся.': 'Jita prices are checked every 5 minutes while Canopus runs. An alert comes once when the price reaches the line, and can come again after the price goes back and returns.',
   'Флот и доктрина': 'Fleet and doctrine',
   'В доктринных корпусах': 'In doctrine hulls',
   'Не в доктрине': 'Off doctrine',
