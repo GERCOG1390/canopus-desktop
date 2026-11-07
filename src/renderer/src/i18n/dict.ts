@@ -2070,6 +2070,7 @@ export const EXACT: Record<string, string> = {
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
   // ---- 1.3
+  [/^Войны уже проверялись много раз подряд\. Чтобы не сломать убийства в других экранах, повторить можно через минут: (\d+)$/, 'Wars were checked a lot just now. Not to break kills on other screens, you can repeat in minutes: $1'],
   [/^прыжков в одну сторону: (\d+)$/, 'jumps one way: $1'],
   [/^([\d,\s ]+) м³$/, '$1 m³'],
   [/^Показаны первые 100 рейсов из ([\d,\s ]+)$/, 'First 100 trips of $1'],

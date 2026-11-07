@@ -37,6 +37,7 @@ export default function Wars() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [failed, setFailed] = useState(0)
   const [waitSeconds, setWaitSeconds] = useState<number | null>(null)
+  const [capSeconds, setCapSeconds] = useState<number | null>(null)
   const [unread, setUnread] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<'mine' | 'running'>('running')
@@ -61,13 +62,14 @@ export default function Wars() {
     setError(null)
     setFailed(0)
     setWaitSeconds(null)
+    setCapSeconds(null)
     setProgress({ done: 0, total: 0 })
     try {
       const ids = await esi<number[]>('/wars/')
       const memory = (await window.api.store.get<WarMemory>(MEMORY_KEY)) ?? { finished: [], running: [] }
       const { budget, waitSeconds: wait } = warBudget(memory, Date.now())
       if (budget === 0) {
-        setWaitSeconds(wait)
+        setCapSeconds(wait)
         return
       }
       const { read, unread: left } = warsToRead(ids, memory, budget)
@@ -154,6 +156,7 @@ export default function Wars() {
         )}
         {error && <p className="warn-text small">{error}</p>}
         {failed > 0 && <p className="warn-text small">{`Не загрузилось войн: ${failed}`}</p>}
+        {capSeconds !== null && <p className="warn-text small">{`Войны уже проверялись много раз подряд. Чтобы не сломать убийства в других экранах, повторить можно через минут: ${Math.ceil(capSeconds / 60)}`}</p>}
         {waitSeconds !== null && <p className="warn-text small">{`ESI просит подождать, минут: ${Math.ceil(waitSeconds / 60)}. Что успели прочитать, сохранено.`}</p>}
       </Card>
       {!wars ? (
