@@ -428,6 +428,16 @@ function registerIpc(): void {
     writeFileSync(res.filePath, img.toPNG())
     return true
   })
+  ipcMain.handle('file:saveCsv', async (e, name: string, text: string) => {
+    const win = BrowserWindow.fromWebContents(e.sender)
+    if (!win) return false
+    const safe = name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'export'
+    const res = await dialog.showSaveDialog(win, { defaultPath: join(app.getPath('documents'), `${safe}.csv`), filters: [{ name: 'CSV', extensions: ['csv'] }] })
+    if (res.canceled || !res.filePath) return false
+    // A BOM so Excel reads the Cyrillic right.
+    writeFileSync(res.filePath, '\ufeff' + text)
+    return true
+  })
   ipcMain.handle('combat:isOpen', () => !!combatWindow && !combatWindow.isDestroyed())
   ipcMain.handle('combat:getAttacker', () => combatAttacker)
   ipcMain.handle('combat:simulate', (_e, a: CombatPilot, b: CombatPilot, scenario: CombatScenario) => combat.simulate(a, b, scenario))

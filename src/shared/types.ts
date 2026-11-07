@@ -239,6 +239,8 @@ export interface CanopusApi {
     respond(requestId: string, mode: AssistantAuth, model: string, instructions: string, input: ResponseItem[], tools: ToolDef[], web: boolean): Promise<AssistantTurn>
     onDelta(listener: (requestId: string, delta: string) => void): () => void
   }
+  /** Asks where to save and writes a CSV file; false when cancelled. */
+  saveCsv(name: string, text: string): Promise<boolean>
   fitShot: {
     /** Open the snapshot window (or show this fit in it): every module and the stats on one card. */
     open(pilot: FitShotData): Promise<void>

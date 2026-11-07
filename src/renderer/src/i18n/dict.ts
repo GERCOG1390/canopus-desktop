@@ -3,6 +3,11 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  'Доход и расход по дням': 'Income and expense by day',
+  'Экспорт в CSV': 'Export to CSV',
+  'Доход': 'Income',
+  'Расход': 'Expense',
+  'Журнал кошелька ESI хранит примерно 30 дней. Дни — по времени EVE (UTC).': 'ESI keeps about 30 days of the wallet journal. Days are in EVE time (UTC).',
   'Новое оповещение': 'New alert',
   'Сторона': 'Side',
   'Условие': 'Condition',
@@ -1915,6 +1920,9 @@ export const EXACT: Record<string, string> = {
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
   // ---- 1.3
+  [/^Доход: (.+)$/, 'Income: $1'],
+  [/^Расход: (.+)$/, 'Expense: $1'],
+  [/^Итого: (.+)$/, 'Net: $1'],
   [/^база ([\d.]+%)$/, 'base $1'],
   [/^(\d+) шт за прогон$/, '$1 per run'],
   [/^\(\+(\d+) импланты\)$/, '(+$1 implants)'],

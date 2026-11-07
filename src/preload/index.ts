@@ -161,6 +161,7 @@ const api: CanopusApi = {
     respond: (requestId, mode, model, instructions, input, tools, web) => invoke('assistant:respond', requestId, mode, model, instructions, input, tools, web),
     onDelta: (listener) => on<{ id: string; delta: string }>('assistant:delta', (p) => listener(p.id, p.delta))
   },
+  saveCsv: (name, text) => invoke('file:saveCsv', name, text),
   fitShot: {
     open: (pilot) => invoke('fitshot:open', pilot),
     get: () => invoke('fitshot:get'),

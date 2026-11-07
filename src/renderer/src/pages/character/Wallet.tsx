@@ -5,6 +5,8 @@ import { esi, resolveLocations, resolveNames } from '../../lib/esi'
 import { LocationName } from '../../components/LocationName'
 import { fmtDate, fmtIsk, fmtNum } from '../../lib/format'
 import { useAsync } from '../../lib/useAsync'
+import { FlowChart } from '../../components/FlowChart'
+import { dailyFlows, journalCsv } from '../../../../shared/walletStats'
 
 interface JournalEntry {
   id: number
@@ -94,6 +96,18 @@ export default function Wallet({ id }: { id: number }) {
         <Stat label="Расход за 30 дней" value={<span className="bad">{fmtIsk(expense, true)}</span>} />
         <Stat label="Итого за 30 дней" value={fmtIsk(income + expense, true)} />
       </div>
+
+      <Card
+        title="Доход и расход по дням"
+        actions={
+          <button className="ghost small" disabled={!data.journal.length} onClick={() => void window.api.saveCsv(`canopus-wallet-${id}`, journalCsv(data.journal, (t) => REF_TYPES[t] ?? t.replace(/_/g, ' ')))}>
+            Экспорт в CSV
+          </button>
+        }
+      >
+        <FlowChart days={dailyFlows(data.journal, 30)} />
+        <p className="muted small">Журнал кошелька ESI хранит примерно 30 дней. Дни — по времени EVE (UTC).</p>
+      </Card>
 
       {topSources.length > 0 && (
         <Card title="Основные статьи за 30 дней">
