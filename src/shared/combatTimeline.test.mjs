@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { adaptRah, application, applyDamage, isSentry, rahResist, recharge, runTimeline, stackedMultiplier, TIMELINE_MAX_SEC, turretMultiplier } from './combatTimeline.ts'
+import { adaptRah, application, dependsOnStayingAway, applyDamage, isSentry, rahResist, recharge, runTimeline, stackedMultiplier, TIMELINE_MAX_SEC, turretMultiplier } from './combatTimeline.ts'
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`)
 const layer = (hp, r = 0) => ({ hp, resist: [r, r, r, r], ehp: hp })
@@ -178,7 +178,8 @@ test('a scrambler switches a microwarpdrive off, not an afterburner', () => {
   close(mwd.series.at(-1).b.v, 100, 3)
   assert.ok(mwd.events.some((e) => e.kind === 'propBlocked' && e.side === 'b'))
   const ab = run(tackler, runner('ab'), {}, orbit, 5000)
-  close(ab.series.at(-1).b.v, 1000, 10)
+  // A little under top speed: a ship in a tight turn is slower than flying straight.
+  close(ab.series.at(-1).b.v, 1000, 20)
 })
 
 test('neuts drain the capacitor and that ends an active tank', () => {
@@ -392,4 +393,125 @@ test('a ship with no RAH keeps its armor resists as they are', () => {
   const r = run(kinetic, ship({ armor: layer(1e6, 0.5), hull: layer(100) }))
   close(r.series.find((p) => p.t >= 15).a.dealt / FULL, 50, 1e-6)
   assert.equal(r.b.armorResist, undefined)
+})
+
+// ---------- Holding an orbit: within a kilometre of what was asked, once there
+
+const craft = (v, align) => ship({ hull: layer(1e9), off: { maxVelocity: v, signature: 100, alignSec: align } })
+const orbitFight = (va, aa, vb, ab, range, start = range, headings = [90, 90]) =>
+  runTimeline(
+    craft(va, aa),
+    craft(vb, ab),
+    orders({ behavior: 'orbit', range, speed: va, heading: headings[0] }),
+    orders({ behavior: 'orbit', range, speed: vb, heading: headings[1] }),
+    start
+  )
+const worstAfter = (r, range, t) => Math.max(...r.series.filter((p) => p.t >= t).map((p) => Math.abs(p.distance - range)))
+
+test('orbit: the fight on the screenshot, 225 and 1036 m/s at 21.1 km', () => {
+  const r = orbitFight(225, 8, 1036, 11, 21100)
+  assert.ok(worstAfter(r, 21100, 0) <= 1000, `off by ${worstAfter(r, 21100, 0)}`)
+})
+
+for (const [va, aa, vb, ab, range] of [
+  [225, 8, 1036, 11, 5000],
+  [225, 8, 1036, 11, 10000],
+  [225, 8, 1036, 11, 40000],
+  [150, 20, 150, 20, 30000],
+  [400, 5, 3000, 4, 10000],
+  [1500, 3, 1500, 3, 5000],
+  [2500, 2, 2500, 2, 12000],
+  [0, 10, 300, 6, 1000],
+  [100, 30, 90, 30, 60000]
+]) {
+  test(`orbit holds: ${va} and ${vb} m/s at ${range / 1000} km`, () => {
+    const r = orbitFight(va, aa, vb, ab, range)
+    assert.ok(worstAfter(r, range, 0) <= 1000, `off by ${Math.round(worstAfter(r, range, 0))}`)
+    // Turning, not parked: it is an orbit.
+    assert.ok(r.series.at(-1).transversal > 0)
+  })
+}
+
+test('orbit: from far off it comes in and then holds; opposite turns too', () => {
+  const r = orbitFight(225, 8, 1036, 11, 10000, 40000)
+  assert.ok(worstAfter(r, 10000, 120) <= 1000, `off by ${Math.round(worstAfter(r, 10000, 120))}`)
+  const opposite = orbitFight(225, 8, 1036, 11, 21100, 21100, [90, 270])
+  assert.ok(worstAfter(opposite, 21100, 0) <= 1000, `off by ${Math.round(worstAfter(opposite, 21100, 0))}`)
+})
+
+test('orbit: a web mid-way does not throw it off', () => {
+  const web = { index: 1, typeId: 1, t: { kind: 'web', strength: -60, range: 30000, falloff: 0 } }
+  const r = runTimeline(
+    ship({ hull: layer(1e9), tactical: [web], modules: [{ index: 1, need: 0, cycle: 5 }], off: { maxVelocity: 225, signature: 100, alignSec: 8 } }),
+    craft(1036, 11),
+    orders({ behavior: 'orbit', range: 21100, speed: 225, heading: 90 }),
+    orders({ behavior: 'orbit', range: 21100, speed: 1036, heading: 90 }),
+    21100
+  )
+  assert.ok(worstAfter(r, 21100, 0) <= 1000, `off by ${Math.round(worstAfter(r, 21100, 0))}`)
+})
+
+// ---------- How much of a side's firepower sat idle, and when a win leans on that
+
+test('the idle share: how much of the paper damage was out of reach, and the average dealt', () => {
+  const missile = gun({ kind: 'missile', dps: 300, damage: [300, 0, 0, 0], optimal: 5000, missileVelocity: 1000, explosionRadius: 1, explosionVelocity: 1e6 })
+  const drone = gun({ kind: 'drone', dps: 100, damage: [100, 0, 0, 0], speed: 2000 })
+  const r = run(ship({ weapons: [missile, drone], hull: layer(1e6) }), ship({ hull: layer(1e7) }), {}, {}, 20000)
+  close(r.a.idle, 0.75, 0.01)
+  const near = run(ship({ weapons: [missile, drone], hull: layer(1e6) }), ship({ hull: layer(1e7) }), {}, {}, 2000)
+  close(near.a.idle, 0, 0.001)
+  assert.ok(near.a.averageDps > 300)
+})
+
+test('a win leans on the opponent staying away only when it wins and they sit idle', () => {
+  const tl = (winner, idle) => ({ winner, b: { idle } })
+  assert.equal(dependsOnStayingAway(tl('a', 0.84)), true)
+  assert.equal(dependsOnStayingAway(tl('a', 0.1)), false)
+  assert.equal(dependsOnStayingAway(tl('b', 0.84)), false)
+  assert.equal(dependsOnStayingAway(tl(null, 0.84)), true)
+})
+
+test('orbit: too tight for the ship to turn, it swings wider than asked but stays near, as in the game', () => {
+  // Turning radius is speed × inertia: 2500 m/s with a 2 s align can't hold 2.5 km.
+  const r = orbitFight(2500, 2, 2500, 2, 2500)
+  const far = Math.max(...r.series.map((p) => p.distance))
+  assert.ok(far < 15000, `drifted to ${Math.round(far)}`)
+})
+
+test('orbit: a fast ship in a tight orbit does not pull itself into the target', () => {
+  // As the engine gives a Cyclone Fleet Issue: 1070 m/s, an align of about 10 s, against one the same or slower.
+  for (const [va, aa] of [[1070, 10], [225, 8], [150, 16]]) {
+    for (const range of [2500, 5000, 10000]) {
+      const r = orbitFight(va, aa, 1070, 10, range)
+      assert.ok(worstAfter(r, range, 0) <= 1000, `${va}@${range} off by ${Math.round(worstAfter(r, range, 0))}`)
+    }
+  }
+})
+
+test('approach: a heavy ship runs at full speed and brakes only when it must', () => {
+  // A battlecruiser under a 100MN afterburner: 1070 m/s, an align of 56 s (τ ≈ 40 s).
+  const heavy = (behavior) =>
+    runTimeline(
+      ship({ hull: layer(1e9) }),
+      craft(1070, 56),
+      orders(),
+      orders({ behavior, range: 1000, speed: 1070 }),
+      40000
+    )
+  for (const behavior of ['approach', 'keep']) {
+    const r = heavy(behavior)
+    const at = (t) => r.series.find((p) => p.t >= t)
+    // v = V(1 − e^(−t/τ)) while it accelerates: 20 s gives about 39% of top speed.
+    close(at(20).b.v, 1070 * (1 - Math.exp(-20 / (56 / Math.log(4)))), 30)
+    // And it gets there and stops.
+    close(r.series.at(-1).distance, 1000, 1000)
+    assert.ok(r.series.at(-1).b.v < 50, `still ${r.series.at(-1).b.v}`)
+  }
+})
+
+test('approach: closes on a slower ship running away at its top speed difference', () => {
+  const r = runTimeline(craft(225, 8), craft(1070, 11), orders({ behavior: 'flee', speed: 225 }), orders({ behavior: 'approach', range: 1000, speed: 1070 }), 21000)
+  // 845 m/s of closing: well inside 40 s from 21 km, then matches its speed.
+  close(r.series.find((p) => p.t >= 60).distance, 1000, 1000)
+  close(r.series.find((p) => p.t >= 120).b.v, 225, 20)
 })

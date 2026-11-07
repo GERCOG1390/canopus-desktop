@@ -3,7 +3,7 @@
 
 import type { AppliedWeapon, CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
 import { fightProblems, rate, searchAdvice, type Candidate, type CombatAdvice, type Rated } from '../../shared/combatAdvice'
-import { application, ewarEfficiency, isSentry, runTimeline, stackingPenalty, type Combatant, type Geometry, type Orders, type Tactical, type Timeline } from '../../shared/combatTimeline'
+import { application, dependsOnStayingAway, ewarEfficiency, isSentry, runTimeline, stackingPenalty, type Combatant, type Geometry, type Orders, type Tactical, type Timeline } from '../../shared/combatTimeline'
 import type { FitStats, TacticalModule } from '../../shared/fit'
 import { chargesFor } from '../sde'
 import { calculateFit } from './index'
@@ -313,9 +313,23 @@ export function simulate(a: CombatPilot, b: CombatPilot, sc: CombatScenario): Co
     sc.distance
   )
 
+  // A win that leans on the opponent idling out of its own reach: what if it simply came closer?
+  const closing = (): CombatResult['ifCloses'] => {
+    if (!dependsOnStayingAway(timeline)) return undefined
+    const tl = runTimeline(
+      combatant(A, wantA),
+      combatant(B, !!B.prop),
+      orders(sc.behaviorA, sc.rangeA, sc.headingA, sc.speedA, wantA, sc.ewarA !== false, sc.sigA),
+      { behavior: 'approach', range: 1000, heading: sc.headingB, speed: 1e6, wantProp: !!B.prop, useEwar: sc.ewarB !== false, sig: sc.sigB },
+      sc.distance
+    )
+    return tl.winner === timeline.winner ? undefined : { winner: tl.winner, end: tl.end }
+  }
+
   return {
     a: sideInfo(A, now.sa),
     b: sideInfo(B, now.sb),
+    ifCloses: closing(),
     ab: { ...direction(now.sa.stats, now.sb.stats, now.ab), ...timesOf(timeline, 'b') },
     ba: { ...direction(now.sb.stats, now.sa.stats, now.ba), ...timesOf(timeline, 'a') },
     timeline,

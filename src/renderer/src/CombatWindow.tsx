@@ -307,8 +307,8 @@ function Summary({ r }: { r: CombatResult }) {
   return (
     <div className="combat-summary">
       <Verdict r={r} />
-      <SummaryLine title="Вы → противник" d={r.ab} cls="side-a" />
-      <SummaryLine title="Противник → вы" d={r.ba} cls="side-b" />
+      <SummaryLine title="Вы → противник" d={r.ab} cls="side-a" average={r.timeline.a.averageDps} />
+      <SummaryLine title="Противник → вы" d={r.ba} cls="side-b" average={r.timeline.b.averageDps} />
       <div className="combat-geo muted small">
         {`Поперечная скорость ${n1(r.transversal)} м/с · угловая ${r.angularVelocity.toLocaleString(locale(), { maximumFractionDigits: 4 })} рад/с`}
       </div>
@@ -316,7 +316,7 @@ function Summary({ r }: { r: CombatResult }) {
   )
 }
 
-function SummaryLine({ title, d, cls }: { title: string; d: CombatDirection; cls: string }) {
+function SummaryLine({ title, d, cls, average }: { title: string; d: CombatDirection; cls: string; average: number }) {
   const pct = d.paperDps ? Math.min(100, (d.applied / d.paperDps) * 100) : 0
   // The weapon losing the most damage explains the result.
   const worst = [...d.weapons].filter((w) => w.limit).sort((a, b) => b.dps - b.applied - (a.dps - a.applied))[0]
@@ -325,11 +325,12 @@ function SummaryLine({ title, d, cls }: { title: string; d: CombatDirection; cls
       <div className="combat-line-title">{title}</div>
       <div className="combat-line-main">
         <b>{n1(d.applied)}</b>
-        <span className="muted">{`DPS по цели из ${n1(d.paperDps)}`}</span>
+        <span className="muted">{`DPS на старте из ${n1(d.paperDps)}`}</span>
       </div>
       <div className="combat-bar">
         <div style={{ width: `${pct}%` }} />
       </div>
+      <div className="muted small">{`В среднем за бой: ${n1(average)} DPS после резистов`}</div>
       <div className="combat-line-foot">
         <span>
           <span className="muted">Уничтожение:</span> <b className={Number.isFinite(d.timeToKill) ? '' : 'bad'}>{duration(d.timeToKill)}</b>
@@ -853,7 +854,17 @@ function Verdict({ r }: { r: CombatResult }) {
     cls = 'bad'
   } else if (tl.winner === 'both') text = `Оба погибают на ${duration(tl.end)}`
   else text = `За ${Math.round(tl.end / 60)} мин никто никого не уничтожил: у вас ${share(r.a, tl.a.left)}%, у противника ${share(r.b, tl.b.left)}%`
-  return <div className={`combat-verdict ${cls}`}>{text}</div>
+  return (
+    <>
+      <div className={`combat-verdict ${cls}`}>{text}</div>
+      {r.ifCloses && (
+        <p className="warn-text small">
+          {`Это держится на том, что ${Math.round(tl.b.idle * 100)}% урона противника не достаёт. Если он подойдёт: `}
+          {r.ifCloses.winner === 'b' ? `поражение за ${duration(r.ifCloses.end)}` : r.ifCloses.winner === 'both' ? `оба погибают на ${duration(r.ifCloses.end)}` : r.ifCloses.winner === 'a' ? `победа за ${duration(r.ifCloses.end)}` : 'никто не погибает'}
+        </p>
+      )}
+    </>
+  )
 }
 
 const BEHAVIORS: [Behavior, string][] = [
@@ -1167,7 +1178,7 @@ function DirectionCard({ title, d }: { title: string; d: CombatDirection }) {
       <div className="big-stats">
         <div>
           <b>{n1(d.applied)}</b>
-          <span>{`DPS по цели из ${n1(d.paperDps)} (${pct.toFixed(0)}%)`}</span>
+          <span>{`DPS на старте из ${n1(d.paperDps)} (${pct.toFixed(0)}%)`}</span>
         </div>
       </div>
       <div className="damage-profile">

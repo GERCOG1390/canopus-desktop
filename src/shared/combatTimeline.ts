@@ -243,6 +243,10 @@ export interface SideOutcome {
   left: { s: number; a: number; h: number; c: number }
   /** Armor resists at the end, for a ship with a RAH */
   armorResist?: number[]
+  /** Share of the paper damage that was out of reach, over the fight */
+  idle: number
+  /** Damage dealt after resists, per second of the fight */
+  averageDps: number
 }
 
 export interface Timeline {
@@ -262,6 +266,11 @@ const WORTH_FIRING = 0.01
 /** Nothing in reach of anything for this long: the fight is over. */
 const OUT_OF_REACH_SEC = 60
 const LOG4 = Math.log(4)
+/** How far off the asked range an orbit steers straight back rather than around */
+const ORBIT_STIFFNESS_M = 500
+const ORBIT_MAX_LEAN = 0.7
+/** How far off a keep-at-range or approach distance a ship eases off */
+const RANGE_STIFFNESS_M = 500
 
 type Vec = { x: number; y: number }
 const length = (v: Vec): number => Math.hypot(v.x, v.y)
@@ -322,9 +331,10 @@ interface State {
   reloadFlag: boolean
   repReloadFlag: boolean
   inRange: boolean | null
+  idleSum: number
 }
 
-const empty = (): SideOutcome => ({ shieldDown: null, armorDown: null, dead: null, dealt: 0, left: { s: 1, a: 1, h: 1, c: 1 } })
+const empty = (): SideOutcome => ({ shieldDown: null, armorDown: null, dead: null, dealt: 0, left: { s: 1, a: 1, h: 1, c: 1 }, idle: 0, averageDps: 0 })
 
 function start(key: 'a' | 'b', c: Combatant, o: Orders, pos: Vec, distance: number): State {
   const rad = (o.heading * Math.PI) / 180
@@ -364,7 +374,8 @@ function start(key: 'a' | 'b', c: Combatant, o: Orders, pos: Vec, distance: numb
     capFlag: false,
     reloadFlag: false,
     repReloadFlag: false,
-    inRange: null
+    inRange: null,
+    idleSum: 0
   }
 }
 
@@ -381,8 +392,9 @@ function desiredVelocity(me: State, other: State, d: number, speed: number): Vec
   const radial = { x: (other.pos.x - me.pos.x) / d, y: (other.pos.y - me.pos.y) / d }
   const o = me.o
   const tau = (me.propOn && me.c.on ? me.c.on.alignSec : me.c.off.alignSec) / LOG4
-  // Brake early enough for the inertia: with less margin than 3·v·τ the ship sails past the range and, on approach, stays there.
-  const closing = (range: number): number => Math.max(-1, Math.min(1, (d - range) / Math.max(100, 3 * speed * tau)))
+  const opening = (other.vel.x - me.vel.x) * radial.x + (other.vel.y - me.vel.y) * radial.y
+  // Where the distance would settle if it let go now: stopping takes v·τ. Full speed until then, so a heavy ship isn't held back.
+  const closing = (range: number): number => Math.max(-1, Math.min(1, (d + opening * tau - range) / RANGE_STIFFNESS_M))
   switch (o.behavior) {
     case 'stop':
       return { x: 0, y: 0 }
@@ -399,7 +411,11 @@ function desiredVelocity(me: State, other: State, d: number, speed: number): Vec
       return { x: radial.x * speed * k, y: radial.y * speed * k }
     }
     case 'orbit': {
-      const k = Math.max(-1, Math.min(1, (d - o.range) / Math.max(500, o.range * 0.2)))
+      // Where the distance is heading a turn from now, not only where it is: without that the ship weaves. And a
+      // lean inwards for the turn itself: velocity lags the heading by v·τ/r, and left alone that carries it outwards.
+      // Worked from the asked range and capped: from the current distance it would feed itself and fly the ship into the target.
+      const lean = Math.min(ORBIT_MAX_LEAN, (speed * tau) / Math.max(o.range, 1))
+      const k = Math.max(-1, Math.min(1, (d + opening * tau - o.range) / ORBIT_STIFFNESS_M + lean))
       // The turn is chosen once in world terms: for the ship on the far side the tangent points the other way.
       const side = me.key === 'a' ? 1 : -1
       const tangent = { x: -radial.y * me.orbitSign * side, y: radial.x * me.orbitSign * side }
@@ -430,6 +446,9 @@ export function applyDamage(s: { shield: number; armor: number; hull: number }, 
   }
   return dealt
 }
+
+/** Most of a fight is decided by the opponent's guns not reaching: worth asking what if it simply came closer. */
+export const dependsOnStayingAway = (tl: Pick<Timeline, 'winner'> & { b: Pick<SideOutcome, 'idle'> }): boolean => (tl.winner === 'a' || tl.winner === null) && tl.b.idle >= 0.3
 
 export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: Orders, distance: number): Timeline {
   const A = start('a', a, orderA, { x: 0, y: 0 }, distance)
@@ -530,9 +549,11 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
         receding
       }
       let anyInReach = false
+      const paper = me.weapons.reduce((sum, ws) => sum + ws.w.dps, 0)
       for (const ws of me.weapons) {
         const { factor } = application(ws.w, geo)
         if (factor >= WORTH_FIRING) anyInReach = true
+        else if (paper > 0) me.idleSum += ws.w.dps / paper
         if (t + 1e-9 < ws.next || t + 1e-9 < ws.arrival) continue
         // Out of reach: nothing is fired, and a spooled weapon loses its spool.
         if (factor < WORTH_FIRING) {
@@ -704,6 +725,11 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
 
   A.outcome.left = frac(A)
   B.outcome.left = frac(B)
+  const ticks = Math.max(1, Math.round(end / DT) + 1)
+  for (const s of [A, B]) {
+    s.outcome.idle = s.idleSum / ticks
+    s.outcome.averageDps = s.outcome.dealt / Math.max(end, 1)
+  }
   if (a.rah) A.outcome.armorResist = [...A.c.armor.resist]
   if (b.rah) B.outcome.armorResist = [...B.c.armor.resist]
   const winner = A.outcome.dead !== null && B.outcome.dead !== null ? 'both' : B.outcome.dead !== null ? 'a' : A.outcome.dead !== null ? 'b' : null

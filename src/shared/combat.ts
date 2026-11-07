@@ -120,6 +120,8 @@ export interface CombatResult {
   transversal: number
   /** The fight stepped through time */
   timeline: Timeline
+  /** How it ends if the opponent, kept out of its own reach so far, just closes in; only when that changes the outcome */
+  ifCloses?: { winner: Timeline['winner']; end: number }
   /** Applied DPS (before resists) over distance, for the chart */
   curve: { distance: number[]; ab: number[]; ba: number[] }
 }

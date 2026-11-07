@@ -3,6 +3,7 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  'никто не погибает': 'nobody dies',
   '· Reactive Armor Hardener, резисты брони к концу боя:': '· Reactive Armor Hardener, armor resists at the end of the fight:',
   'сейчас:': 'now:',
   'включить MWD/AB': 'turn MWD/AB on',
@@ -2138,6 +2139,12 @@ export const EXACT: Record<string, string> = {
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
   // ---- 1.3
+  [/^DPS на старте из (.+) \((\d+)%\)$/, 'DPS at the start of $1 ($2%)'],
+  [/^DPS на старте из (.+)$/, 'DPS at the start of $1'],
+  [/^В среднем за бой: (.+) DPS после резистов$/, 'Average over the fight: $1 DPS after resists'],
+  [/^Это держится на том, что (\d+)% урона противника не достаёт\. Если он подойдёт:\s*(.*)$/, "This rests on $1% of the opponent's damage not reaching. If it comes closer: $2"],
+  [/^поражение за (.+)$/, 'a loss in $1'],
+  [/^победа за (.+)$/, 'a win in $1'],
   [/^победа за (.+), останется (\d+)%$/, 'a win in $1 with $2% left'],
   [/^поражение за (.+), у противника останется (\d+)%$/, 'a loss in $1, the opponent keeps $2%'],
   [/^оба погибают на (.+)$/, 'both die at $1'],
