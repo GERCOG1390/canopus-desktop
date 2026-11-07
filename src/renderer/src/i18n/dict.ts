@@ -3,6 +3,23 @@
 
 export const EXACT: Record<string, string> = {
   // ---- 1.3
+  'Инжекторы и SP': 'Injectors & SP',
+  'Покупка SP инжекторами': 'Buying SP with injectors',
+  'Персонаж получит за инжектор': 'A character gets per injector',
+  'Цена 1 млн SP': 'Price of 1M SP',
+  'Цены сейчас': 'Prices now',
+  'Скиллфарм за месяц': 'A skill farm month',
+  'SP в час': 'SP per hour',
+  'Налог с продаж инжекторов, %': 'Sales tax on injectors, %',
+  'PLEX за месяц подписки': 'PLEX per month of subscription',
+  'Прочие расходы в месяц, ISK': 'Other costs per month, ISK',
+  'Дней в месяце': 'Days in a month',
+  'Инжекторов в месяц': 'Injectors a month',
+  'Экстракторы': 'Extractors',
+  'Подписка': 'Subscription',
+  'Прибыль за месяц': 'Profit a month',
+  'Сколько SP даёт инжектор, зависит от общего числа SP персонажа: до 5 млн — 500 000, до 50 млн — 400 000, до 80 млн — 300 000, больше — 150 000 (EVE University).': "What an injector gives depends on the character's total SP: under 5M — 500,000, under 50M — 400,000, under 80M — 300,000, above that — 150,000 (EVE University).",
+  'Расчёт по лучшим ценам Jita без учёта брокерской комиссии. Месячную цену подписки в PLEX и SP в час (2 700 — оптимальный ремап с имплантами +5) укажите свои. Извлекать SP можно только сверх 5,5 млн на персонаже.': 'At the best Jita prices, without broker fees. Set your own subscription cost in PLEX and SP per hour (2,700 is an optimal remap with +5 implants). SP can only be extracted above 5.5M on the character.',
   'Доход и расход по дням': 'Income and expense by day',
   'Экспорт в CSV': 'Export to CSV',
   'Доход': 'Income',

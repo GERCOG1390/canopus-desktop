@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import PriceAlerts from './PriceAlerts'
+import SkillFarm from './SkillFarm'
 import { useApp, useLang } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, RequireLogin, SearchBox, Sparkline, Stat, Tabs } from '../components/ui'
@@ -15,7 +16,7 @@ import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/m
 import { getBasic, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 
-type Tab = 'prices' | 'appraisal' | 'arbitrage' | 'lp' | 'orders' | 'trades' | 'alerts'
+type Tab = 'prices' | 'appraisal' | 'arbitrage' | 'lp' | 'orders' | 'trades' | 'alerts' | 'sp'
 
 export default function MarketPage() {
   const { pageArg } = useApp()
@@ -33,7 +34,8 @@ export default function MarketPage() {
           { id: 'lp', label: 'LP-магазин' },
           { id: 'orders', label: 'Мои ордера' },
           { id: 'trades', label: 'Мои сделки' },
-          { id: 'alerts', label: 'Оповещения' }
+          { id: 'alerts', label: 'Оповещения' },
+          { id: 'sp', label: 'Инжекторы и SP' }
         ]}
         value={tab}
         onChange={setTab}
@@ -45,6 +47,7 @@ export default function MarketPage() {
       {tab === 'orders' && <MyOrders />}
       {tab === 'trades' && <Trades />}
       {tab === 'alerts' && <PriceAlerts />}
+      {tab === 'sp' && <SkillFarm />}
     </div>
   )
 }
