@@ -280,7 +280,8 @@ h3 {
   height: 52px;
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  /* The sides never give way to the search: it shrinks instead, and sits in the middle whenever there's room. */
+  grid-template-columns: minmax(max-content, 1fr) minmax(44px, 420px) minmax(max-content, 1fr);
   align-items: center;
   gap: 16px;
   padding: 0 24px;
@@ -3207,7 +3208,7 @@ html.overlay-mode body {
   color: var(--text);
 }
 .palette-trigger {
-  width: min(420px, 36vw);
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
