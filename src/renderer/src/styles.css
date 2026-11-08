@@ -5062,3 +5062,175 @@ textarea {
 .combat-player {
   margin: 0 0 8px;
 }
+
+/* ---------- missile lab (test) ---------- */
+.combat-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.missile-lab {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 14px;
+  align-items: start;
+}
+.missile-main,
+.missile-side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.missile-scene {
+  position: relative;
+  height: 460px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: radial-gradient(ellipse at 50% 40%, #1b1d22, var(--bg) 75%);
+}
+.missile-scene canvas {
+  display: block;
+  cursor: grab;
+}
+.ml-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  pointer-events: none;
+  translate: -50% -50%;
+  text-shadow: 0 1px 4px #000;
+}
+.ml-label-blast {
+  color: #e8a33c;
+}
+.ml-label-target {
+  color: #4ea6e8;
+}
+.ml-label-shift {
+  color: var(--text-2);
+}
+.ml-time {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-2);
+}
+.ml-hint {
+  position: absolute;
+  right: 12px;
+  bottom: 8px;
+}
+.missile-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+.ml-key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-left: 10px;
+}
+.ml-blast {
+  background: #e8a33c;
+}
+.ml-target {
+  background: #4ea6e8;
+}
+.ml-ghost {
+  border: 1px solid #9d9e99;
+}
+.missile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.missile-field select,
+.missile-field input[type='number'] {
+  width: 100%;
+}
+.missile-field.edited input {
+  border-color: var(--warn);
+}
+.missile-nums {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.missile-nums .missile-field span {
+  min-height: 2.6em;
+}
+.missile-slider {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px;
+  gap: 8px;
+  align-items: center;
+}
+.missile-slider input[type='range'] {
+  accent-color: var(--accent);
+}
+.missile-result {
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  margin-bottom: 8px;
+}
+.missile-result span {
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  color: var(--muted);
+}
+.missile-result.good b {
+  color: var(--good);
+}
+.missile-result.bad b {
+  color: var(--bad);
+}
+.missile-terms tr.limit td {
+  color: var(--warn);
+  font-weight: 600;
+}
+.missile-curve svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: crosshair;
+}
+.missile-curve text {
+  fill: var(--muted);
+  font-size: 12px;
+}
+.missile-curve .grid {
+  stroke: var(--border);
+}
+.missile-curve .line-a {
+  fill: none;
+  stroke: #2fa98a;
+  stroke-width: 2;
+}
+.missile-curve .marker {
+  stroke: var(--warn);
+  stroke-dasharray: 4 4;
+}
+.missile-curve .hover {
+  stroke: var(--line-strong);
+}
+.missile-curve .dot {
+  fill: #2fa98a;
+  stroke: var(--card);
+  stroke-width: 2;
+}
+@media (max-width: 1180px) {
+  .missile-lab {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

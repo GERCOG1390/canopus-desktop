@@ -7,7 +7,8 @@ import { AppProvider, useApp, useLang } from './AppContext'
 import { ChargePicker } from './components/ChargePicker'
 import { AttrIcon } from './components/Icon'
 import { Glyph } from './components/Glyph'
-import { Card, CountUp, SearchBox } from './components/ui'
+import { MissileLab } from './components/MissileLab'
+import { Card, CountUp, SearchBox, Tabs } from './components/ui'
 import { imageUrl } from './lib/esi'
 import { fmtNum } from './lib/format'
 import { chargesFor, fromEft, fromEsiItems, loadCatalog, toEft } from './lib/fitting'
@@ -77,6 +78,7 @@ function Simulator() {
   const [sc, setSc] = useState<CombatScenario>({ distance: 10_000, speedA: 0, headingA: 0, speedB: 0, headingB: 90, behaviorA: 'orbit', behaviorB: 'orbit' })
   const [maxSpeed, setMaxSpeed] = useState({ a: 1000, b: 1000 })
   const [result, setResult] = useState<CombatResult | null>(null)
+  const [mode, setMode] = useState<'fight' | 'missiles'>('fight')
   const [error, setError] = useState<string | null>(null)
 
   // "Your" fit comes from the fitting tool and follows its changes.
@@ -150,7 +152,19 @@ function Simulator() {
     <div className="combat">
       <header className="combat-head">
         <h1>Симуляция боя</h1>
+        <Tabs
+          tabs={[
+            { id: 'fight', label: 'Бой' },
+            { id: 'missiles', label: 'Ракеты · тест' }
+          ]}
+          value={mode}
+          onChange={setMode}
+        />
       </header>
+      {mode === 'missiles' ? (
+        <MissileLab you={you} target={defender && result ? { shipTypeId: defender.fit.shipTypeId, sig: result.b.signature, speed: result.b.speed } : null} />
+      ) : (
+        <>
 
       <div className="combat-versus">
         <Card className="combat-side-card side-a">
@@ -316,6 +330,8 @@ function Simulator() {
           <p className="muted small">
             Бой считается шаг за шагом: корабли движутся с инерцией, оружие стреляет циклами и перезаряжается, дезинтеграторы раскручиваются, накопитель тратится и восстанавливается, у анцилларных ремонтников кончаются заряды, нейтрализаторы и носферату работают по накопителю. Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E, (S/E·Ve/Vt)^drf). Часовые дроны считаются как турели. Reactive Armor Hardener подстраивается под урон по броне каждый цикл. Не учитываются: перегрев, ECM, дампы и дизрапторы, отключение обычных активных резистов при пустом накопителе, время полёта ракет, заряды бустеров накопителя. Значения средние, без случайных промахов.
           </p>
+        </>
+      )}
         </>
       )}
     </div>
