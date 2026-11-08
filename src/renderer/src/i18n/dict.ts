@@ -52,6 +52,8 @@ export const EXACT: Record<string, string> = {
   'сигнатура': 'signature',
   'цель в момент попадания': 'target at the moment of impact',
   'Пуск': 'Launch',
+  'Цель выстрела': 'Target',
+  'Скорость цели': 'Target speed',
   'Попадание': 'Impact',
   'Полный взрыв': 'Full blast',
   'Играть': 'Play',

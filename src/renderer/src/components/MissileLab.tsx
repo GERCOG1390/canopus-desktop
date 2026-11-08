@@ -141,7 +141,7 @@ export function MissileLab({ you, target }: { you: CombatPilot | null; target: {
             grow={app.growSec}
             speed={speed}
             velocity={velocity}
-            shipName={hull !== null && hullName ? tn(hullName.n, lang) : translate('Цель')}
+            shipName={hull !== null && hullName ? tn(hullName.n, lang) : translate('Цель выстрела')}
             missileName={picked?.charge && missileName ? tn(missileName.n, lang) : translate('Ракета')}
           />
           <p className="muted small missile-legend">
@@ -208,7 +208,7 @@ export function MissileLab({ you, target }: { you: CombatPilot | null; target: {
           {source === 'any' && <p className="muted small">Ракета на голой капсуле: навыки учтены, бонусы корпуса и модули нет. Ракеты вашего фита — в списке «Откуда».</p>}
         </Card>
 
-        <Card title="Цель">
+        <Card title="Цель выстрела">
           <SearchBox
             placeholder="Корабль: подставит сигнатуру и скорость…"
             search={(q) => searchTypesSde(q, lang, { categories: [CATEGORY.SHIP] })}
@@ -286,7 +286,7 @@ function Breakdown({ app, sig, speed, radius, drf }: { app: MissileApplication; 
         <tbody>
           {row('Потолок', '1', 1, app.limit === 'none')}
           {row('Размер', `S/E = ${n0(sig)}/${n0(radius)}`, app.size, app.limit === 'size')}
-          {row('Скорость', speed > 0 ? `(S·Ve/(E·Vt))^drf = ${n2(app.speedBase)}^${n2(drf)}` : 'Vt = 0', app.speedTerm, app.limit === 'speed')}
+          {row('Скорость цели', speed > 0 ? `(S·Ve/(E·Vt))^drf = ${n2(app.speedBase)}^${n2(drf)}` : 'Vt = 0', app.speedTerm, app.limit === 'speed')}
         </tbody>
       </table>
       <p className="small">
@@ -346,8 +346,8 @@ function SpeedCurve({ sig, radius, velocity, drf, speed }: { sig: number; radius
             </text>
           </g>
         ))}
-        {ticks.map((v) => (
-          <text key={v} x={x(v)} y={H - 6} textAnchor="middle">
+        {ticks.map((v, i) => (
+          <text key={v} x={x(v)} y={H - 6} textAnchor={i === ticks.length - 1 ? 'end' : i === 0 ? 'start' : 'middle'}>
             {n0(v)}
           </text>
         ))}
