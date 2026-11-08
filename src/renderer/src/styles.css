@@ -5145,7 +5145,9 @@ textarea {
 .ml-hint {
   position: absolute;
   right: 12px;
-  bottom: 8px;
+  top: 10px;
+  max-width: 55%;
+  text-align: right;
 }
 .missile-legend {
   display: flex;

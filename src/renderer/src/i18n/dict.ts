@@ -81,6 +81,7 @@ export const EXACT: Record<string, string> = {
   'Не хватает пропускной способности для дронов': 'Not enough drone bandwidth',
   'Нельзя установить на этот корабль': 'Cannot be fitted to this ship',
   'Неподходящий размер рига': 'Wrong rig size',
+  'взрыв ракеты': 'blast',
   // ---- visual pass
   'Состав флота': 'Fleet composition',
   'Мои контракты': 'My contracts',

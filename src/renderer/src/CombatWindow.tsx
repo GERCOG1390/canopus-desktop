@@ -1289,7 +1289,7 @@ function AdviceCard({ you, defender, sc, onApply }: { you: CombatPilot; defender
   return (
     <Card title="Что делать">
       <div className="row">
-        <button onClick={run} disabled={!!state.busy}>
+        <button className="nowrap" onClick={run} disabled={!!state.busy}>
           {state.busy ? 'Перебираю варианты…' : 'Подобрать лучшее'}
         </button>
         <span className="muted small">Перебор дистанций, боеприпасов и MWD/AB настоящими боями. Противник ведёт себя так, как задано над картой.</span>

@@ -646,7 +646,7 @@ function MissileScene({ sig, radius, shift, grow, speed, velocity, shipName, mis
       const up = big * 0.08
       place('target', new THREE.Vector3(tx, -S - big * 0.14, 0), `${shipName} · ${translate('сигнатура')} ${m(S)}`)
       place('speed', V > 0 ? new THREE.Vector3(tx + S * 0.75 + arrowLen + big * 0.12, 0, 0) : null, `${n0(V)} ${translate('м/с')}`)
-      place('blast', hit ? new THREE.Vector3(0, Math.max(E * p, S) + up * 2, 0) : null, `${translate('взрыв')} ${m(E * p)} / ${m(E)}`)
+      place('blast', hit ? new THREE.Vector3(0, Math.max(E * p, S) + up * 2, 0) : null, `${translate('взрыв ракеты')} ${m(E * p)} / ${m(E)}`)
       place('missile', incoming ? missile.position.clone().add(new THREE.Vector3(0, big * 0.2, 0)) : null, missileName)
       place('ghost', hit ? new THREE.Vector3(-Math.max(E * p, S) - up, 0, 0) : null, translate('цель в момент попадания'))
       place('shift', hit && D * p > big * 0.05 ? new THREE.Vector3(tx / 2, -Math.max(S, E * p) - big * 0.45, 0) : null, `${translate('сдвиг')} ${m(D * p)}`)
