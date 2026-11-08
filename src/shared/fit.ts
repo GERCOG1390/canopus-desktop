@@ -17,12 +17,19 @@ export interface FitDrone {
   active: number
 }
 
+export interface FitBooster {
+  typeId: number
+  side?: number[]
+}
+
 export interface FitSpec {
   shipTypeId: number
   name: string
   modules: FitModule[]
   drones: FitDrone[]
   implants: number[]
+  /** Boosters taken: their bonus always, a side effect only when listed in `side` (effect ids) */
+  boosters?: FitBooster[]
   cargo?: { typeId: number; qty: number }[]
   /** Tactical destroyer mode (type id); undefined = Defense */
   mode?: number

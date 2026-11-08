@@ -26,6 +26,7 @@ import type {
   ColonySite
 } from '../../shared/sde'
 import type { FittableType } from '../../shared/fit'
+import { boosterInfo, isCombatBooster, type BoosterInfo } from '../../shared/boosters'
 import { filterAgents, type AgentQuery } from '../../shared/agents'
 import { SDE_FORMAT, type AgentRow, type CompressedOre, type InventionData, type MutaOption, type MutaRange } from '../../shared/sde'
 import { buildSde, latestBuild } from './build'
@@ -94,6 +95,7 @@ async function load(build: number): Promise<void> {
   descriptions = null
   requiredForIndex = usedInIndex = variationIndex = typesByGroup = null
   fittables = null
+  boosters = null
   fitRuleAttrs = null
   fittableCache.clear()
   nameIndex = null
@@ -696,6 +698,19 @@ export function fittingCatalog(): FittableType[] {
   }
   fittables = out
   return out
+}
+
+let boosters: BoosterInfo[] | null = null
+
+/** Every booster that does something in a fight, on the market or not (event, reward, Agency doses). */
+export function boosterCatalog(): BoosterInfo[] {
+  if (boosters) return boosters
+  const d = sdeForDogma()
+  const slotAttr = Number(Object.entries(d.attributes).find(([, a]) => a.name === 'boosterness')?.[0] ?? 0)
+  boosters = Object.values(d.types)
+    .filter((t) => t.pub && d.groups[t.g]?.c === 20 && slotAttr && d.dogma[t.id]?.a[slotAttr] && isCombatBooster(d, t.id))
+    .map((t) => ({ ...boosterInfo(d, t.id), market: !!t.mg }))
+  return boosters
 }
 
 interface FitRuleAttrs {

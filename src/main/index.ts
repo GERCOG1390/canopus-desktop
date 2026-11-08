@@ -453,6 +453,7 @@ function registerIpc(): void {
   ipcMain.handle('combat:advise', (_e, a: CombatPilot, b: CombatPilot, scenario: CombatScenario) => combat.advise(a, b, scenario))
   ipcMain.handle('combat:defaults', (_e, a: CombatPilot, b: CombatPilot) => combat.defaults(a, b))
   ipcMain.handle('fit:catalog', () => sde.fittingCatalog())
+  ipcMain.handle('fit:boosters', () => sde.boosterCatalog())
   ipcMain.handle('fit:fittableFor', (_e, shipTypeId: number) => sde.fittableFor(shipTypeId))
   ipcMain.handle('fit:explain', (_e, spec: FitSpec, skills: SkillSource, target: string, attr: number) => dogma.explainAttr(spec, skills, target, attr))
   ipcMain.handle('fit:charges', (_e, id: number) => sde.chargesFor(id))

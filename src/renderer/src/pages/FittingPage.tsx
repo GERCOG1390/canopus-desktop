@@ -1,3 +1,4 @@
+import { BoosterPanel } from '../components/BoosterPanel'
 import { Glyph } from '../components/Glyph'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { FitSpec, FitStats, FittableType, LayerStats, ModuleState, SavedFit, SkillSource, Slot } from '../../../shared/fit'
@@ -505,6 +506,11 @@ function Editor() {
                 {browserSlot === 'implant' ? 'Выберите импланты справа — по одному на слот 1–10' : '— нет имплантов — нажмите, чтобы выбрать'}
               </div>
             )}
+          </div>
+
+          <div className="slot-group">
+            <div className="slot-head">Бустеры</div>
+            <BoosterPanel fit={f} onChange={(next) => updateFit(() => next)} />
           </div>
         </div>
 

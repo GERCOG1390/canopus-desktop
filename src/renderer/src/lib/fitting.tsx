@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import type { FitDrone, FitModule, FitSpec, FittableType, ModuleState, Slot } from '../../../shared/fit'
 import { useApp } from '../AppContext'
 import { getBasic, primeBasics } from './sde'
+import type { BoosterInfo } from '../../../shared/boosters'
 
 export const SLOT_ORDER: Slot[] = ['hi', 'med', 'lo', 'rig', 'sub']
 export const SLOT_LABEL: Record<Slot | 'drone' | 'implant', string> = {
@@ -17,6 +18,30 @@ export const SLOT_LABEL: Record<Slot | 'drone' | 'implant', string> = {
 // ---------- Fittable catalog (loaded once) ----------
 
 let catalogPromise: Promise<Map<number, FittableType>> | null = null
+
+let boosterPromise: Promise<Map<number, BoosterInfo>> | null = null
+
+/** Every booster that does something in a fight, with what it gives and may cost. */
+export function loadBoosters(): Promise<Map<number, BoosterInfo>> {
+  if (!boosterPromise) {
+    boosterPromise = (async () => {
+      const list = await window.api.fit.boosters()
+      primeBasics(await window.api.sde.basics(list.map((b) => b.id)))
+      return new Map(list.map((b) => [b.id, b]))
+    })().catch((e) => {
+      boosterPromise = null
+      throw e
+    })
+  }
+  return boosterPromise
+}
+
+/** A fit with a booster taken: it replaces whatever sat in the same booster slot. */
+export function withBooster(fit: FitSpec, b: BoosterInfo, all: Map<number, BoosterInfo>): FitSpec {
+  const taken = fit.boosters ?? []
+  if (taken.some((x) => x.typeId === b.id)) return fit
+  return { ...fit, boosters: [...taken.filter((x) => all.get(x.typeId)?.slot !== b.slot), { typeId: b.id }] }
+}
 
 export function loadCatalog(): Promise<Map<number, FittableType>> {
   if (!catalogPromise) {
@@ -77,6 +102,11 @@ export function toEft(fit: FitSpec): string {
     lines.push('')
     for (const i of fit.implants) lines.push(en(i))
   }
+  // Boosters after the implants, as Pyfa writes them.
+  if (fit.boosters?.length) {
+    lines.push('')
+    for (const b of fit.boosters) lines.push(en(b.typeId))
+  }
   if (fit.cargo?.length) {
     lines.push('')
     for (const c of fit.cargo) lines.push(`${en(c.typeId)} x${c.qty}`)
@@ -94,6 +124,7 @@ async function exactType(name: string): Promise<number | null> {
 /** Parses EFT text (the format of pyfa, the in-game fitting window and zKillboard). */
 export async function fromEft(text: string): Promise<{ fit: FitSpec; unknown: string[] }> {
   const catalog = await loadCatalog()
+  const boosters = await loadBoosters().catch(() => new Map<number, BoosterInfo>())
   const lines = text.split(/\r?\n/).map((l) => l.trim())
   const head = /^\[(.+?),\s*(.*)\]$/.exec(lines.find((l) => l.startsWith('[')) ?? '')
   if (!head) throw new Error('Не найдена первая строка вида [Корабль, Название]')
@@ -123,6 +154,7 @@ export async function fromEft(text: string): Promise<{ fit: FitSpec; unknown: st
     const qty = qtyMatch ? Number(qtyMatch[2]) : 1
     if (info?.slot === 'drone') fit.drones.push({ typeId: id, count: qty, active: 0 })
     else if (info?.slot === 'implant') fit.implants.push(id)
+    else if (!info && boosters.has(id)) fit.boosters = [...(fit.boosters ?? []), { typeId: id }]
     else if (info && !qtyMatch) {
       const chargeTypeId = chargeName ? ((await exactType(chargeName)) ?? undefined) : undefined
       fit.modules.push({ typeId: id, slot: info.slot as Slot, state: offline ? 'offline' : defaultState(info), chargeTypeId })

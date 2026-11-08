@@ -293,6 +293,8 @@ export interface CanopusApi {
     skillGains(spec: FitSpec, levels: Record<number, number>): Promise<{ skill: number; from: number; dps: number; ehp: number; activeTank: number; speed: number; align: number; capacitor: number; lockRange: number }[]>
     calculate(spec: FitSpec, skills: SkillSource): Promise<FitStats>
     catalog(): Promise<FittableType[]>
+    /** Every booster that does something in a fight */
+    boosters(): Promise<import('./boosters').BoosterInfo[]>
     /** Catalog items this hull can take at all (group/type restrictions, rig size, capital modules, drone bay). */
     fittableFor(shipTypeId: number): Promise<number[]>
     explain(spec: FitSpec, skills: SkillSource, target: string, attr: number): Promise<{ base: number; value: number; mods: { type: number; kind: string; op: number; value: number }[] }>

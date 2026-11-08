@@ -2,11 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import type { CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
 import type { Candidate, CombatAdvice, Problem, Rated } from '../../shared/combatAdvice'
 import { frameAt, type Behavior, type Timeline, type TimelineEvent, type TimelinePoint } from '../../shared/combatTimeline'
-import type { FitSpec, FittableType, SavedFit } from '../../shared/fit'
+import type { FitBooster, FitSpec, FittableType, SavedFit } from '../../shared/fit'
 import { AppProvider, useApp, useLang } from './AppContext'
 import { ChargePicker } from './components/ChargePicker'
 import { AttrIcon } from './components/Icon'
 import { Glyph } from './components/Glyph'
+import { BoosterPanel } from './components/BoosterPanel'
 import { MissileLab } from './components/MissileLab'
 import { Card, CountUp, SearchBox, Tabs } from './components/ui'
 import { imageUrl } from './lib/esi'
@@ -68,13 +69,15 @@ function Simulator() {
   const [ammoA, setAmmoA] = useState<Record<number, number | undefined>>({})
   const attackerShip = attacker?.fit.shipTypeId
   useEffect(() => setAmmoA({}), [attackerShip])
-  const you = useMemo<CombatPilot | null>(
-    () =>
-      attacker && Object.keys(ammoA).length
-        ? { ...attacker, fit: { ...attacker.fit, modules: attacker.fit.modules.map((m) => (m.typeId in ammoA ? { ...m, chargeTypeId: ammoA[m.typeId] } : m)) } }
-        : attacker,
-    [attacker, ammoA]
-  )
+  /** Boosters taken here for the fight; undefined = those of the fit. They act from the first second. */
+  const [boostA, setBoostA] = useState<FitBooster[] | undefined>()
+  const you = useMemo<CombatPilot | null>(() => {
+    if (!attacker) return attacker
+    let fit = attacker.fit
+    if (Object.keys(ammoA).length) fit = { ...fit, modules: fit.modules.map((m) => (m.typeId in ammoA ? { ...m, chargeTypeId: ammoA[m.typeId] } : m)) }
+    if (boostA) fit = { ...fit, boosters: boostA }
+    return fit === attacker.fit ? attacker : { ...attacker, fit }
+  }, [attacker, ammoA, boostA])
   const [sc, setSc] = useState<CombatScenario>({ distance: 10_000, speedA: 0, headingA: 0, speedB: 0, headingB: 90, behaviorA: 'orbit', behaviorB: 'orbit' })
   const [maxSpeed, setMaxSpeed] = useState({ a: 1000, b: 1000 })
   const [result, setResult] = useState<CombatResult | null>(null)
@@ -89,7 +92,9 @@ function Simulator() {
   }, [])
 
   // New ships: start from their top speeds (keeping the headings and distance).
-  const shipsKey = `${attacker?.fit.shipTypeId}|${defender?.fit.shipTypeId}|${attacker?.fit.modules.length}|${defender?.fit.modules.length}`
+  // Boosters too: one that changes top speed changes where the ships start from.
+  const boostKey = (f?: FitSpec) => (f?.boosters ?? []).map((b) => `${b.typeId}:${(b.side ?? []).join('.')}`).join(',')
+  const shipsKey = `${attacker?.fit.shipTypeId}|${defender?.fit.shipTypeId}|${attacker?.fit.modules.length}|${defender?.fit.modules.length}|${boostKey(you?.fit)}|${boostKey(defender?.fit)}`
   useEffect(() => {
     if (!attacker || !defender) return
     void window.api.combat.defaults(you ?? attacker, defender).then((d) => {
@@ -202,6 +207,14 @@ function Simulator() {
               onReset={Object.keys(ammoA).length ? () => setAmmoA({}) : undefined}
             />
           )}
+          {you && !pickingYou && (
+            <Boosters
+              fit={you.fit}
+              onChange={(f) => setBoostA(f.boosters ?? [])}
+              note={boostA ? 'Бустеры изменены только в симуляторе' : undefined}
+              onReset={boostA ? () => setBoostA(undefined) : undefined}
+            />
+          )}
           {result && !pickingYou && <SideStats info={result.a} />}
           {result && attacker && defender && !pickingYou && (
             <Tactics info={result.a} ewar={sc.ewarA !== false} onProp={(on) => setProp('a', on)} onEwar={(on) => set({ ewarA: on })} own="Ваши" />
@@ -244,6 +257,7 @@ function Simulator() {
               }
             />
           )}
+          {defender && !picking && <Boosters fit={defender.fit} onChange={(f) => setDefender((d) => d && { ...d, fit: { ...d.fit, boosters: f.boosters } })} />}
           {defender && result && !picking && <SideStats info={result.b} />}
           {defender && result && attacker && !picking && (
             <Tactics info={result.b} ewar={sc.ewarB !== false} onProp={(on) => setProp('b', on)} onEwar={(on) => set({ ewarB: on })} own="Его" />
@@ -1147,6 +1161,38 @@ function OrdersBox({ title, behavior, range, distance, onChange }: { title: stri
           Дистанция, км
           <input type="number" min={0} step={0.5} value={(range ?? distance) / 1000} onChange={(e) => onChange(behavior, Math.max(0, Number(e.target.value) || 0) * 1000)} />
         </label>
+      )}
+    </div>
+  )
+}
+
+/** Boosters for one side of the fight, folded away until wanted. */
+function Boosters({ fit, onChange, note, onReset }: { fit: FitSpec; onChange: (fit: FitSpec) => void; note?: string; onReset?: () => void }) {
+  const count = fit.boosters?.length ?? 0
+  const [open, setOpen] = useState(count > 0)
+  useEffect(() => {
+    if (count > 0) setOpen(true)
+  }, [count])
+  return (
+    <div className="combat-boosters">
+      <button className="ghost small combat-boosters-toggle" onClick={() => setOpen((x) => !x)}>
+        <Glyph name="flame" size={13} /> Бустеры{count ? ` · ${count}` : ''}
+      </button>
+      {open && (
+        <>
+          <p className="muted small">Действуют с первой секунды боя.</p>
+          <BoosterPanel fit={fit} onChange={onChange} compact />
+          {note && (
+            <p className="muted small">
+              {note}{' '}
+              {onReset && (
+                <button className="ghost small" onClick={onReset}>
+                  Вернуть как в фите
+                </button>
+              )}
+            </p>
+          )}
+        </>
       )}
     </div>
   )

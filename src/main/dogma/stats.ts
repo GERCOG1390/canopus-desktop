@@ -124,6 +124,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   spec.modules.forEach((m, i) => dogma.addModule(m.typeId, m.slot, m.state, m.chargeTypeId, i))
   spec.drones.forEach((d, i) => dogma.addDrone(d.typeId, d.count, Math.min(d.active, d.count), i))
   spec.implants.forEach((id) => dogma.addImplant(id))
+  spec.boosters?.forEach((b) => dogma.addBooster(b.typeId, b.side))
   // Tactical destroyers always fly in a mode: the chosen one, else Defense.
   const mode = spec.mode ?? shipModes(db, spec.shipTypeId)[0]?.id
   if (mode) dogma.setMode(mode)

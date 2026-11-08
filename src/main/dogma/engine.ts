@@ -3,6 +3,7 @@
 
 import type { ModuleState, SkillSource, Slot } from '../../shared/fit'
 import type { DogmaEffect, DogmaModifier, SdeDb } from '../../shared/sde'
+import { boosterSideEffects } from '../../shared/boosters'
 
 export const CATEGORY = { SHIP: 6, MODULE: 7, CHARGE: 8, SKILL: 16, DRONE: 18, IMPLANT: 20, SUBSYSTEM: 32 }
 /** Modifiers from these categories are never stacking-penalized. */
@@ -68,6 +69,8 @@ export interface Item {
   index?: number
   count?: number
   active?: number
+  /** Passive effects left out: a booster's side effects that didn't strike */
+  off?: Set<number>
 }
 
 export class Dogma {
@@ -160,6 +163,13 @@ export class Dogma {
     this.implants.push(this.makeItem('implant', typeId))
   }
 
+  /** A booster: its bonus, and of its side effects only those in `side`. */
+  addBooster(typeId: number, side: number[] = []): void {
+    const item = this.makeItem('implant', typeId)
+    item.off = new Set(boosterSideEffects(this.db, typeId).filter((e) => !side.includes(e)))
+    this.implants.push(item)
+  }
+
   setMode(typeId: number): void {
     this.mode = this.makeItem('module', typeId)
   }
@@ -197,7 +207,7 @@ export class Dogma {
           return false
         }
         default:
-          return e.cat === 0
+          return e.cat === 0 && !item.off?.has(id)
       }
     })
   }

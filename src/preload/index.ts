@@ -196,6 +196,7 @@ const api: CanopusApi = {
     abyss: (spec, skills, weather, strength, faction) => invoke('fit:abyss', spec, skills, weather, strength, faction),
     metrics: (spec, skills) => invoke('fit:metrics', spec, skills),
     catalog: () => invoke('fit:catalog'),
+    boosters: () => invoke('fit:boosters'),
     fittableFor: (shipTypeId) => invoke('fit:fittableFor', shipTypeId),
     explain: (spec, skills, target, attr) => invoke('fit:explain', spec, skills, target, attr),
     charges: (id) => invoke('fit:charges', id),

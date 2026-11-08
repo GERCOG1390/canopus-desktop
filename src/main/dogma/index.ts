@@ -17,6 +17,7 @@ export function explainAttr(spec: FitSpec, skills: SkillSource, target: string, 
   spec.modules.forEach((m, i) => d.addModule(m.typeId, m.slot, m.state, m.chargeTypeId, i))
   spec.drones.forEach((x, i) => d.addDrone(x.typeId, x.count, Math.min(x.active, x.count), i))
   spec.implants.forEach((id) => d.addImplant(id))
+  spec.boosters?.forEach((b) => d.addBooster(b.typeId, b.side))
   const mode = spec.mode ?? shipModes(sdeForDogma(), spec.shipTypeId)[0]?.id
   if (mode) d.setMode(mode)
   if (spec.environment) d.setEnvironment(spec.environment)
