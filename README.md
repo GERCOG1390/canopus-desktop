@@ -4,13 +4,15 @@
   <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/GERCOG1390/canopus-desktop?style=for-the-badge&label=latest&color=3dbf9c&labelColor=16181b" alt="Latest release" /></a>
   <a href="../../releases"><img src="https://img.shields.io/github/downloads/GERCOG1390/canopus-desktop/total?style=for-the-badge&label=downloads&color=d9a84e&labelColor=16181b" alt="Downloads" /></a>
   <img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-free-4cc3f0?style=for-the-badge&labelColor=16181b" alt="Windows, macOS and Linux — free" />
+  <a href="https://apps.apple.com/us/app/canopus-for-eve-online/id6829985678"><img src="https://img.shields.io/badge/App%20Store-iPhone%20%C2%B7%20iPad-0d96f6?style=for-the-badge&logo=apple&logoColor=white&labelColor=16181b" alt="On the App Store for iPhone and iPad" /></a>
   <img src="https://img.shields.io/badge/English%20%2F%20%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-UI-7cc25f?style=for-the-badge&labelColor=16181b" alt="English and Russian interface" />
 </p>
 
 <h3 align="center">
   <a href="../../releases/latest">Download for Windows</a> &nbsp;·&nbsp;
   <a href="../../releases/latest">macOS</a> &nbsp;·&nbsp;
-  <a href="../../releases/latest">Linux</a>
+  <a href="../../releases/latest">Linux</a> &nbsp;·&nbsp;
+  <a href="https://apps.apple.com/us/app/canopus-for-eve-online/id6829985678">iPhone &amp; iPad</a>
 </h3>
 
 <p align="center">
@@ -64,6 +66,14 @@ Hover a module and every stat updates with the difference highlighted — before
 </td>
 </tr>
 </table>
+
+## Canopus for iPhone and iPad
+
+<a href="https://apps.apple.com/us/app/canopus-for-eve-online/id6829985678"><img src="docs/media/mobile.png" alt="Canopus for iPhone and iPad: character, fitting, planetary industry, the map" width="100%" /></a>
+
+Your characters, fits from the same dogma engine as the desktop app, the market, industry and planetary colonies, the map of New Eden, Thera and Turnur, incursions and faction warfare — with local notifications for skills, industry jobs, PI extractors, structure fuel and moon chunks. Free, no ads, English and Russian; much of it works without signing in.
+
+**[Get it on the App Store](https://apps.apple.com/us/app/canopus-for-eve-online/id6829985678)** · iOS / iPadOS 26.5 or later
 
 ## New in 1.3
 
@@ -226,6 +236,7 @@ Download from [Releases](../../releases/latest):
 - **Canopus-Setup-x.y.z.exe** — installer (Start menu and desktop shortcuts).
 - **Canopus-x.y.z-portable.exe** — single file, no installation.
 - **Canopus-x.y.z-mac.dmg** — macOS 12+ (Apple Silicon and Intel): open it and drag Canopus to Applications.
+- **iPhone and iPad** — [Canopus for EVE Online on the App Store](https://apps.apple.com/us/app/canopus-for-eve-online/id6829985678) (iOS / iPadOS 26.5+), a separate mobile app.
 - **Canopus-x.y.z-linux.AppImage** — Linux x64, any distribution: `chmod +x` and run. **Canopus-x.y.z-linux.deb** for Debian / Ubuntu.
 
 The Windows, macOS and AppImage builds update themselves (the .deb is updated from the release page): Canopus checks GitHub for new versions, downloads them in the background (verified by SHA-256) and installs on restart. This can be turned off in **Settings → Updates**.
