@@ -1,21 +1,87 @@
-<p align="center">
-  <img src="build/icon.png" width="112" alt="Canopus" />
-</p>
-
-<h1 align="center">Canopus</h1>
+<a href="../../releases/latest"><img src="docs/media/banner.png" alt="Canopus — fight the battle before you undock. A free EVE Online companion for Windows, macOS and Linux." width="100%" /></a>
 
 <p align="center">
-  A free desktop companion for <b>EVE Online</b>: a fitting tool with its own dogma engine and a combat simulator,
-  Local and intel-channel monitoring, route safety, wormholes, market arbitrage, industry and your whole character — in one app for Windows, macOS and Linux.
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/GERCOG1390/canopus-desktop?style=for-the-badge&label=latest&color=3dbf9c&labelColor=16181b" alt="Latest release" /></a>
+  <a href="../../releases"><img src="https://img.shields.io/github/downloads/GERCOG1390/canopus-desktop/total?style=for-the-badge&label=downloads&color=d9a84e&labelColor=16181b" alt="Downloads" /></a>
+  <img src="https://img.shields.io/badge/Windows%20%C2%B7%20macOS%20%C2%B7%20Linux-free-4cc3f0?style=for-the-badge&labelColor=16181b" alt="Windows, macOS and Linux — free" />
+  <img src="https://img.shields.io/badge/English%20%2F%20%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-UI-7cc25f?style=for-the-badge&labelColor=16181b" alt="English and Russian interface" />
+</p>
+
+<h3 align="center">
+  <a href="../../releases/latest">Download for Windows</a> &nbsp;·&nbsp;
+  <a href="../../releases/latest">macOS</a> &nbsp;·&nbsp;
+  <a href="../../releases/latest">Linux</a>
+</h3>
+
+<p align="center">
+  Free, no ads, no subscriptions. Nothing is sent to the developer. The macOS build is signed and notarized by Apple.
 </p>
 
 <p align="center">
-  <a href="../../releases/latest"><b>⬇ Download for Windows / macOS / Linux</b></a> ·
-  English / Русский interface ·
-  <a href="LICENSE">Source-available (PolyForm Strict)</a>
+  <a href="docs/media/canopus-trailer.mp4"><img src="docs/media/trailer.png" alt="Watch the 53-second trailer" width="88%" /></a>
 </p>
 
-![Live preview in the fitting tool: hover a module and every stat updates](docs/screenshots/fitting-preview.gif)
+## What makes Canopus different
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### Fly the fight before you take it
+Your fit against theirs, flown second by second: orbits with real inertia, reloads, capacitor, neuts, webs and scrams, the Reactive Armor Hardener adapting, boosters from the first second. Then watch the replay — and press **Find the best** to let Canopus try every range, ammo and prop module for you.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/media/combat-replay.gif" alt="A fight replayed on the tactical map" width="100%" />
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/media/missile-lab.gif" alt="The missile lab: the blast grows while the target slips away" width="100%" />
+
+</td>
+<td width="50%" valign="top">
+
+### See why your missiles miss
+Fire any missile at any ship in 3D: the blast grows at its explosion velocity while the target slips away, both to scale, with the game's formula and its numbers next to it. Signature, speed, explosion radius and velocity finally make sense.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Every number, live
+Hover a module and every stat updates with the difference highlighted — before you fit it. A dogma engine of its own, checked against Pyfa fit by fit, with all 300 combat boosters in the game.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/media/live-preview.gif" alt="Live preview in the fitting tool" width="100%" />
+
+</td>
+</tr>
+</table>
+
+## New in 1.3
+
+- **Combat simulator, now fought over time**, with a replay on the map and **Find the best**.
+- **Boosters** — every combat booster, in the fitting tool and on both sides of a fight; tick the side effects that struck.
+- **Missile lab** (test) — missile application in 3D.
+- **Battle reports**, **wars** that concern you, and a **report from your own game log**.
+- **Invention**, **production chains**, **ore for minerals**, **public contracts**, **price alerts**, **injectors and SP**, a **hauling plan**.
+- **Net worth**, **wallet by day** with CSV, **mission agents**, a **mutaplasmid** calculator, **fleet vs doctrine**.
+- A visual overhaul from top to bottom.
+
+| Combat simulator | Missile lab | Fitting |
+|---|---|---|
+| ![Combat simulator](docs/screenshots/combat.png) | ![Missile lab](docs/screenshots/missile-lab.png) | ![Fitting](docs/screenshots/fitting.png) |
+
+| Your character | Production chain | Wallet by day |
+|---|---|---|
+| ![Character overview](docs/screenshots/overview.png) | ![Production chain](docs/screenshots/production-chain.png) | ![Wallet](docs/screenshots/wallet.png) |
 
 ## Features
 
@@ -37,18 +103,26 @@
 - Import / export EFT, open fits from your character, current ship, a killmail or Show Info — and **save a fit straight to your in-game fittings**.
 - **Price optimizer**: the same stats for less ISK (cheaper versions of your modules that keep every number), or the upgrades that add the most to a chosen stat per million ISK within a budget.
 - **Fit snapshot**: the whole fit and its stats on one picture, to copy or save as PNG.
+- **Boosters**: all 300 combat boosters in the game (147 on the market), one per slot; the bonus always applies and you tick the side effects that struck.
 - Tactical destroyer modes, Triglavian disintegrators (with spool-up), Vorton projectors, smartbombs, Bastion and siege modules, ancillary repairers and the reactive armor hardener. The engine is checked against Pyfa fit by fit.
 
-| Fitting | Popular fits | Show Info |
-|---|---|---|
-| ![Fitting](docs/screenshots/fitting.png) | ![Popular fits](docs/screenshots/fit-popular.png) | ![Show Info](docs/screenshots/show-info.png) |
+| Popular fits | Show Info |
+|---|---|
+| ![Popular fits](docs/screenshots/fit-popular.png) | ![Show Info](docs/screenshots/show-info.png) |
 
 ### Combat simulator
-A separate window that pits your fit against an opponent — any saved fit, one of your in-game fits, or a bare hull.
-Drag the ships and velocity vectors on an interactive map (or pick orbiting, head-on, kiting…), switch ammo for both sides,
-and see applied DPS for every weapon with the reason it's reduced (tracking, falloff, explosion velocity / radius),
-damage per tank layer against local repairs, and who dies first. Webs, target painters (with falloff and stacking penalties),
-warp scramblers shutting off MWDs, and afterburners / MWDs with their signature bloom are taken from the fits.
+A separate window that pits your fit against an opponent — any saved fit, one of your in-game fits, an EFT paste or a bare hull.
+- **The fight over time**: ships fly under orders (orbit, keep at range, approach, flee, stop or a course you drag on the map) with real inertia and turning; weapons cycle, reload and spool up; the capacitor drains and recharges; neutralizers and nosferatus bite; ancillary repairers run dry; the Reactive Armor Hardener adapts cycle by cycle; an assault damage control fires in bursts.
+- **Replay** the fight on the map — shots, hit-point rings, events — with the toughness, capacitor and distance charts as the seek bar.
+- Applied DPS for every weapon with the reason it's reduced (tracking, falloff, explosion radius or velocity), webs, painters, scrams and prop modules with their falloff and stacking penalties, and who dies first.
+- **Find the best** tries ranges, flying modes, ammo and MWD/AB as real fights, offers the winner, shows how it holds if the opponent closes in or keeps away, and names what holds your fit back.
+- **Boosters** on either side, acting from the first second. The **missile lab** shows missile application in 3D.
+
+### PvP
+- **Battle report** from zKillboard by a kill link, a system and time: both sides, what they flew and what they lost.
+- **Wars** that are running and whether they concern you, read in portions so the shared ESI limit stays safe for everything else.
+- **Report from your game log**: damage dealt and taken by weapon and opponent, hit rate and quality, peak DPS and remote repairs — and what stands out.
+- **Kill radar**: kills from the zKillboard live feed near you and along your route — gate camps, bubbles, smartbombs — with a sound on danger.
 
 ### AI assistant (optional)
 A chat panel (**Ctrl+J**) that answers from Canopus' own data instead of guessing: it looks at your characters, skills,
@@ -92,6 +166,7 @@ New Eden at the real coordinates from the SDE, rotate and zoom, region and syste
 
 ### Map and travel
 - **Route safety** — every system on the route with security, ship / pod kills in the last hour and gate camps from zKillboard; set the destination in the game with one click.
+- **Hauling plan** — a shopping list split into trips by hold size and ISK at risk, with the route's danger.
 - **Jump planner** for capitals and black ops: range with your skills, fuel per jump and jump fatigue along a chain of cyno jumps.
 - **Wormholes** — look up any hole type (class, lifetime, mass, max jump mass) and how many of your ships can pass. Thera / Turnur connections from EVE-Scout.
 
@@ -114,6 +189,8 @@ New Eden at the real coordinates from the SDE, rotate and zoom, region and syste
 - **Arbitrage between trade hubs** by market category, with taxes, margin, volume and profit per m³.
 - Loot appraisal (English or Russian names), LP store, your orders with outbid detection.
 - **My trades**: real profit per item from your wallet (sales matched to earlier purchases), sales tax and broker fees.
+- **Price alerts** at Jita — in the tray and optionally on Discord; **public contracts** that beat Jita; **injectors and SP**: what SP costs you and a skill-farm month.
+- **Production chain**: everything an item takes, build or buy at each step, with a multibuy list. **Invention** with every decryptor compared. **Ore for minerals**: the cheapest compressed-ore mix for a mineral list.
 - Manufacturing and reaction calculator (ME / TE, structure bonuses, system cost index, taxes), industry jobs and planetary colonies with extractor timers.
 - **Corporation structures** — fuel, state with timers and services; alerts for low fuel, attacks, lost shields / armor (with the out-of-reinforce time) and finished moon extractions, also to Discord.
 - **Moon mining** — refinery extraction timers and who mined what from your moons.
@@ -125,8 +202,10 @@ New Eden at the real coordinates from the SDE, rotate and zoom, region and syste
 ### Character, mail and fleet
 - **All characters** on one screen: where they are and in what, skill queue, ISK, industry, PI, jump fatigue, clone jump.
 - Overview, skill queue and a **skill planner** with the best remap or **two remaps** along a long plan, attributes with implants, jump clones, assets with Jita valuation, wallet, contracts, loyalty points, standings and jump fatigue.
+- **Net worth**, the **wallet day by day** with CSV export, **mission agents** and a **mutaplasmid** calculator.
 - **Blueprint library** across all characters: search by blueprint or by what it makes, ME / TE / runs, where it is.
 - **Contacts**, **calendar**, **EVE mail** and **fleet** management — invite, move and kick members.
+- **Fleet vs doctrine** — your fleet checked against a saved doctrine, hull by hull.
 - **Doctrines** — paste a fleet's fits as EFT: who of your characters can fly each one and how long the rest need to train, the cost in Jita and a Multibuy list.
 - **Tray and desktop notifications** for every character: skill queue running out, PI extractors, finished industry jobs, jump fatigue, outbid market orders, jump clone ready.
 - zKillboard statistics and recent fights with the victim's fit.
@@ -159,7 +238,18 @@ On Linux Canopus finds the chat logs of EVE running under Steam's Proton or Wine
 
 On first start Canopus downloads CCP's Static Data Export (~95 MB) and builds a local database; it updates itself when CCP publishes a new build. Game icons are fetched from CCP's image server on demand and cached.
 
-## Verifying a download
+## Getting started
+
+1. **Log in with EVE SSO** (bottom left) — CCP's login page opens in your own browser, where you can check the login.eveonline.com address and certificate; Canopus never sees the page or your password. Canopus uses EVE SSO with PKCE; tokens are stored encrypted (Windows DPAPI / macOS Keychain / the Linux keyring) and never leave your computer. When a new version needs more permissions, Canopus asks you to log in again.
+2. **Settings → Language** switches the interface and item names between English and Russian.
+3. For intel, run EVE windowed or borderless, copy Local with **Ctrl+A, Ctrl+C** and choose your intel channels.
+
+## Fair play
+
+Canopus only uses official and player-visible data: CCP's ESI and SDE, the chat and game logs the client writes to your Documents folder, and what you copy to the clipboard yourself. It never reads the game client's memory and never automates input — the same approach as Pyfa or RIFT. The multi-client previews show the client windows the way the operating system's window switcher does and only bring a window to the front; no keys or clicks are sent to the game.
+
+<details>
+<summary><b>Verifying a download</b></summary>
 
 Every release lists the **SHA-256 checksum** of each file in its notes and in `SHA256SUMS.txt`, with a VirusTotal link for each. To check a file:
 
@@ -168,7 +258,10 @@ Every release lists the **SHA-256 checksum** of each file in its notes and in `S
 
 The macOS build is also signed with a Developer ID and notarized by Apple; Windows and Linux builds are made by GitHub Actions from the public source (`.github/workflows/build.yml`), so anyone can see how they were built.
 
-## Why the login asks for these permissions
+</details>
+
+<details>
+<summary><b>Why the login asks for these permissions</b></summary>
 
 Canopus reads only what each section needs. Everything stays on your computer; nothing is sent to the developer.
 
@@ -192,21 +285,10 @@ Canopus reads only what each section needs. Everything stays on your computer; n
 | Allow in-game actions | open windows in the client, save fits, mail, contacts, fleet, calendar (`esi-ui.open_window.v1`, `esi-fittings.write_fittings.v1`, `esi-mail.*`, `esi-characters.write_contacts.v1`, `esi-fleets.*`, `esi-calendar.*`) — Canopus acts only when you click |
 | Allow corporation | structures, structure notifications, moon mining, corporation projects (`esi-corporations.read_structures.v1`, `esi-characters.read_notifications.v1`, `esi-industry.read_corporation_mining.v1`, `esi-corporations.read_projects.v1`) |
 
-## Getting started
+</details>
 
-1. **Log in with EVE SSO** (bottom left) — CCP's login page opens in your own browser, where you can check the login.eveonline.com address and certificate; Canopus never sees the page or your password. Canopus uses EVE SSO with PKCE; tokens are stored encrypted (Windows DPAPI / macOS Keychain / the Linux keyring) and never leave your computer. When a new version needs more permissions, Canopus asks you to log in again.
-2. **Settings → Language** switches the interface and item names between English and Russian.
-3. For intel, run EVE windowed or borderless, copy Local with **Ctrl+A, Ctrl+C** and choose your intel channels.
-
-## Fair play
-
-Canopus only uses official and player-visible data: CCP's ESI and SDE, the chat and game logs the client writes to your Documents folder, and what you copy to the clipboard yourself. It never reads the game client's memory and never automates input — the same approach as Pyfa or RIFT. The multi-client previews show the client windows the way the operating system's window switcher does and only bring a window to the front; no keys or clicks are sent to the game.
-
-## Data sources
-
-[ESI](https://developers.eveonline.com/) and the Static Data Export (CCP Games) · [zKillboard](https://zkillboard.com/) · [EVE-Scout](https://www.eve-scout.com/) · [Fuzzwork Market](https://market.fuzzwork.co.uk/) · [EVE University wiki](https://wiki.eveuniversity.org/) (CC BY-SA 4.0, for the assistant's knowledge base) · CCP news and patch notes
-
-## Building from source
+<details>
+<summary><b>Building from source</b></summary>
 
 Requires Node.js 22+. Builds are for your own noncommercial use; distributing them, or anything built on this code, is not allowed (see [License](#license)).
 
@@ -226,6 +308,12 @@ Stack: Electron, electron-vite, React, TypeScript.
 - `src/shared` — types shared across processes.
 
 Questions and ideas: [Discussions](../../discussions) · bug reports: [Issues](../../issues) — also from **Settings → Help and feedback** in the app.
+
+</details>
+
+## Data sources
+
+[ESI](https://developers.eveonline.com/) and the Static Data Export (CCP Games) · [zKillboard](https://zkillboard.com/) · [EVE-Scout](https://www.eve-scout.com/) · [Fuzzwork Market](https://market.fuzzwork.co.uk/) · [EVE University wiki](https://wiki.eveuniversity.org/) (CC BY-SA 4.0, for the assistant's knowledge base) · CCP news and patch notes
 
 ## License
 
