@@ -137,6 +137,8 @@ export interface FitStats {
     neutResist: number
     /** A running Reactive Armor Hardener, for the combat timeline */
     rah?: { index: number; cycle: number; shift: number; start: number[]; rest: number[]; peers: number[][] }
+    /** An assault damage control fitted (not offline): whether it is switched on in these figures, how long it runs, s, the wait after, s, and its capacitor cost, GJ */
+    adc?: { index: number; typeId: number; on: boolean; duration: number; delay: number; need: number }
   }
   capacitor: {
     capacity: number

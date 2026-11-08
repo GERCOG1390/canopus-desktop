@@ -1161,7 +1161,8 @@ const EVENT_TEXT: Record<TimelineEvent['kind'], string> = {
   repReload: 'Ремонтник ушёл на перезарядку',
   propBlocked: 'MWD выключен скрамблером',
   lostRange: 'Цель вне досягаемости оружия',
-  backInRange: 'Цель снова в досягаемости'
+  backInRange: 'Цель снова в досягаемости',
+  adcOn: 'Включён модуль боевой живучести'
 }
 
 /** The whole body as a share of the ship: shield, armor and hull weighed by their hit points. */

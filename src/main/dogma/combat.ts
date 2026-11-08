@@ -157,15 +157,36 @@ function withProp(pilot: CombatPilot, index: number, on: boolean): CombatPilot {
   }
 }
 
-/** A side of the fight: its fit stats with the propulsion on or off, computed once each. */
+/** One module of a fit set to a state. */
+function withState(pilot: CombatPilot, index: number, state: 'online' | 'active'): CombatPilot {
+  return { ...pilot, fit: { ...pilot.fit, modules: pilot.fit.modules.map((m, i) => (i === index ? { ...m, state } : m)) } }
+}
+
+/**
+ * A side of the fight: its fit stats with the propulsion on or off, computed once each. An assault damage control
+ * counts as off in these: it runs only for seconds at a time, and the fight switches it on itself (`adc`).
+ */
 class Side {
+  readonly pilot: CombatPilot
   readonly base: FitStats
   readonly prop?: { kind: 'mwd' | 'ab'; typeId: number; index: number; fitOn: boolean }
   readonly ewar: (Tactical & { index: number })[]
+  /** The burst: resonance multipliers per layer while it runs */
+  readonly adc?: NonNullable<Combatant['adc']>
   private cache = new Map<boolean, FitStats>()
 
-  constructor(readonly pilot: CombatPilot) {
-    this.base = calculateFit(pilot.fit, pilot.skills)
+  constructor(pilot: CombatPilot) {
+    const fitted = calculateFit(pilot.fit, pilot.skills)
+    const adc = fitted.defense.adc
+    if (adc) {
+      pilot = withState(pilot, adc.index, 'online')
+      const off = adc.on ? calculateFit(pilot.fit, pilot.skills) : fitted
+      const on = adc.on ? fitted : calculateFit(withState(pilot, adc.index, 'active').fit, pilot.skills)
+      const mult = (l: 'shield' | 'armor' | 'hull') => on.defense[l].resist.map((r, i) => (1 - off.defense[l].resist[i] > 0 ? (1 - r) / (1 - off.defense[l].resist[i]) : 1))
+      this.adc = { index: adc.index, need: adc.need, duration: adc.duration, delay: adc.delay, mult: { shield: mult('shield'), armor: mult('armor'), hull: mult('hull') } }
+      this.base = off
+    } else this.base = fitted
+    this.pilot = pilot
     const p = this.base.modules.find((r) => r.tactical?.kind === 'mwd' || r.tactical?.kind === 'ab')
     if (p) {
       const m = pilot.fit.modules[p.index]
@@ -251,6 +272,7 @@ function combatant(side: Side, propWanted: boolean): Combatant {
     capRechargeSec: base.capacitor.rechargeSec,
     repairers: d.repairers.map((r) => ({ ...r, need: need(r.index) })),
     rah: d.rah,
+    adc: side.adc,
     modules,
     tactical: side.ewar,
     off: motion(base),

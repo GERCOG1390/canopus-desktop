@@ -276,6 +276,21 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
     }
   }
 
+  // An assault damage control: a burst of resists for a few seconds, then a long wait. The fight switches it itself.
+  let adc: FitStats['defense']['adc']
+  const adcModule = dogma.modules.find((m) => m.state !== 'offline' && defaultEffectName(dogma, m) === 'moduleBonusAssaultDamageControl')
+  if (adcModule) {
+    const e = dogma.defaultEffect(adcModule)!
+    adc = {
+      index: adcModule.index!,
+      typeId: adcModule.typeId,
+      on: activeState(adcModule),
+      duration: dogma.attr(adcModule, e.dur!) / 1000,
+      delay: dogma.attr(adcModule, REACTIVATION_DELAY) / 1000,
+      need: e.dis ? dogma.attr(adcModule, e.dis) : 0
+    }
+  }
+
   const avgRes = (l: LayerStats) => 1 - l.resist.reduce((s, x) => s + x, 0) / 4
   const activeTankEhp = shieldBoost / (avgRes(shield) || 1) + armorRepair / (avgRes(armor) || 1) + hullRepair / (avgRes(hull) || 1)
 
@@ -442,6 +457,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       activeTankEhp,
       repairers,
       rah,
+      adc,
       neutResist: a(ship, ATTR_NEUT_RESIST) || 1
     },
     capacitor: { capacity, rechargeSec, usePerSecond, ...capacitor },

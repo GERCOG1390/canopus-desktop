@@ -542,3 +542,37 @@ test('the replay: a moment between two points is in between them', () => {
   assert.equal(frameAt(series, 99).t, 2)
   assert.equal(frameAt([series[0]], 1).t, 0)
 })
+
+// ---------- Assault damage control
+
+// Hull resonance ×0.25 while it runs: 75% less damage on the hull, for 5 s, then 100 s before it can go again.
+const adc = (o = {}) => ({ index: 9, need: 10, duration: 5, delay: 100, mult: { shield: [1, 1, 1, 1], armor: [1, 1, 1, 1], hull: [0.25, 0.25, 0.25, 0.25] }, ...o })
+
+test('assault damage control: off at first, on once half the ship is gone, only for its duration', () => {
+  // 10 a second into a 100 HP hull: dead after ten volleys without it.
+  const plain = run(ship({ weapons: [gun()] }), ship())
+  assert.equal(plain.b.dead, 9)
+  const r = run(ship({ weapons: [gun()] }), ship({ adc: adc() }))
+  const on = r.events.filter((e) => e.kind === 'adcOn')
+  assert.equal(on.length, 1)
+  assert.equal(r.events.find((e) => e.kind === 'adcOn').side, 'b')
+  // Half gone after the volley at 4 s; on from the next step, five volleys at a quarter, then full damage again.
+  close(on[0].t, 4.2, 1e-6)
+  assert.equal(r.b.dead, 13)
+})
+
+test('assault damage control: not a resist for the whole fight', () => {
+  // A long fight: it can only have run once in 100 s, so the ship falls about as fast as without it.
+  const tough = ship({ hull: layer(1000) })
+  const plain = run(ship({ weapons: [gun()] }), tough)
+  const r = run(ship({ weapons: [gun()] }), { ...tough, adc: adc() })
+  // Five volleys at a quarter: 37.5 saved, four more volleys to make it up.
+  close(r.b.dead - plain.b.dead, 4, 0.5)
+  assert.equal(r.events.filter((e) => e.kind === 'adcOn').length, 1)
+})
+
+test('assault damage control: without capacitor it does not start', () => {
+  const r = run(ship({ weapons: [gun()] }), ship({ capacity: 5, adc: adc() }))
+  assert.equal(r.events.some((e) => e.kind === 'adcOn'), false)
+  assert.equal(r.b.dead, 9)
+})

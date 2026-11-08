@@ -5087,7 +5087,7 @@ textarea {
   height: 460px;
   overflow: hidden;
   border-radius: 6px;
-  background: radial-gradient(ellipse at 50% 40%, #1b1d22, var(--bg) 75%);
+  background: radial-gradient(ellipse at 50% 40%, #171a21, #07080b 80%);
 }
 .missile-scene canvas {
   display: block;
@@ -5112,6 +5112,27 @@ textarea {
 }
 .ml-label-shift {
   color: var(--text-2);
+}
+.ml-label-missile {
+  color: #ffd79a;
+}
+.ml-label-ghost {
+  color: var(--text-2);
+  font-weight: 500;
+}
+.ml-label-left {
+  translate: -100% -50%;
+}
+.ml-label-quiet {
+  font-weight: 500;
+  opacity: 0.85;
+}
+.missile-play {
+  min-width: 92px;
+}
+.missile-player {
+  flex-wrap: wrap;
+  margin: 8px 0 0;
 }
 .ml-time {
   position: absolute;

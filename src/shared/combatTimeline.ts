@@ -209,6 +209,11 @@ export interface Combatant {
   capRechargeSec: number
   repairers: Repairer[]
   rah?: Rah
+  /**
+   * An assault damage control, off as the fight starts. The pilot switches it on once half the ship is gone; it runs
+   * `duration` s, then waits `delay` s. While on, each layer's resonances are multiplied by `mult` (em, thermal, kinetic, explosive).
+   */
+  adc?: { index: number; need: number; duration: number; delay: number; mult: { shield: number[]; armor: number[]; hull: number[] } }
   /** Everything else that draws on the capacitor */
   modules: CapModule[]
   tactical: (Tactical & { index: number })[]
@@ -220,7 +225,7 @@ export interface Combatant {
 export type TimelineEvent = {
   t: number
   side: 'a' | 'b'
-  kind: 'shieldDown' | 'armorDown' | 'dead' | 'capEmpty' | 'reload' | 'repReload' | 'propBlocked' | 'lostRange' | 'backInRange'
+  kind: 'shieldDown' | 'armorDown' | 'dead' | 'capEmpty' | 'reload' | 'repReload' | 'propBlocked' | 'lostRange' | 'backInRange' | 'adcOn'
 }
 
 export interface TimelinePoint {
@@ -311,6 +316,8 @@ interface State {
   c: Combatant
   /** The RAH: where it stands, whether it's running, and the armor damage of this cycle */
   rah?: { vector: number[]; running: boolean; damage: number[] }
+  /** The assault damage control: running until, and free to start again from */
+  adc: { until: number; ready: number }
   o: Orders
   pos: Vec
   vel: Vec
@@ -347,6 +354,7 @@ function start(key: 'a' | 'b', c: Combatant, o: Orders, pos: Vec, distance: numb
     // The armor as it stands in the fight; the fitted figure stays with the fit.
     c: c.rah ? { ...c, armor: { ...c.armor, resist: rahResist(c.rah, c.rah.start) as LayerStats['resist'] } } : c,
     rah: c.rah ? { vector: c.rah.start, running: true, damage: [0, 0, 0, 0] } : undefined,
+    adc: { until: -1, ready: 0 },
     o,
     pos,
     vel: { x: 0, y: 0 },
@@ -425,6 +433,14 @@ function desiredVelocity(me: State, other: State, d: number, speed: number): Vec
       return { x: (tangent.x * across + radial.x * k) * speed, y: (tangent.y * across + radial.y * k) * speed }
     }
   }
+}
+
+/** A side's layers as they take damage now: with the assault damage control's burst while it runs. */
+function withAdc(s: State, t: number): State['c'] {
+  const adc = s.c.adc
+  if (!adc || t + 1e-9 >= s.adc.until) return s.c
+  const layer = (l: LayerStats, mult: number[]): LayerStats => ({ ...l, resist: l.resist.map((r, i) => 1 - (1 - r) * mult[i]) as LayerStats['resist'] })
+  return { ...s.c, shield: layer(s.c.shield, adc.mult.shield), armor: layer(s.c.armor, adc.mult.armor), hull: layer(s.c.hull, adc.mult.hull) }
 }
 
 /** Damage after this layer's resists, spilling what's left to the next layer. */
@@ -639,6 +655,17 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
       }
     }
 
+    // ----- The assault damage control: on once half the ship is gone, if the capacitor allows.
+    for (const s of [A, B]) {
+      const adc = s.c.adc
+      if (!adc || t + 1e-9 < s.adc.ready || s.adc.until > t) continue
+      const total = s.c.shield.hp + s.c.armor.hp + s.c.hull.hp
+      if (!total || (s.shield + s.armor + s.hull) / total > 0.5) continue
+      if (!pay(s, adc.need)) continue
+      s.adc = { until: t + adc.duration, ready: t + adc.duration + adc.delay }
+      log(t, s, 'adcOn')
+    }
+
     // ----- Repairs: shield boosters heal when they start, armor and hull ones when they finish.
     for (const s of [A, B]) {
       for (const rs of s.reps) {
@@ -677,7 +704,7 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
     }
     for (const [me, them] of pairs) {
       const before = { s: them.shield, a: them.armor }
-      const dealt = applyDamage(them, them.c, hits.get(them) as number[], (taken) => {
+      const dealt = applyDamage(them, withAdc(them, t), hits.get(them) as number[], (taken) => {
         if (them.rah) taken.forEach((v, i) => ((them.rah as NonNullable<State['rah']>).damage[i] += v))
       })
       me.outcome.dealt += dealt
