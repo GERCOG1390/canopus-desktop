@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/media/canopus-trailer.mp4"><img src="docs/media/trailer.png" alt="Watch the 53-second trailer" width="88%" /></a>
+  <a href="https://gercog1390.github.io/canopus-desktop/trailer.html"><img src="docs/media/trailer.png" alt="Watch the 53-second trailer" width="88%" /></a>
 </p>
 
 ## What makes Canopus different
