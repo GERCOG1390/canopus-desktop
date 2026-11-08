@@ -3,6 +3,7 @@
 // colours mark outgoing (cyan) and incoming (red) damage, <localized hint="…"> carries English names.
 
 import { closeSync, existsSync, openSync, readdirSync, readFileSync, readSync, statSync } from 'node:fs'
+import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { buildFights, parseCombatLine, type Fight } from '../shared/combatReport'
 import type { CombatLogEvent } from '../shared/ratting'
@@ -140,18 +141,26 @@ const REPORT_LOGS = 60
 
 const readLines = (file: string): string[] => readFileSync(file, 'utf8').replace(/^\uFEFF/, '').split(/\r?\n/)
 
-/** This character's game logs that have combat in them, newest first. */
-export function combatLogs(): { file: string; modified: number; lines: number }[] {
+/** How many lines of a log are combat: counted on the text, without splitting it into lines. */
+const countCombat = (text: string): number => {
+  let n = 0
+  for (let i = text.indexOf('(combat)'); i !== -1; i = text.indexOf('(combat)', i + 8)) n++
+  return n
+}
+
+/** This character's game logs that have combat in them, newest first. Read asynchronously, a file at a time, so other windows don't wait. */
+export async function combatLogs(): Promise<{ file: string; modified: number; lines: number }[]> {
   const dir = gamelogDir()
   if (!dir) return []
   const charId = loadSettings().activeCharacterId
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.txt') && (!charId || f.endsWith(`_${charId}.txt`)))
-    .map((file) => ({ file, modified: statSync(join(dir, file)).mtimeMs }))
-    .sort((a, b) => b.modified - a.modified)
-    .slice(0, REPORT_LOGS)
-    .map((l) => ({ ...l, lines: readLines(join(dir, l.file)).filter((x) => x.includes('(combat)')).length }))
-    .filter((l) => l.lines > 0)
+  const names = (await readdir(dir)).filter((f) => f.endsWith('.txt') && (!charId || f.endsWith(`_${charId}.txt`)))
+  const dated = await Promise.all(names.map(async (file) => ({ file, modified: (await stat(join(dir, file))).mtimeMs })))
+  const out: { file: string; modified: number; lines: number }[] = []
+  for (const l of dated.sort((a, b) => b.modified - a.modified).slice(0, REPORT_LOGS)) {
+    const lines = countCombat(await readFile(join(dir, l.file), 'utf8'))
+    if (lines > 0) out.push({ ...l, lines })
+  }
+  return out
 }
 
 /** The fights of one log. The name comes from the page, so only a plain file name in the log folder will do. */

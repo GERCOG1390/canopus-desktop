@@ -674,8 +674,8 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
           s[r.layer] = Math.min(s.c[r.layer].hp, s[r.layer] + rs.pending.amount)
           rs.pending = null
         }
+        // An emptied layer is still repaired, as in the game: the HP goes back onto it.
         if (t + 1e-9 < rs.next || s[r.layer] >= s.c[r.layer].hp) continue
-        if (s[r.layer] <= 0 && r.layer !== 'hull') continue
         if (!pay(s, r.need)) {
           noCap(t, s)
           continue
@@ -700,7 +700,8 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
     // ----- Natural recharge, then the damage of this instant.
     for (const s of [A, B]) {
       s.cap = recharge(s.cap, s.c.capacity, s.c.capRechargeSec, DT)
-      if (s.shield > 0) s.shield = recharge(s.shield, s.c.shield.hp, s.c.shieldRechargeSec, DT)
+      // An emptied shield comes back by itself, as the capacitor does.
+      if (s.hull > 0) s.shield = recharge(s.shield, s.c.shield.hp, s.c.shieldRechargeSec, DT)
     }
     for (const [me, them] of pairs) {
       const before = { s: them.shield, a: them.armor }

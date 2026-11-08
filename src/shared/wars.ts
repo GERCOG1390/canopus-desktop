@@ -96,8 +96,8 @@ export function warsToRead(ids: number[], memory: WarMemory, budget: number): { 
   return { read, unread: running.length + unknown.length - read.length }
 }
 
-/** The memory after reading these wars. */
-export function rememberWars(memory: WarMemory, read: War[], now: number): WarMemory {
+/** The memory after reading these wars; `requests` is how many were asked for, failed ones included. */
+export function rememberWars(memory: WarMemory, read: War[], now: number, requests = read.length): WarMemory {
   const finished = new Set(memory.finished)
   const running = new Set(memory.running)
   for (const w of read) {
@@ -108,6 +108,6 @@ export function rememberWars(memory: WarMemory, read: War[], now: number): WarMe
       running.add(w.id)
     }
   }
-  const spent = [...(memory.spent ?? []).filter((s) => now - s.at < WINDOW_MS), { at: now, count: read.length }]
+  const spent = [...(memory.spent ?? []).filter((s) => now - s.at < WINDOW_MS), { at: now, count: Math.max(requests, read.length) }]
   return { finished: [...finished], running: [...running], spent }
 }

@@ -12,7 +12,8 @@ import { loadSettings } from './storage'
 import { postDiscord } from './intel'
 import { matchesFreelance, type FreelanceJob } from '../shared/freelance'
 import * as sde from './sde'
-import { evaluateAlerts } from '../shared/priceAlerts'
+import { alertKey, evaluateAlerts } from '../shared/priceAlerts'
+import { forgetOld } from '../shared/notifySeen'
 
 const ESI = 'https://esi.evetech.net/latest'
 const CHECK_EVERY_MS = 5 * 60_000
@@ -31,9 +32,7 @@ function loadSeen(): void {
   } catch {
     seen = {}
   }
-  // Forget keys older than a month.
-  const cutoff = Date.now() - 30 * 86400_000
-  for (const [k, t] of Object.entries(seen)) if (t < cutoff) delete seen[k]
+  seen = forgetOld(seen, Date.now())
 }
 
 function saveSeen(): void {
@@ -384,7 +383,7 @@ async function checkPriceAlerts(): Promise<void> {
     const sideText = alert.side === 'sell' ? t('продажа', 'sell') : t('покупка', 'buy')
     const title = alert.dir === 'below' ? t(`${alert.name}: цена упала`, `${alert.name}: price fell`) : t(`${alert.name}: цена выросла`, `${alert.name}: price rose`)
     const body = t(`Jita, ${sideText}: ${isk(best)} (порог ${isk(alert.price)})`, `Jita ${sideText}: ${isk(best)} (line ${isk(alert.price)})`)
-    if (announce(`price-${alert.id}`, 'price', 0, title, body) && cfg.notify.priceAlertsDiscord) postDiscord(cfg.intel.discord.webhook, title, body, 'structure')
+    if (announce(alertKey(alert), 'price', 0, title, body) && cfg.notify.priceAlertsDiscord) postDiscord(cfg.intel.discord.webhook, title, body, 'structure')
   }
 }
 

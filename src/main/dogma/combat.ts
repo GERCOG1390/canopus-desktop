@@ -427,7 +427,8 @@ export async function advise(a: CombatPilot, b: CombatPilot, sc: CombatScenario)
 
   // What's flown now, as it's set up.
   const now = simulate(a, b, sc)
-  const current = rate(start, now.timeline, hp)
+  // Described as it's flown: an orbit is an orbit, anything else is told as keeping range.
+  const current = rate({ ...start, behavior: sc.behaviorA === 'orbit' ? 'orbit' : 'keep' }, now.timeline, hp)
   const alreadyBest = found.best.score <= current.score + 0.005
 
   // The same choice if the opponent doesn't do as assumed: comes at you, or keeps away at its own longest reach.

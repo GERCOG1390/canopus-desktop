@@ -576,3 +576,21 @@ test('assault damage control: without capacitor it does not start', () => {
   assert.equal(r.events.some((e) => e.kind === 'adcOn'), false)
   assert.equal(r.b.dead, 9)
 })
+
+// ---------- Empty layers, as in the game
+
+test('a repairer keeps cycling on an emptied layer and puts HP back on it', () => {
+  // A 60-HP volley every 10 s against 50 armor: emptied at 0, then the repairer (20 per 2 s, landing at the end)
+  // fills it again long before the next volley.
+  const tank = ship({ armor: layer(50), hull: layer(1000), repairers: [{ index: 1, layer: 'armor', amount: 20, cycle: 2, need: 0 }] })
+  const r = run(ship({ weapons: [gun({ damage: [60, 0, 0, 0], cycle: 10 })] }), tank, {}, {}, 1000)
+  const at9 = r.series.find((p) => Math.abs(p.t - 9) < 0.11)
+  assert.ok(at9.b.a > 0.99, `armor at 9 s: ${at9.b.a}`)
+})
+
+test('an emptied shield recharges by itself, as the capacitor does', () => {
+  // One 60-HP volley empties a 50-HP shield; nothing else hits it for 100 s.
+  const r = run(ship({ weapons: [gun({ damage: [60, 0, 0, 0], cycle: 1000 })] }), ship({ shield: layer(50), shieldRechargeSec: 20, hull: layer(1000) }))
+  const last = r.series[r.series.length - 1]
+  assert.ok(last.b.s > 0.9, `shield at the end: ${last.b.s}`)
+})

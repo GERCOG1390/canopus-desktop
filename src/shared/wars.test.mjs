@@ -95,3 +95,10 @@ test('remembering counts what was read and drops what left the window', () => {
   const m = rememberWars({ finished: [], running: [], spent: [{ at: NOW - 16 * 60_000, count: 500 }, { at: NOW - 60_000, count: 100 }] }, [war({ id: 1 })], NOW)
   assert.deepEqual(m.spent, [{ at: NOW - 60_000, count: 100 }, { at: NOW, count: 1 }])
 })
+
+test('every request counts against the budget, failed ones too: ESI charges for errors as well', () => {
+  const m = rememberWars({ finished: [], running: [] }, [war({ id: 1 })], NOW, 40)
+  assert.deepEqual(m.spent, [{ at: NOW, count: 40 }])
+  // Without the count of requests, the wars read are the count.
+  assert.deepEqual(rememberWars({ finished: [], running: [] }, [war({ id: 1 })], NOW).spent, [{ at: NOW, count: 1 }])
+})

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
 import type { Candidate, CombatAdvice, Problem, Rated } from '../../shared/combatAdvice'
 import { frameAt, type Behavior, type Timeline, type TimelineEvent, type TimelinePoint } from '../../shared/combatTimeline'
@@ -68,9 +68,13 @@ function Simulator() {
   /** Ammo chosen here for your weapons (module type → charge); the fitting tool's fit is not changed. */
   const [ammoA, setAmmoA] = useState<Record<number, number | undefined>>({})
   const attackerShip = attacker?.fit.shipTypeId
-  useEffect(() => setAmmoA({}), [attackerShip])
   /** Boosters taken here for the fight; undefined = those of the fit. They act from the first second. */
   const [boostA, setBoostA] = useState<FitBooster[] | undefined>()
+  // Another ship: its own ammo and boosters, not the ones picked here for the last one.
+  useEffect(() => {
+    setAmmoA({})
+    setBoostA(undefined)
+  }, [attackerShip])
   const you = useMemo<CombatPilot | null>(() => {
     if (!attacker) return attacker
     let fit = attacker.fit
@@ -1265,12 +1269,18 @@ function ProblemLine({ p }: { p: Problem }) {
 function AdviceCard({ you, defender, sc, onApply }: { you: CombatPilot; defender: CombatPilot; sc: CombatScenario; onApply: (c: Candidate) => void }) {
   const [state, setState] = useState<{ advice?: CombatAdvice; busy?: boolean; error?: string }>({})
   const key = JSON.stringify([you.fit, defender.fit, sc])
-  useEffect(() => setState({}), [key])
+  // Each search has a number; an answer for a setup that has since changed is dropped.
+  const search = useRef(0)
+  useEffect(() => {
+    search.current++
+    setState({})
+  }, [key])
   const run = () => {
+    const mine = ++search.current
     setState({ busy: true })
     window.api.combat.advise(you, defender, sc).then(
-      (advice) => setState({ advice }),
-      (e: Error) => setState({ error: e.message })
+      (advice) => mine === search.current && setState({ advice }),
+      (e: Error) => mine === search.current && setState({ error: e.message })
     )
   }
   const a = state.advice

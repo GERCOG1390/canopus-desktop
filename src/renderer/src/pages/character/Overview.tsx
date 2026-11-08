@@ -167,7 +167,7 @@ export default function Overview({ id }: { id: number }) {
                         </td>
                         <td className="num">
                           <b>{total}</b>
-                          {total !== base && <span className="good small"> (+{total - base} импланты)</span>}
+                          {total !== base && <span className="good small"> {`(+${total - base} импланты)`}</span>}
                         </td>
                       </tr>
                     )

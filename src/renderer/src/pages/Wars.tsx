@@ -93,9 +93,10 @@ export default function Wars() {
         }
       }
       await Promise.all(Array.from({ length: CONCURRENCY }, worker))
+      // Every request is spent from the ESI limit, those that failed and those of a scan left half-way too.
+      await window.api.store.set(MEMORY_KEY, rememberWars(memory, got, Date.now(), done))
       if (run.current !== token) return
       for (const w of got) seen.set(w.id, w)
-      await window.api.store.set(MEMORY_KEY, rememberWars(memory, got, Date.now()))
       setNames(await resolveNames([...seen.values()].flatMap((w) => [sideId(w.aggressor), sideId(w.defender)])))
       if (run.current !== token) return
       setFailed(errors)
