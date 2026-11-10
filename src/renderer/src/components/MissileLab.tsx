@@ -196,7 +196,7 @@ export function MissileLab({ you, target }: { you: CombatPilot | null; target: {
             </>
           )}
           <div className="missile-nums">
-            <Num label="Радиус взрыва E, м" value={radius} step={5} onChange={(v) => setEdit((x) => ({ ...x, radius: Math.max(1, v) }))} edited={edit.radius !== undefined} />
+            <Num label="Сигнатура взрыва E, м" value={radius} step={5} onChange={(v) => setEdit((x) => ({ ...x, radius: Math.max(1, v) }))} edited={edit.radius !== undefined} />
             <Num label="Скорость взрыва Ve, м/с" value={velocity} step={5} onChange={(v) => setEdit((x) => ({ ...x, velocity: Math.max(1, v) }))} edited={edit.velocity !== undefined} />
             <Num label="Снижение урона drf" value={drf} step={0.01} onChange={(v) => setEdit((x) => ({ ...x, drf: Math.max(0.1, Math.min(2, v)) }))} edited={edit.drf !== undefined} />
           </div>
@@ -698,7 +698,7 @@ function MissileScene({ sig, radius, shift, grow, speed, velocity, shipName, mis
         {label('ghost', 'ml-label ml-label-ghost ml-label-left')}
         {label('shift', 'ml-label ml-label-shift')}
         {label('time', 'ml-time')}
-        <div className="ml-hint muted small">Вращение — мышью, масштаб — колесом. Время замедлено, размеры и сдвиг в масштабе.</div>
+        <div className="ml-hint muted small">Вращение — мышью, масштаб — колесом. Время замедлено, размеры и сдвиг в масштабе. Растущий взрыв — наглядная аналогия формулы, а не игровая механика.</div>
       </div>
       <div className="combat-player missile-player">
         <button className="ghost small missile-play" onClick={() => setPaused((x) => !x)}>

@@ -47,7 +47,7 @@ export const EXACT: Record<string, string> = {
   'цель': 'target',
   'сдвиг': 'shift',
   'ракета подлетает': 'missile incoming',
-  'Вращение — мышью, масштаб — колесом. Время замедлено, размеры и сдвиг в масштабе.': 'Rotate with the mouse, zoom with the wheel. Time is slowed down; sizes and travel are to scale.',
+  'Вращение — мышью, масштаб — колесом. Время замедлено, размеры и сдвиг в масштабе. Растущий взрыв — наглядная аналогия формулы, а не игровая механика.': 'Rotate with the mouse, zoom with the wheel. Time is slowed down; sizes and travel are to scale. The growing blast is a picture of the formula, not a game mechanic.',
   'Включён Assault Damage Control': 'Assault Damage Control switched on',
   'Цель захвачена': 'Target locked',
   'Цель вне дальности захвата': 'Target outside targeting range',
@@ -104,6 +104,14 @@ export const EXACT: Record<string, string> = {
   'Энергосеть занята, %': 'Powergrid used, %',
   'Canopus раз в 5 минут проверяет всех вошедших персонажей и показывает системное уведомление — один раз на каждое событие.': 'Every 5 minutes Canopus checks all logged-in characters and shows a system notification — once per event.',
   'Ассеты и импланты — по Jita sell (копии чертежей не считаются); ордера на продажу — по их цене; buy-ордера — по ISK в эскроу. Не входят: контракты, PLEX в хранилище аккаунта, имущество и ордера корпорации.': 'Assets and implants at Jita sell (blueprint copies count as nothing); sell orders at their own price; buy orders by the ISK in escrow. Left out: contracts, PLEX in the account vault, corporation assets and orders.',
+  'Сигнатура взрыва E, м': 'Explosion radius E, m',
+  'Сооружение': 'Facility',
+  'NPC-станция': 'NPC station',
+  'Брокерская, %': 'Broker fee, %',
+  'Возить P2 и P3 между планетами': 'Carry P2 and P3 between planets',
+  'Сила штрафа (тир влияет только на неё):': 'Penalty strength (the tier only changes this):',
+  'Журнал ESI хранит налоги и комиссии только за 30 дней: за более долгий срок они неполные, и чистая прибыль завышена.': 'ESI\'s journal keeps taxes and fees for 30 days only: over a longer period they are incomplete and the net profit is overstated.',
+  '— пустой разъём —': '— empty socket —',
   // ---- visual pass
   'Состав флота': 'Fleet composition',
   'Мои контракты': 'My contracts',
@@ -302,7 +310,7 @@ export const EXACT: Record<string, string> = {
   'Собрать': 'Build',
   'Скопировать для мультибая': 'Copy for multibuy',
   'Вернуть выбор по цене': 'Back to choosing by price',
-  'Купить или собрать выбирается по цене: компонент собирается, если нужное число целых партий дешевле, чем нужное количество по лучшей цене продажи в Jita. Материалы со всех уровней складываются до округления, поэтому общий компонент — это одна работа. Считается одна работа на компонент: если её придётся делить на несколько копий чертежа, материалов уйдёт немного больше. Для T2 чертёж после инвенции обычно ME 2. Навыки и бонусы на время здесь не учитываются.': "Build or buy is chosen by price: a component is built if the whole batches it takes cost less than the amount needed at the best Jita sell. Materials from all levels add up before rounding, so a shared component is one job. Each component is counted as one job: split across several blueprint copies, it takes slightly more material. A T2 blueprint from invention is usually ME 2. Skills and time bonuses are not counted here.",
+  'Купить или собрать выбирается по цене: компонент собирается, если нужное число целых партий дешевле, чем нужное количество по лучшей цене продажи в Jita. Материалы со всех уровней складываются до округления, поэтому общий компонент — это одна работа. Считается одна работа на компонент: если её придётся делить на несколько копий чертежа, материалов уйдёт немного больше. Для T2 чертёж после инвенции обычно ME 2, а стоимость самой инвенции сюда не входит: её считает вкладка «Инвенция». Навыки и бонусы на время здесь не учитываются.': "Build or buy is chosen by price: a component is built if the whole batches it takes cost less than the amount needed at the best Jita sell. Materials from all levels add up before rounding, so a shared component is one job. Each component is counted as one job: split across several blueprint copies, it takes slightly more material. A T2 blueprint from invention is usually ME 2, and the cost of the invention isn't included here: the Invention tab works it out. Skills and time bonuses are not counted here.",
   'Лишнее из партий': 'Batch leftovers',
   'в Jita, в выгоду не входит': 'at Jita, not in the saving',
   'Руда под минералы': 'Ore for minerals',
@@ -321,7 +329,7 @@ export const EXACT: Record<string, string> = {
   'Минерал': 'Mineral',
   'Вставьте список минералов или заполните из предмета.': 'Paste a list of minerals or fill it from an item.',
   'Такие минералы рудой не покрыть.': 'Ore cannot cover these minerals.',
-  'Подбор самой дешёвой смеси сжатой руды по лучшей цене продажи в Jita. Сколько реально даст переработка, зависит от навыков и структуры: укажите свой выход (около 70% на станции с навыками, до 90% в Tatara). Для добычи — столько же обычной руды. Побочные минералы, которых нет в списке, в выгоду не входят.': 'The cheapest mix of compressed ore at the best Jita sell. What reprocessing really gives depends on skills and the structure: set your yield (about 70% at a station with skills, up to 90% in a Tatara). To mine it, the same amount of raw ore. Other minerals the ore gives are not counted.',
+  'Подбор самой дешёвой смеси сжатой руды по лучшей цене продажи в Jita. Сколько реально даст переработка, зависит от навыков и структуры: укажите свой выход (около 70% на станции с навыками, до 90% в Tatara; на NPC-станции ещё налог на переработку до 5%, 0 при стендинге 6,67). Для добычи — столько же обычной руды. Побочные минералы, которых нет в списке, в выгоду не входят.': 'The cheapest mix of compressed ore at the best Jita sell. What reprocessing really gives depends on skills and the structure: set your yield (about 70% at a station with skills, up to 90% in a Tatara; an NPC station also takes a reprocessing tax of up to 5%, none at standing 6.67). To mine it, the same amount of raw ore. Other minerals the ore gives are not counted.',
   'Инжекторы и SP': 'Injectors & SP',
   'Покупка SP инжекторами': 'Buying SP with injectors',
   'Персонаж получит за инжектор': 'A character gets per injector',
@@ -1237,7 +1245,7 @@ export const EXACT: Record<string, string> = {
   'Два ремапа': 'Two remaps',
   'Ремап доступен сейчас': 'A remap is available now',
   'Тревоги в Discord': 'Alerts in Discord',
-  'В Discord: настройки канала → Интеграция → Вебхуки → Новый вебхук → «Копировать URL». Тревоги придут в канал, даже если Canopus свёрнут.': 'In Discord: channel settings → Integrations → Webhooks → New Webhook → “Copy Webhook URL”. Alerts reach the channel even with Canopus minimised.',
+  'В Discord: настройки канала → Интеграция → Вебхуки → Новый вебхук → «Копировать URL». Тревоги придут в канал, даже если Canopus свёрнут. Новых пилотов в Local Canopus видит только при копировании списка или когда они пишут в чат.': 'In Discord: channel settings → Integrations → Webhooks → New Webhook → “Copy Webhook URL”. Alerts reach the channel even with Canopus minimised. Canopus sees new pilots in Local only when the list is copied or when they speak.',
   'Проверить и сохранить': 'Test and save',
   'Отключить': 'Turn off',
   'Тестовое сообщение отправлено — проверьте канал.': 'A test message was sent — check the channel.',
@@ -2240,8 +2248,8 @@ export const EXACT: Record<string, string> = {
   'В этом радиусе подходящих систем нет — увеличьте радиус.': 'No suitable systems within this radius — widen it.',
   'Типы планет — из SDE. Планетарка недоступна в некоторых системах (например, торговые хабы вроде Jita) и в разрушенных системах — проверяйте в игре.':
     'Planet types from the SDE. Planetary industry is not allowed in some systems (trade hubs such as Jita, for one) and in shattered systems — check in the game.',
-  'Налог таможни: базовая стоимость единицы из SDE (P0 5, P1 400, P2 7 200, P3 60 000, P4 1 200 000 ISK) × ставка; ввоз — половина вывоза (по EVE University). Перевозка промежуточных товаров между вашими планетами не учтена. Схемы — из SDE CCP.':
-    "Customs tax: the SDE's taxable value per unit (P0 5, P1 400, P2 7,200, P3 60,000, P4 1,200,000 ISK) × the rate; imports at half the export rate (per EVE University). Moving intermediate goods between your own planets is not counted. Schematics from CCP's SDE.",
+  'Налог таможни: базовая стоимость единицы из SDE (P0 5, P1 400, P2 7 200, P3 60 000, P4 1 200 000 ISK) × ставка; ввоз — половина вывоза (по EVE University). Перевозка P2 и P3 считается как вывоз с планеты и ввоз на следующую. На одного персонажа — не больше 6 планет: большие цепочки из P0 строят несколькими. Схемы — из SDE CCP.':
+    "Customs tax: the SDE's taxable value per unit (P0 5, P1 400, P2 7,200, P3 60,000, P4 1,200,000 ISK) × the rate; imports at half the export rate (per EVE University). Carrying P2 and P3 counts as an export from one planet and an import to the next. A character has at most 6 planets: big chains from P0 take several. Schematics from CCP's SDE.",
   'Загружаю схемы планетарки…': 'Loading PI schematics…',
   'В базе SDE нет схем планетарки. Обновите базу в «Настройках» (раздел SDE).': 'The SDE has no PI schematics. Update it in Settings (SDE section).',
   'Выход в час': 'Output per hour',
@@ -2252,6 +2260,10 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^с продаж (.+) минус налоги и комиссии по этим сделкам$/, '$1 from sales, less taxes and fees on these deals'],
+  [/^налог и брокерская (.+)$/, 'tax and broker fee $1'],
+  [/^Реликт за попытку \(0 — по Jita: (.+)\)$/, 'Relic per attempt (0 = Jita: $1)'],
+  [/^вывоз (.+) · ввоз (.+) · перевозка (.+)$/, 'export $1 · import $2 · carrying $3'],
   [/^Без цены в Jita: (\d+) видов предметов, они посчитаны как 0\.$/, 'No Jita price for $1 kinds of item: they count as 0.'],
   [/^стабилен (.+), пока есть заряды$/, 'stable at $1, while charges last'],
   [/^Фиты (.+), с которыми их чаще всего теряли \(последние (\d+) потерь на zKillboard\)\. Это фиты из потерь: среди них бывают и случайные, и неудачные\.$/, '$1 fits most often lost (the last $2 losses on zKillboard). These come from losses: some are odd or poor fits.'],

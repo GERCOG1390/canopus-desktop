@@ -55,6 +55,7 @@
     },
     "mac": {
       "files": [
+        "out/**/*",
         "!node_modules/koffi{,/**/*}",
         "!node_modules/@koromix{,/**/*}"
       ],

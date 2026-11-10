@@ -112,7 +112,10 @@ export function Arbitrage() {
           const units = Math.floor(mode === 'instant' ? Math.min(pa.sell.volume, pb.buy.volume) : pa.sell.volume)
           if (units <= 0) continue
           const vol = basics[id]?.v ?? 0
-          const deal: Deal = { typeId: id, from: a.name, to: b.name, buy, sell, profit, margin, units, total: profit * units, perM3: vol > 0 ? profit / vol : Infinity }
+          // The whole book isn't there at the best price: the total goes by the 5% depth of each side.
+          const deepSell = mode === 'instant' ? pb.buy.percentile : pb.sell.percentile
+          const deepProfit = deepSell * (1 - tax / 100 - (mode === 'order' ? broker / 100 : 0)) - (pa.sell.percentile || buy)
+          const deal: Deal = { typeId: id, from: a.name, to: b.name, buy, sell, profit, margin, units, total: Math.max(0, deepProfit) * units, perM3: vol > 0 ? profit / vol : Infinity }
           if (!best || deal.total > best.total) best = deal
         }
       }
@@ -275,6 +278,7 @@ export function LpStore() {
   const [corp, setCorp] = useState<{ id: number; name: string } | null>(null)
   const [basis, setBasis] = useState<'sell' | 'buy'>('sell')
   const [tax, setTax] = useState(3.37)
+  const [broker, setBroker] = useState(1.5)
   const [showBpc, setShowBpc] = useState(false)
   const [manual, setManual] = useState('')
   const [manualError, setManualError] = useState<string | null>(null)
@@ -306,13 +310,14 @@ export function LpStore() {
         const p = prices.get(o.type_id)
         const unit = basis === 'sell' ? (p?.sell.best ?? 0) : (p?.buy.best ?? 0)
         const required = o.required_items.reduce((s, r) => s + (prices.get(r.type_id)?.sell.best ?? 0) * r.quantity, 0)
-        const gross = unit * o.quantity * (1 - tax / 100)
+        // Selling by order pays the broker's fee on top of the tax.
+        const gross = unit * o.quantity * (1 - (tax + (basis === 'sell' ? broker : 0)) / 100)
         const value = gross - o.isk_cost - required
         return { o, isBpc, unit, required, value, perLp: o.lp_cost ? value / o.lp_cost : 0, volume: p?.sell.volume ?? 0, priced: unit > 0 }
       })
       .filter((r) => (showBpc || !r.isBpc) && r.o.lp_cost > 0)
       .sort((a, b) => b.perLp - a.perLp)
-  }, [store.data, basis, tax, showBpc])
+  }, [store.data, basis, tax, broker, showBpc])
 
   const myLp = mine.data?.find((m) => m.id === corp?.id)?.lp ?? 0
   const best = rows.find((r) => r.priced && r.value > 0)
@@ -377,6 +382,10 @@ export function LpStore() {
           <label>
             Налог с продаж, %
             <input type="number" step={0.01} value={tax} onChange={(e) => setTax(Number(e.target.value))} />
+          </label>
+          <label>
+            Брокерская, %
+            <input type="number" step={0.01} value={broker} onChange={(e) => setBroker(Number(e.target.value))} />
           </label>
           <label className="check">
             <input type="checkbox" checked={showBpc} onChange={(e) => setShowBpc(e.target.checked)} />

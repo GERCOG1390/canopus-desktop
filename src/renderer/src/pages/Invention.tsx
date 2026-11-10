@@ -1,6 +1,8 @@
 // Invention: pick a T2 item, see the chance from the pilot's skills, and every decryptor compared by what a
 // blueprint comes to once the failed attempts are paid for, with the most profitable one marked.
 
+import { ACCOUNTING_ID, BROKER_RELATIONS_ID } from '../lib/skillIds'
+import { brokerPct, salesTaxPct } from '../../../shared/industryRules'
 import { useEffect, useMemo, useState } from 'react'
 import { useApp, useLang } from '../AppContext'
 import { useCharacter } from '../CharacterContext'
@@ -20,6 +22,8 @@ const INVENTION_JOB_SHARE = 0.02
 
 const pct = (v: number): string => `${(v * 100).toFixed(1)}%`
 
+const RELIC_CATEGORY = 34
+
 export default function Invention() {
   const { sde } = useApp()
   const lang = useLang()
@@ -31,6 +35,12 @@ export default function Invention() {
   const [structureBonus, setStructureBonus] = useState(1)
   const [facilityTax, setFacilityTax] = useState(0.25)
   const [salesTax, setSalesTax] = useState(3.37)
+  const [broker, setBroker] = useState(1.5)
+  useEffect(() => {
+    if (!char.skills) return
+    setSalesTax(Number(salesTaxPct(char.skills.get(ACCOUNTING_ID)?.active ?? 0).toFixed(2)))
+    setBroker(Number(brokerPct(char.skills.get(BROKER_RELATIONS_ID)?.active ?? 0).toFixed(2)))
+  }, [char.skills])
   const [system, setSystem] = useState<{ id: number; name: string }>({ id: 30000142, name: 'Jita' })
 
   const inventable = useAsync(() => window.api.sde.inventableTypes(), [sde.state, sde.build])
@@ -46,15 +56,18 @@ export default function Invention() {
   const market = useAsync(async () => {
     const d = data.data
     if (!d || !source) return null
-    const ids = [d.product, ...d.materials.map(([id]) => id), ...source.materials.map(([id]) => id), ...d.decryptors.map((x) => x.id)]
-    const [prices, adjusted, indices] = await Promise.all([
+    const ids = [d.product, source.source, ...d.materials.map(([id]) => id), ...source.materials.map(([id]) => id), ...d.decryptors.map((x) => x.id)]
+    const [prices, adjusted, indices, basics] = await Promise.all([
       jitaPrices(ids),
       esi<{ type_id: number; adjusted_price?: number }[]>('/markets/prices/'),
-      esi<{ solar_system_id: number; cost_indices: { activity: string; cost_index: number }[] }[]>('/industry/systems/')
+      esi<{ solar_system_id: number; cost_indices: { activity: string; cost_index: number }[] }[]>('/industry/systems/'),
+      window.api.sde.basics([source.source])
     ])
+    // T3: the source is a relic, bought and burnt on every attempt. T2: a copy of a blueprint, whose price is the pilot's own.
+    const relic = basics[source.source]?.c === RELIC_CATEGORY ? (prices.get(source.source)?.sell.best ?? 0) : null
     const adj = new Map(adjusted.map((p) => [p.type_id, p.adjusted_price ?? 0]))
     const index = (activity: string) => indices.find((s) => s.solar_system_id === system.id)?.cost_indices.find((c) => c.activity === activity)?.cost_index ?? 0
-    return { prices, adj, manufacturing: index('manufacturing'), invention: index('invention') }
+    return { prices, adj, relic, manufacturing: index('manufacturing'), invention: index('invention') }
   }, [data.data, source?.source, system.id])
 
   const level = (skill: number): number => levels[skill] ?? (char.skills ? (char.skills.get(skill)?.active ?? 0) : 5)
@@ -75,7 +88,7 @@ export default function Invention() {
           <SearchBox placeholder="Система…" search={searchSystemsSde} onSelect={setSystem} initial={system.name} />
         </label>
         <label>
-          Копия T1, ISK за попытку
+          {market.data?.relic !== null && market.data?.relic !== undefined ? `Реликт за попытку (0 — по Jita: ${fmtIsk(market.data.relic, true)})` : 'Копия T1, ISK за попытку'}
           <input type="number" min={0} value={copyCost} onChange={(e) => setCopyCost(Math.max(0, Number(e.target.value) || 0))} />
         </label>
         <label>
@@ -89,6 +102,10 @@ export default function Invention() {
         <label>
           Налог с продаж, %
           <input type="number" min={0} step={0.01} value={salesTax} onChange={(e) => setSalesTax(Math.max(0, Number(e.target.value) || 0))} />
+        </label>
+        <label>
+          Брокерская, %
+          <input type="number" min={0} step={0.01} value={broker} onChange={(e) => setBroker(Math.max(0, Number(e.target.value) || 0))} />
         </label>
       </div>
     </Card>
@@ -117,7 +134,7 @@ export default function Invention() {
       sci2: level(source.sciences[1]),
       enc: level(source.encryption),
       inventionMaterialCost: datacores,
-      copyCost,
+      copyCost: market.data.relic !== null && copyCost === 0 ? market.data.relic : copyCost,
       inventionJobCost: eivPerRun * INVENTION_JOB_SHARE * (invention + tax),
       baseRuns: source.baseRuns,
       unitsPerRun: d.unitsPerRun,
@@ -127,13 +144,15 @@ export default function Invention() {
       taxRate: tax,
       structureBonus,
       productPrice: sell(d.product),
-      salesTax: salesTax / 100
+      salesTax: (salesTax + broker) / 100
     }
     const rows = [
       { id: 0, run: inventionRun(input, null) },
       ...d.decryptors.map((x) => ({ id: x.id, run: inventionRun(input, { price: sell(x.id), chance: x.chance, me: x.me, te: x.te, runs: x.runs }) }))
     ]
-    const best = rows.reduce((a, b) => (b.run.profit > a.run.profit ? b : a))
+    // Per unit: blueprints differ in runs, so a bigger blueprint isn't a better one.
+    const perUnit = (r: (typeof rows)[number]) => (r.run.units ? r.run.profit / r.run.units : -Infinity)
+    const best = rows.reduce((a, b) => (perUnit(b) > perUnit(a) ? b : a))
     results = (
       <>
         <div className="stats-row">

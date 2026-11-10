@@ -137,7 +137,11 @@ export default function Trades() {
   if (data.error) return <ErrorBox error={data.error} />
 
   const gross = items.reduce((a, i) => a + i.profit, 0)
-  const net = gross - fees.tax - fees.broker
+  // Tax and fees are paid on every deal, the gross only covers sales matched to a purchase: count the same deals on both sides.
+  const allSold = (data.data?.txs ?? []).filter((t) => !t.is_buy && Date.parse(t.date) >= since).reduce((a, t) => a + t.quantity * t.unit_price, 0)
+  const matchedSold = items.filter((i) => i.matched).reduce((a, i) => a + i.soldIsk, 0)
+  const matchedShare = allSold > 0 ? Math.min(1, matchedSold / allSold) : 1
+  const net = gross - (fees.tax + fees.broker) * matchedShare
   const turnover = items.reduce((a, i) => a + i.soldIsk, 0)
   const stock = items.filter((i) => i.left > 0)
   const stockValue = stock.reduce((a, i) => a + i.left * ((prices.data?.get(i.type)?.sell.best as number | undefined) ?? 0), 0)
@@ -163,8 +167,9 @@ export default function Trades() {
         )}
         {data.loading && <span className="muted small">Обновляю…</span>}
       </div>
+      {days > 30 && <p className="warn-text small">Журнал ESI хранит налоги и комиссии только за 30 дней: за более долгий срок они неполные, и чистая прибыль завышена.</p>}
       <div className="stats-row">
-        <Stat label="Чистая прибыль" value={fmtIsk(net, true)} sub={`с продаж ${fmtIsk(gross, true)} минус налоги и комиссии`} />
+        <Stat label="Чистая прибыль" value={fmtIsk(net, true)} sub={`с продаж ${fmtIsk(gross, true)} минус налоги и комиссии по этим сделкам`} />
         <Stat label="Оборот (продажи)" value={fmtIsk(turnover, true)} sub={turnover ? `маржа ${((gross / turnover) * 100).toFixed(1)}%` : undefined} />
         <Stat label="Налог с продаж" value={fmtIsk(fees.tax, true)} />
         <Stat label="Брокерские комиссии" value={fmtIsk(fees.broker, true)} />

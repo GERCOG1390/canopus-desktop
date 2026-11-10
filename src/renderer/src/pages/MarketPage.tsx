@@ -19,6 +19,9 @@ import PublicContracts from './PublicContracts'
 
 type Tab = 'contracts' | 'prices' | 'appraisal' | 'arbitrage' | 'lp' | 'orders' | 'trades' | 'alerts' | 'sp'
 
+/** PLEX trades on the Global PLEX Market, not in a region. */
+const regionOf = (typeId: number): number => (typeId === 44992 ? 19000001 : HUBS[0].regionId)
+
 export default function MarketPage() {
   const { pageArg } = useApp()
   const [tab, setTab] = useState<Tab>('prices')
@@ -110,10 +113,11 @@ function TypeMarket({ typeId }: { typeId: number }) {
     const jita = HUBS[0]
     const [hubs, orders, history] = await Promise.all([
       Promise.all(HUBS.map((h) => hubPrices(h.stationId, [typeId]).then((m) => ({ hub: h, price: m.get(typeId) })))),
-      esi<Order[]>(`/markets/${jita.regionId}/orders/?type_id=${typeId}&order_type=all`, { allPages: true }).catch(() => [] as Order[]),
-      esi<HistoryDay[]>(`/markets/${jita.regionId}/history/?type_id=${typeId}`).catch(() => [] as HistoryDay[])
+      esi<Order[]>(`/markets/${regionOf(typeId)}/orders/?type_id=${typeId}&order_type=all`, { allPages: true }).catch(() => [] as Order[]),
+      esi<HistoryDay[]>(`/markets/${regionOf(typeId)}/history/?type_id=${typeId}`).catch(() => [] as HistoryDay[])
     ])
-    const inJita = orders.filter((o) => o.location_id === jita.stationId)
+    // PLEX is one market for the whole cluster, wherever its orders happen to sit.
+    const inJita = typeId === 44992 ? orders : orders.filter((o) => o.location_id === jita.stationId)
     return {
       hubs,
       sells: inJita.filter((o) => !o.is_buy_order).sort((a, b) => a.price - b.price).slice(0, 10),

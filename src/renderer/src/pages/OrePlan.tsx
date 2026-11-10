@@ -19,6 +19,7 @@ export default function OrePlan() {
   const [text, setText] = useState(SAMPLE)
   const [refine, setRefine] = useState(70)
   const [runs, setRuns] = useState(1)
+  const [bpMe, setBpMe] = useState(10)
   const [fillError, setFillError] = useState<string | null>(null)
   const ores = useAsync(() => window.api.sde.compressedOres(), [sde.state, sde.build])
 
@@ -33,7 +34,9 @@ export default function OrePlan() {
     const list = bp.data.mat.filter(([m]) => minerals.has(m))
     if (!list.length) return setFillError('Такие минералы рудой не покрыть.')
     const basics = await window.api.sde.basics(list.map(([m]) => m))
-    setText(list.map(([m, q]) => `${basics[m]?.n[0] ?? m} ${q * Math.max(1, runs)}`).join('\n'))
+    // What the job really takes: the blueprint's ME comes off, whole units per run at least.
+    const n = Math.max(1, runs)
+    setText(list.map(([m, q]) => `${basics[m]?.n[0] ?? m} ${Math.max(n, Math.ceil(Number((q * n * (1 - bpMe / 100)).toFixed(2))))}`).join('\n'))
   }
 
   const plan = useAsync(async () => {
@@ -69,6 +72,10 @@ export default function OrePlan() {
           <label>
             Прогонов чертежа
             <input type="number" min={1} value={runs} onChange={(e) => setRuns(Math.max(1, Number(e.target.value) || 1))} />
+          </label>
+          <label>
+            ME чертежа, %
+            <input type="number" min={0} max={10} value={bpMe} onChange={(e) => setBpMe(Math.max(0, Math.min(10, Number(e.target.value) || 0)))} />
           </label>
           <label>
             Выход переработки, %
@@ -146,7 +153,7 @@ export default function OrePlan() {
             )}
             <p className="muted small">
               Подбор самой дешёвой смеси сжатой руды по лучшей цене продажи в Jita. Сколько реально даст переработка, зависит от навыков и структуры: укажите свой выход (около 70% на
-              станции с навыками, до 90% в Tatara). Для добычи — столько же обычной руды. Побочные минералы, которых нет в списке, в выгоду не входят.
+              станции с навыками, до 90% в Tatara; на NPC-станции ещё налог на переработку до 5%, 0 при стендинге 6,67). Для добычи — столько же обычной руды. Побочные минералы, которых нет в списке, в выгоду не входят.
             </p>
           </Card>
         </>

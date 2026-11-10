@@ -89,7 +89,7 @@ export function FitAbyss({ fit, skills }: { fit: FitSpec; skills: SkillSource })
             </option>
           ))}
         </select>
-        <span className="muted">Сила штрафа:</span>
+        <span className="muted">Сила штрафа (тир влияет только на неё):</span>
         {strengths.map((s) => (
           <button key={s} className={`chip-btn ${strength === s ? 'active' : ''}`} onClick={() => setStrength(s)}>
             {`−${s}%`}

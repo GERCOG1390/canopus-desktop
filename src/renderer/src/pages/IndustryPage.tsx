@@ -1,3 +1,6 @@
+import { ACCOUNTING_ID as ACCOUNTING, BROKER_RELATIONS_ID as BROKER_RELATIONS, INDUSTRY_ID as INDUSTRY, ADVANCED_INDUSTRY_ID as ADVANCED_INDUSTRY } from '../lib/skillIds'
+import { FACILITIES, brokerPct, extractorPerHour, jobTimeFactor, salesTaxPct, type Facility } from '../../../shared/industryRules'
+import { useCharacter } from '../CharacterContext'
 import { useEffect, useState, type ChangeEvent } from 'react'
 import type { PiSchematic, SkillReq } from '../../../shared/sde'
 import { useApp, useLang } from '../AppContext'
@@ -100,7 +103,25 @@ function Calculator() {
   const [runs, setRuns] = useState(1)
   const [me, setMe] = useState(10)
   const [te, setTe] = useState(20)
-  const [structureBonus, setStructureBonus] = useState(1)
+  const [facility, setFacility] = useState<Facility['id']>('npc')
+  const place = FACILITIES.find((f) => f.id === facility)!
+  const [broker, setBroker] = useState(1.5)
+  const char = useCharacter()
+  const skill = (id: number): number => (char.skills ? (char.skills.get(id)?.active ?? 0) : 5)
+  // Fees from the pilot's skills once they are known; the fields stay editable.
+  useEffect(() => {
+    if (!char.skills) return
+    setSalesTax(Number(salesTaxPct(skill(ACCOUNTING)).toFixed(2)))
+    setBroker(Number(brokerPct(skill(BROKER_RELATIONS)).toFixed(2)))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [char.skills])
+  // An invented blueprint starts at ME 2 / TE 4, not at the 10 / 20 of a researched original.
+  const inventable = useAsync(() => window.api.sde.inventableTypes(), [])
+  const invented = !!product && !!inventable.data?.includes(product.id)
+  useEffect(() => {
+    setMe(invented ? 2 : 10)
+    setTe(invented ? 4 : 20)
+  }, [product?.id, invented])
   const [facilityTax, setFacilityTax] = useState(0.25)
   const [salesTax, setSalesTax] = useState(3.37)
   const [priceBasis, setPriceBasis] = useState<'sell' | 'buy'>('sell')
@@ -125,6 +146,8 @@ function Calculator() {
 
   const isReaction = bp.data?.activity === REACTION
   const effectiveMe = isReaction ? 0 : me
+  // Refineries have no material bonus of their own, and engineering complexes run no reactions.
+  const structureBonus = isReaction ? 0 : place.me
   const effectiveTe = isReaction ? 0 : te
 
   let body = <Empty>Выберите предмет, который хотите произвести (поиск на русском или английском).</Empty>
@@ -144,20 +167,20 @@ function Calculator() {
     })
     const materialCost = rows.reduce((s, r) => s + r.total, 0)
     const eiv = materials.reduce((s, m) => s + m.quantity * (adj.get(m.typeid) ?? 0), 0) * runs
-    const jobCost = eiv * (costIndex + facilityTax / 100 + SCC_SURCHARGE)
+    const jobCost = eiv * (costIndex * (1 - (isReaction ? 0 : place.cost) / 100) + facilityTax / 100 + SCC_SURCHARGE)
     const outputQty = details.productQuantity * runs
     const productSell = prices.get(details.productTypeID)?.sell.best ?? 0
     const revenue = outputQty * productSell
-    const tax = revenue * (salesTax / 100)
+    const tax = revenue * ((salesTax + broker) / 100)
     const totalCost = materialCost + jobCost
     const profit = revenue - tax - totalCost
-    const time = details.time * runs * (1 - effectiveTe / 100)
+    const time = details.time * runs * (1 - effectiveTe / 100) * (isReaction ? 1 : (1 - place.time / 100) * jobTimeFactor(skill(INDUSTRY), skill(ADVANCED_INDUSTRY)))
 
     body = (
       <>
         <div className="stats-row">
           <Stat label="Себестоимость" value={fmtIsk(totalCost, true)} sub={`за ед. ${fmtIsk(totalCost / outputQty, true)}`} />
-          <Stat label={`Продажа ${fmtNum(outputQty)} шт (Jita sell)`} value={fmtIsk(revenue, true)} sub={`налог ${fmtIsk(tax, true)}`} />
+          <Stat label={`Продажа ${fmtNum(outputQty)} шт (Jita sell)`} value={fmtIsk(revenue, true)} sub={`налог и брокерская ${fmtIsk(tax, true)}`} />
           <Stat
             label="Прибыль"
             value={<span className={profit >= 0 ? 'good' : 'bad'}>{fmtIsk(profit, true)}</span>}
@@ -281,8 +304,14 @@ function Calculator() {
             <input type="number" min={0} max={20} step={2} value={te} disabled={isReaction} onChange={num(setTe, 0, 20)} />
           </label>
           <label>
-            Бонус структуры, %
-            <input type="number" step={0.1} value={structureBonus} onChange={num(setStructureBonus, 0, 10)} />
+            Сооружение
+            <select value={facility} onChange={(e) => setFacility(e.target.value as Facility['id'])}>
+              {FACILITIES.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             Налог сооружения, %
@@ -291,6 +320,10 @@ function Calculator() {
           <label>
             Налог с продаж, %
             <input type="number" step={0.01} value={salesTax} onChange={num(setSalesTax, 0, 10)} />
+          </label>
+          <label>
+            Брокерская, %
+            <input type="number" step={0.01} value={broker} onChange={num(setBroker, 0, 10)} />
           </label>
           <label>
             Цены материалов
@@ -417,6 +450,7 @@ interface Pin {
   pin_id: number
   type_id: number
   expiry_time?: string
+  install_time?: string
   extractor_details?: { product_type_id?: number; qty_per_cycle?: number; cycle_time?: number }
   schematic_id?: number
 }
@@ -448,13 +482,16 @@ function Planets() {
     const nets = details.map((d) => {
       const net = new Map<number, number>()
       const add = (id: number, q: number) => net.set(id, (net.get(id) ?? 0) + q)
+      const stopped = d.pins.some((p) => p.extractor_details) && !d.pins.some((p) => p.extractor_details && p.expiry_time && Date.parse(p.expiry_time) > now)
       for (const p of d.pins) {
         const x = p.extractor_details
         if (x?.product_type_id && x.qty_per_cycle && x.cycle_time && p.expiry_time && Date.parse(p.expiry_time) > now) {
-          add(x.product_type_id, (x.qty_per_cycle * 3600) / x.cycle_time)
+          const cycles = p.install_time ? Math.max(1, Math.round((Date.parse(p.expiry_time) - Date.parse(p.install_time)) / 1000 / x.cycle_time)) : 1
+          add(x.product_type_id, extractorPerHour(x.qty_per_cycle, x.cycle_time, cycles))
         }
         const s = p.schematic_id ? schematics[p.schematic_id] : undefined
-        if (s?.t) {
+        // Factories on a planet whose extractors have all stopped have nothing to run on.
+        if (s?.t && !stopped) {
           const perHour = 3600 / s.t
           add(s.out[0], s.out[1] * perHour)
           for (const [id, q] of s.in) add(id, -q * perHour)

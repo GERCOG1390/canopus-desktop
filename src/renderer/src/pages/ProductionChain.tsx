@@ -31,6 +31,10 @@ export default function ProductionChain() {
     // The search also finds blueprints themselves: then it's their product that's meant.
     const product = (await window.api.sde.blueprintProducts([t.id]))[t.id]
     setOverrides(new Map())
+    // An invented blueprint starts at ME 2 / TE 4.
+    const invented = (await window.api.sde.inventableTypes()).includes(product ?? t.id)
+    setRootMe(invented ? 2 : 10)
+    setTe(invented ? 4 : 20)
     setItem(product ? { id: product, name: t.name } : t)
   }
 
@@ -240,7 +244,7 @@ export default function ProductionChain() {
             <p className="muted small">
               Купить или собрать выбирается по цене: компонент собирается, если нужное число целых партий дешевле, чем нужное количество по лучшей цене продажи в Jita. Материалы со всех
               уровней складываются до округления, поэтому общий компонент — это одна работа. Считается одна работа на компонент: если её придётся делить на несколько копий чертежа,
-              материалов уйдёт немного больше. Для T2 чертёж после инвенции обычно ME 2. Навыки и бонусы на время здесь не учитываются.
+              материалов уйдёт немного больше. Для T2 чертёж после инвенции обычно ME 2, а стоимость самой инвенции сюда не входит: её считает вкладка «Инвенция». Навыки и бонусы на время здесь не учитываются.
             </p>
           </Card>
         </>

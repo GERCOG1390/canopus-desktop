@@ -4,6 +4,7 @@
 // Schematics and the taxable base value per tier come from the SDE; which planet types hold which raw
 // resource is not in the SDE and is the game's fixed table (EVE University, "Planets").
 
+import { transferTax } from '../../../shared/industryRules'
 import { Glyph } from '../components/Glyph'
 import { useMemo, useState } from 'react'
 import { useApp, useLang } from '../AppContext'
@@ -88,6 +89,7 @@ export default function PiCalculator() {
   const [tax, setTax] = useState(10)
   const [sellBasis, setSellBasis] = useState<'sell' | 'buy'>('sell')
   const [taxImports, setTaxImports] = useState(true)
+  const [carry, setCarry] = useState(true)
 
   const products = useMemo(
     () =>
@@ -155,7 +157,15 @@ export default function PiCalculator() {
   const buyCost = [...totals.buy].reduce((s, [id, r]) => s + r * price(id, 'sell'), 0)
   const exportTax = chosen ? rate * base(chosen) * (tax / 100) : 0
   const importTax = taxImports ? [...totals.buy].reduce((s, [id, r]) => s + r * base(id) * (tax / 100) * 0.5, 0) : 0
-  const profit = revenue - buyCost - exportTax - importTax
+  // Goods of tier 2 and up built on one planet and carried to the next pay customs twice over.
+  const carried: { rate: number; base: number }[] = []
+  const walkCarried = (n: Node, depth: number): void => {
+    if (depth > 0 && n.source === 'build' && n.tier >= 2) carried.push({ rate: n.rate, base: base(n.type) })
+    n.children.forEach((c) => walkCarried(c, depth + 1))
+  }
+  if (tree && carry) walkCarried(tree, 0)
+  const carryTax = transferTax(carried, tax)
+  const profit = revenue - buyCost - exportTax - importTax - carryTax
   const extracted = [...totals.extract].sort((a, b) => b[1] - a[1])
 
   return (
@@ -208,6 +218,9 @@ export default function PiCalculator() {
           <label className="check">
             <input type="checkbox" checked={taxImports} onChange={(e) => setTaxImports(e.target.checked)} /> Налог на ввоз купленного
           </label>
+          <label className="check">
+            <input type="checkbox" checked={carry} onChange={(e) => setCarry(e.target.checked)} /> Возить P2 и P3 между планетами
+          </label>
         </div>
         {top && (
           <p className="muted small">
@@ -223,7 +236,7 @@ export default function PiCalculator() {
           <div className="stats-row">
             <Stat label="Выручка в час" value={fmtIsk(revenue, true)} sub={`${fmtNum(rate)} шт × ${fmtIsk(price(chosen, sellBasis), true)}`} />
             <Stat label="Закупка в час" value={fmtIsk(buyCost, true)} sub={startTier ? `покупка P${startTier} по Jita sell` : 'всё из добычи'} />
-            <Stat label="Налоги таможни в час" value={fmtIsk(exportTax + importTax, true)} sub={`вывоз ${fmtIsk(exportTax, true)} · ввоз ${fmtIsk(importTax, true)}`} />
+            <Stat label="Налоги таможни в час" value={fmtIsk(exportTax + importTax + carryTax, true)} sub={`вывоз ${fmtIsk(exportTax, true)} · ввоз ${fmtIsk(importTax, true)} · перевозка ${fmtIsk(carryTax, true)}`} />
             <Stat
               label="Прибыль"
               value={<span className={profit >= 0 ? 'good' : 'bad'}>{`${fmtIsk(profit, true)} / час`}</span>}
@@ -282,7 +295,7 @@ export default function PiCalculator() {
           {extracted.length > 0 && <ColonyFinder resources={extracted.map(([id]) => id)} />}
           <p className="muted small">
             Налог таможни: базовая стоимость единицы из SDE (P0 5, P1 400, P2 7 200, P3 60 000, P4 1 200 000 ISK) × ставка; ввоз — половина вывоза (по EVE University).
-            Перевозка промежуточных товаров между вашими планетами не учтена. Схемы — из SDE CCP.
+            Перевозка P2 и P3 считается как вывоз с планеты и ввоз на следующую. На одного персонажа — не больше 6 планет: большие цепочки из P0 строят несколькими. Схемы — из SDE CCP.
           </p>
         </>
       )}
