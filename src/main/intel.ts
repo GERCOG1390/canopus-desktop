@@ -1,6 +1,7 @@
 // Intel sources that don't touch the game client: the Local chat log on disk and the clipboard
 // (the player copies Local / D-scan / fleet window with Ctrl+A, Ctrl+C). Plus the overlay window.
 
+import { isClearReport } from '../shared/intelChecks'
 import { app, BrowserWindow, clipboard, globalShortcut, Notification, screen } from 'electron'
 import appIconPath from '../../build/icon.png?asset'
 import { existsSync, openSync, readSync, closeSync, readdirSync, statSync } from 'node:fs'
@@ -182,7 +183,6 @@ function parseLogTime(at: string): number {
 
 // ---------------- Intel channels ----------------
 
-const CLEAR_RE = /(^|[^\p{L}])(clr|clear|nv|no visual|чисто|клир)([^\p{L}]|$)/iu
 /** Chat logs older than this are not considered when looking for channels. */
 const CHANNEL_MAX_AGE = 14 * 86400_000
 
@@ -315,7 +315,7 @@ class ChannelWatcher {
         message: message.trim(),
         systems,
         ships,
-        clear: CLEAR_RE.test(message),
+        clear: isClearReport(message, systems.length),
         // Lines written before Canopus started are history, not alerts.
         initial: time < this.startedAt - 2000
       }

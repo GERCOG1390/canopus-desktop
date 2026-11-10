@@ -162,6 +162,8 @@ export interface FitStats {
     stableLevel?: number
     /** Seconds until empty when not stable */
     lastsSec?: number
+    /** Holds up only while a capacitor booster has charges */
+    onCharges?: boolean
   }
   offense: {
     weapons: WeaponStats[]

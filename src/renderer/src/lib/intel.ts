@@ -45,7 +45,7 @@ export const THREAT_LABEL: Record<Threat, string> = {
   medium: 'Внимание',
   low: 'Спокоен',
   friendly: 'Свой',
-  unknown: '…'
+  unknown: 'Нет данных'
 }
 
 // ---------------- Lookups (cached for the session) ----------------
@@ -105,7 +105,11 @@ export function zkbSummary(id: number): Promise<ZkbSummary | null> {
         lastActive: Object.keys(s.months ?? {}).sort().pop()
       }
     })
-    .catch(() => null)
+    .catch(() => {
+      // A failed request says nothing about the pilot: ask again next time.
+      zkbCache.delete(id)
+      return null
+    })
   zkbCache.set(id, { at: Date.now(), data })
   return data
 }
@@ -148,7 +152,8 @@ export function threatOf(p: PilotIntel): Threat {
   if (p.relation === 'red') return 'hostile'
   if (p.zkb === undefined) return 'unknown'
   const z = p.zkb
-  if (!z) return 'low'
+  // No answer, or no history at all: nothing is known, which is not the same as harmless.
+  if (!z) return 'unknown'
   if ((z.activeWeek >= 3 || z.recentKills >= 15) && z.danger >= 50) return 'high'
   if (z.activeWeek >= 1 || z.recentKills >= 3 || (z.kills >= 100 && z.danger >= 60)) return 'medium'
   return 'low'

@@ -182,7 +182,8 @@ async function build(k: R2z2Kill): Promise<RadarKill | null> {
     value: k.zkb.totalValue ?? 0,
     attackers: attackers.length,
     gate,
-    bubbles: attackers.some((a) => a.ship_type_id && BUBBLE_GROUPS.has(groupOf(a.ship_type_id))),
+    // Interdiction bubbles only work in nullsec; elsewhere an interdictor is just another ship.
+    bubbles: (info?.sec ?? 0) <= 0 && attackers.some((a) => a.ship_type_id && BUBBLE_GROUPS.has(groupOf(a.ship_type_id))),
     smartbombs: attackers.some((a) => a.weapon_type_id && groupOf(a.weapon_type_id) === SMARTBOMB_GROUP),
     camp: !!gate && (recentAtGate >= 1 || attackers.length >= 5),
     victimGroup: groupName(v.ship_type_id),

@@ -2,6 +2,7 @@
 // with the time for the character's attributes, the best remap, two remaps split along the plan
 // and +5 implants.
 
+import { translate } from '../../i18n'
 import { Glyph } from '../../components/Glyph'
 import { useEffect, useMemo, useState } from 'react'
 import type { SavedFit } from '../../../../shared/fit'
@@ -279,7 +280,7 @@ export default function SkillPlanner() {
               <Stat
                 label="С лучшим ремапом"
                 value={fmtDuration(times.best.min * 60_000)}
-                sub={ATTRS.map((a) => `${attrShort(a)} ${times.best.attrs[a]}`).join(' · ')}
+                sub={`${ATTRS.map((a) => `${attrShort(a)} ${times.best.attrs[a]}`).join(' · ')}${remapsNow === 0 ? ` · ${translate('ремап доступен через')} ${fmtDuration(cooldownMin * 60_000)}` : ''}`}
               />
               {times.two && (
                 <Stat

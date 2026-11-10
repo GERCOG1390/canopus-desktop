@@ -86,7 +86,7 @@ export default function Overlay() {
           <li key={r.id} className={r.clear ? 'clear' : r.jumps <= alertJumps ? 'near' : ''} title={r.text} translate="no">
             <span className="ov-report-sys">{r.system}</span>
             <span className="ov-report-jumps">{r.jumps === 0 ? translate('здесь') : `${r.jumps}j`}</span>
-            <span className="ov-report-text">{r.clear ? translate('чисто') : r.text}</span>
+            <span className="ov-report-text">{r.text}</span>
             <span className="ov-report-ago">{min < 1 ? translate('сейчас') : `${min}m`}</span>
           </li>
         )
@@ -122,7 +122,7 @@ export default function Overlay() {
         <>
           <div className="ov-counts">
             <span>{s.total} в локале</span>
-            {SHOWN.filter((t) => s.counts[t] && t !== 'unknown' && t !== 'low').map((t) => (
+            {SHOWN.filter((t) => s.counts[t] && t !== 'low').map((t) => (
               <span key={t} className={`threat threat-${t}`}>
                 {THREAT_LABEL[t]} {s.counts[t]}
               </span>

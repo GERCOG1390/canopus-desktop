@@ -143,7 +143,7 @@ export default function SettingsPage() {
           ESI (CCP Games), zKillboard, EVE-Scout, Fuzzwork Market &amp; SDE. EVE Online и все связанные материалы — собственность CCP hf. Canopus не аффилирован с CCP.
         </p>
       </Card>
-      {extra.data && (
+      {import.meta.env.DEV && extra.data && (
           <details className="small">
             <summary className="muted">Для владельца приложения Canopus: какие разрешения должны быть включены на developers.eveonline.com</summary>
             <div className="mono small">{extra.data.join(' ')}</div>
@@ -310,7 +310,7 @@ function NotifyCard() {
         <input type="checkbox" checked={n.tray} onChange={(e) => set({ tray: e.target.checked })} />
         Сворачивать в трей при закрытии окна (уведомления продолжают работать)
       </label>
-      <p className="muted small">Canopus раз в 5 минут проверяет всех вошедших персонажей и показывает уведомление Windows — один раз на каждое событие.</p>
+      <p className="muted small">Canopus раз в 5 минут проверяет всех вошедших персонажей и показывает системное уведомление — один раз на каждое событие.</p>
       {NOTIFY_KINDS.map(([key, label]) => (
         <label key={key} className="check">
           <input type="checkbox" checked={n[key]} onChange={(e) => set({ [key]: e.target.checked } as Partial<NotifySettings>)} />

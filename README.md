@@ -56,7 +56,7 @@ Fire any missile at any ship in 3D: the blast grows at its explosion velocity wh
 <td width="50%" valign="top">
 
 ### Every number, live
-Hover a module and every stat updates with the difference highlighted — before you fit it. A dogma engine of its own, checked against Pyfa fit by fit, with all 300 combat boosters in the game.
+Hover a module and every stat updates with the difference highlighted — before you fit it. A dogma engine of its own, checked against Pyfa 2.69.3 on 44 fits, with all 300 combat boosters in the game.
 
 </td>
 <td width="50%" valign="top">
@@ -114,7 +114,7 @@ Your characters, fits from the same dogma engine as the desktop app, the market,
 - **Price optimizer**: the same stats for less ISK (cheaper versions of your modules that keep every number), or the upgrades that add the most to a chosen stat per million ISK within a budget.
 - **Fit snapshot**: the whole fit and its stats on one picture, to copy or save as PNG.
 - **Boosters**: all 300 combat boosters in the game (147 on the market), one per slot; the bonus always applies and you tick the side effects that struck.
-- Tactical destroyer modes, Triglavian disintegrators (with spool-up), Vorton projectors, smartbombs, Bastion and siege modules, ancillary repairers and the reactive armor hardener. The engine is checked against Pyfa fit by fit.
+- Tactical destroyer modes, Triglavian disintegrators (with spool-up), Vorton projectors, smartbombs, Bastion and siege modules, ancillary repairers and the reactive armor hardener. The engine was checked against Pyfa 2.69.3 on 44 fits, with no differences.
 
 | Popular fits | Show Info |
 |---|---|
@@ -145,9 +145,6 @@ It runs on OpenAI: **sign in with ChatGPT** (Plus or Pro — your plan pays, no 
 It is off until you set it up. The questions you ask and the data the assistant fetches to answer them (fits, skills,
 prices, wallet, assets) are sent to OpenAI; your EVE login tokens and passwords never are. Actions in the game client
 (setting a destination, saving a fit) always ask you first.
-
-
-![Combat simulator](docs/screenshots/combat.png)
 
 ### Intel
 - **Local scan** — press **Ctrl+A, Ctrl+C** in the Local window: every pilot is checked for corporation, alliance, age, kills and losses, danger ratio and favourite ships. Threat is shown as a meter with a word, not colour alone. New arrivals are highlighted, and when a dangerous pilot enters you get an alert in the app and a desktop notification.
@@ -241,7 +238,7 @@ Download from [Releases](../../releases/latest):
 
 The Windows, macOS and AppImage builds update themselves (the .deb is updated from the release page): Canopus checks GitHub for new versions, downloads them in the background (verified by SHA-256) and installs on restart. This can be turned off in **Settings → Updates**.
 
-The builds are not code-signed yet, so Windows SmartScreen may warn on first launch: click **More info → Run anyway**.
+The Windows builds are not code-signed yet, so Windows SmartScreen may warn on first launch: click **More info → Run anyway**.
 
 The macOS build is signed with a Developer ID and notarized by Apple, so it opens without warnings. Move Canopus to Applications and it updates itself like the Windows builds; shortcuts use **Cmd** instead of **Ctrl**.
 

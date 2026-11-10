@@ -1,5 +1,6 @@
 // Wormholes: type database (SDE), J-space system lookup and a mass calculator for rolling holes.
 
+import { jumpRisk, shipsThrough } from '../../../shared/intelChecks'
 import { Glyph } from '../components/Glyph'
 import { useEffect, useMemo, useState } from 'react'
 import type { SystemBasic, WormholeType } from '../../../shared/sde'
@@ -36,14 +37,8 @@ const classLabel = (c: number) => CLASS_LABEL[c] ?? (c > 0 ? `класс ${c}` :
 const tons = (kg: number) => `${(kg / 1000).toLocaleString(locale(), { maximumFractionDigits: 0 })} т`
 const mkg = (kg: number) => `${(kg / 1e6).toLocaleString(locale(), { maximumFractionDigits: 1 })} млн кг`
 
-/** Which ships fit through, by the hole's per-jump mass limit. */
-function passes(jumpMass: number): string {
-  if (jumpMass <= 5_000_000) return 'фрегаты и эсминцы'
-  if (jumpMass <= 62_000_000) return 'до линейных крейсеров'
-  if (jumpMass <= 375_000_000) return 'до линкоров'
-  if (jumpMass <= 1_000_000_000) return 'до фрейтеров'
-  return 'капитальные корабли'
-}
+const K162_NOTE = 'Параметры зависят от дыры на той стороне: смотрите Show Info в игре'
+const passes = (jumpMass: number): string => shipsThrough(jumpMass) ?? K162_NOTE
 
 export default function Wormholes() {
   const types = useAsync(() => window.api.sde.wormholeTypes(), [])
@@ -73,7 +68,7 @@ function Lookup({ types, onPick }: { types: WormholeType[]; onPick: (w: Wormhole
       {hole && (
         <div className="wh-card">
           <HoleSummary w={hole} />
-          <button onClick={() => onPick(hole)}>В калькулятор массы</button>
+          {hole.jumpMass > 0 && <button onClick={() => onPick(hole)}>В калькулятор массы</button>}
         </div>
       )}
       {sys.data && <SystemCard s={sys.data} />}
@@ -83,6 +78,15 @@ function Lookup({ types, onPick }: { types: WormholeType[]; onPick: (w: Wormhole
 }
 
 function HoleSummary({ w }: { w: WormholeType }) {
+  if (w.jumpMass <= 0)
+    return (
+      <div className="kv-list wh-kv">
+        <span>Дыра</span>
+        <b>{w.code}</b>
+        <span>Это выход</span>
+        <b>{K162_NOTE}</b>
+      </div>
+    )
   return (
     <div className="kv-list wh-kv">
       <span>Дыра</span>
@@ -167,9 +171,11 @@ function TypeTable({ types, selected, onPick }: { types: WormholeType[]; selecte
               <td className="num">{fmtNum(w.jumpMass / 1e6)}</td>
               <td className="muted small">{passes(w.jumpMass)}</td>
               <td>
-                <button className="ghost small" onClick={() => onPick(w)}>
-                  В калькулятор
-                </button>
+                {w.jumpMass > 0 && (
+                  <button className="ghost small" onClick={() => onPick(w)}>
+                    В калькулятор
+                  </button>
+                )}
               </td>
             </tr>
           ))}
@@ -236,13 +242,14 @@ function MassCalc({ hole }: { hole: WormholeType | null }) {
   const [lo0, hi0] = STATE_RANGE[state].map((f) => f * mass) as [number, number]
   const rows = useMemo(() => {
     let used = 0
-    return jumps.map((j) => {
+    return jumps.map((j, n) => {
       const s = ships[j.ship]
       const m = (s?.mass ?? 0) + (j.hot ? (s?.prop ?? 0) : 0)
       used += m
       const lo = lo0 - used
       const hi = hi0 - used
-      const risk = m > jumpMass ? 'too-heavy' : hi <= 0 ? 'closed' : lo <= 0 ? (j.out ? 'cut-off' : 'may-close') : null
+      const outsideAfter = ships.some((_, i) => jumps.slice(0, n + 1).filter((x) => x.ship === i).reduce((c, x) => c + (x.out ? 1 : -1), 0) > 0)
+      const risk = jumpRisk({ mass: m, jumpMass, lo, hi, outsideAfter })
       return { j, m, lo, hi, risk }
     })
   }, [jumps, ships, lo0, hi0, jumpMass])

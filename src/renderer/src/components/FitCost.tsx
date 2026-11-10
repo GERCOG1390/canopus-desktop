@@ -44,7 +44,8 @@ export async function fitCost(fit: FitSpec): Promise<{ lines: CostLine[]; total:
     ['Модули', fit.modules.map((m) => [m.typeId, 1])],
     ['Заряды', loads],
     ['Дроны', fit.drones.map((d) => [d.typeId, d.count])],
-    ['Импланты', fit.implants.map((i) => [i, 1])]
+    ['Импланты', fit.implants.map((i) => [i, 1])],
+    ['Карго', (fit.cargo ?? []).map((c) => [c.typeId, c.qty])]
   ]
   const lines = groups.map(([label, items]) => line(label, items)).filter((l) => l.isk > 0 || l.missing > 0)
   return { lines, total: lines.reduce((s, l) => s + l.isk, 0), missing: lines.reduce((s, l) => s + l.missing, 0), items: groups.flatMap(([, items]) => items) }

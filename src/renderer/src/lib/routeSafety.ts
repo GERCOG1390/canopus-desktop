@@ -90,13 +90,14 @@ export async function systemDanger(systemId: number): Promise<SystemDanger> {
 }
 
 /** Checks route systems one after another (zKillboard asks for gentle request rates). */
-export async function routeDanger(systemIds: number[], onSystem: (d: SystemDanger) => void, cancelled: () => boolean): Promise<void> {
+export async function routeDanger(systemIds: number[], onSystem: (d: SystemDanger) => void, cancelled: () => boolean, onFailed?: (systemId: number) => void): Promise<void> {
   for (const id of systemIds) {
     if (cancelled()) return
     try {
       onSystem(await systemDanger(id))
     } catch {
-      // zKillboard unavailable for this system: skip it
+      // Unavailable for this system: the caller must not call it safe.
+      onFailed?.(id)
     }
     await sleep(400)
   }

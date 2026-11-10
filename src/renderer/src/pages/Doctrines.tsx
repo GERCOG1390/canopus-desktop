@@ -2,6 +2,7 @@
 // fly it already and how long the others need to train, and what the fit and the whole doctrine
 // cost in Jita, with a multibuy list for the in-game market.
 
+import { accruedSp } from '../../../shared/characterRules'
 import { Glyph } from '../components/Glyph'
 import { useEffect, useMemo, useState } from 'react'
 import type { FitSpec } from '../../../shared/fit'
@@ -46,14 +47,15 @@ export function splitEft(text: string): string[] {
 
 async function loadCharSkills(c: CharacterAuth): Promise<CharSkills | null> {
   try {
-    const [s, a] = await Promise.all([
+    const [s, a, queue] = await Promise.all([
       esi<{ skills: { skill_id: number; active_skill_level: number; skillpoints_in_skill: number }[] }>(`/characters/${c.id}/skills/`, { characterId: c.id }),
-      esi<{ charisma: number; intelligence: number; memory: number; perception: number; willpower: number }>(`/characters/${c.id}/attributes/`, { characterId: c.id })
+      esi<{ charisma: number; intelligence: number; memory: number; perception: number; willpower: number }>(`/characters/${c.id}/attributes/`, { characterId: c.id }),
+      esi<{ skill_id: number; start_date?: string; finish_date?: string; level_end_sp?: number; level_start_sp?: number; training_start_sp?: number }[]>(`/characters/${c.id}/skillqueue/`, { characterId: c.id }).catch(() => null)
     ])
     return {
       id: c.id,
       name: c.name,
-      skills: new Map(s.skills.map((x) => [x.skill_id, { level: x.active_skill_level, sp: x.skillpoints_in_skill }])),
+      skills: new Map(s.skills.map((x) => [x.skill_id, { level: x.active_skill_level, sp: accruedSp(x.skill_id, x.skillpoints_in_skill, queue, Date.now()) }])),
       attrs: { 164: a.charisma, 165: a.intelligence, 166: a.memory, 167: a.perception, 168: a.willpower }
     }
   } catch {

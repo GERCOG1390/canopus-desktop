@@ -157,8 +157,10 @@ export function IntelProvider({ children }: { children: ReactNode }) {
     void scanPilots([name], 'chat', me.current, () => {}, () => false).then(({ pilots }) => {
       if (!pilots.length) return
       setScan((s) => (s ? { ...s, pilots: [...s.pilots.filter((p) => p.id !== pilots[0].id), ...pilots] } : s))
+      // Someone dangerous has just spoken: that is news whether or not Local was copied.
+      alert(pilots, new Set(pilots.map((p) => p.id)))
     })
-  }, [active])
+  }, [active, alert])
 
   const setDscanText = useCallback((text: string) => {
     const rows = parseDscan(text)

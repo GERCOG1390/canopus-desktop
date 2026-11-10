@@ -85,7 +85,8 @@ export default function Wealth({ id }: { id: number }) {
             ))}
           </tbody>
         </table>
-        <p className="muted small">Ассеты и импланты — по Jita sell (копии чертежей не считаются); ордера на продажу — по их цене; buy-ордера — по ISK в эскроу.</p>
+        <p className="muted small">Ассеты и импланты — по Jita sell (копии чертежей не считаются); ордера на продажу — по их цене; buy-ордера — по ISK в эскроу. Не входят: контракты, PLEX в хранилище аккаунта, имущество и ордера корпорации.</p>
+        {w.unpriced > 0 && <p className="warn-text small">{`Без цены в Jita: ${w.unpriced} видов предметов, они посчитаны как 0.`}</p>}
       </Card>
       {w.top.length > 0 && (
         <Card title="Самые дорогие предметы">

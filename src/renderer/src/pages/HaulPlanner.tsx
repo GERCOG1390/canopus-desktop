@@ -7,6 +7,7 @@ import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat } from '../compone
 import { fmtDuration, fmtIsk, fmtNum } from '../lib/format'
 import { jitaPrices, parseItemList } from '../lib/market'
 import { routeDanger, type SystemDanger } from '../lib/routeSafety'
+import { routeVerdict } from '../../../shared/intelChecks'
 import { searchSystemsSde, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 import { courierCost, haulSeconds, planHaul } from '../../../shared/haulPlan'
@@ -29,6 +30,7 @@ export default function HaulPlanner() {
   const [collateral, setCollateral] = useState(1)
   const [danger, setDanger] = useState<SystemDanger[] | null>(null)
   const [checking, setChecking] = useState(false)
+  const [failed, setFailed] = useState(0)
   const run = useRef(0)
   useEffect(
     () => () => {
@@ -71,6 +73,7 @@ export default function HaulPlanner() {
     const me = ++run.current
     const found: SystemDanger[] = []
     setDanger([])
+    setFailed(0)
     setChecking(true)
     void routeDanger(
       route.data.ids,
@@ -79,7 +82,8 @@ export default function HaulPlanner() {
         found.push(d)
         setDanger([...found])
       },
-      () => run.current !== me
+      () => run.current !== me,
+      () => run.current === me && setFailed((n) => n + 1)
     ).finally(() => {
       if (run.current === me) setChecking(false)
     })
@@ -88,6 +92,7 @@ export default function HaulPlanner() {
   const plan = items.data ? planHaul(items.data.list, capacity, maxM * 1e6) : null
   const unpriced = items.data?.list.filter((i) => i.unit <= 0).length ?? 0
   const hot = (danger ?? []).filter((d) => d.camps.length || d.smartbombs || d.bubbles || d.kills.length)
+  const verdict = routeVerdict({ total: route.data?.ids.length ?? 0, done: danger?.length ?? 0, failed, running: checking, found: hot.length })
 
   return (
     <>
@@ -212,7 +217,8 @@ export default function HaulPlanner() {
             <button className="ghost small" onClick={check} disabled={checking || route.data.ids.length < 2}>
               {checking ? `Проверено систем: ${danger?.length ?? 0} из ${route.data.ids.length}` : 'Проверить опасность по zKillboard'}
             </button>
-            {danger && !checking && !hot.length && <p className="good small">За последний час на маршруте убийств нет.</p>}
+            {danger && verdict === 'clean' && <p className="good small">За последний час на маршруте убийств нет.</p>}
+            {danger && !checking && failed > 0 && <p className="warn-text small">{`Проверено ${danger.length} из ${route.data.ids.length} систем, zKillboard не ответил по ${failed}. По непроверенным системам ничего сказать нельзя.`}</p>}
             {hot.length > 0 && (
               <table className="table compact">
                 <thead>

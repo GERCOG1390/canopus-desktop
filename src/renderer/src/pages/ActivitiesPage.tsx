@@ -425,6 +425,8 @@ interface AbyssRun {
   lootBuy: number
   filament: number
   died: boolean
+  /** ISK lost with the ship */
+  lost?: number
 }
 
 /** Jita sell / buy value of a pasted loot list (cargo window, Ctrl+A, Ctrl+C). */
@@ -460,6 +462,7 @@ function AbyssTracker() {
   const [lootText, setLootText] = useState('')
   const [loot, setLoot] = useState<{ sell: number; buy: number; unknown: string[] } | null>(null)
   const [died, setDied] = useState(false)
+  const [lostIsk, setLostIsk] = useState(0)
   const [auto, setAuto] = useState(true)
   const shipName = useTypeBasic(ship ?? 0)
 
@@ -506,7 +509,8 @@ function AbyssTracker() {
       loot: died ? 0 : (loot?.sell ?? 0),
       lootBuy: died ? 0 : (loot?.buy ?? 0),
       filament: filament.data?.price ?? 0,
-      died
+      died,
+      lost: died ? lostIsk : 0
     }
     saveRuns([run, ...runs])
     setStarted(null)
@@ -514,6 +518,7 @@ function AbyssTracker() {
     setLoot(null)
     setLootText('')
     setDied(false)
+    setLostIsk(0)
   }
 
   const stats = useMemo(() => {
@@ -522,7 +527,7 @@ function AbyssTracker() {
       for (const r of runs) m.set(key(r), [...(m.get(key(r)) ?? []), r])
       return [...m.entries()].map(([k, list]) => {
         const time = list.reduce((a, r) => a + (r.end - r.start), 0)
-        const net = list.reduce((a, r) => a + r.loot - r.filament, 0)
+        const net = list.reduce((a, r) => a + r.loot - r.filament - (r.lost ?? 0), 0)
         return { k, runs: list.length, deaths: list.filter((r) => r.died).length, avgLoot: list.reduce((a, r) => a + r.loot, 0) / list.length, avgMin: time / list.length / 60_000, iskHour: time ? net / (time / 3_600_000) : 0 }
       })
     }
@@ -600,6 +605,12 @@ function AbyssTracker() {
                 <input type="checkbox" checked={died} onChange={(e) => setDied(e.target.checked)} />
                 Корабль погиб
               </label>
+              {died && (
+                <label>
+                  Цена корабля с фитом, ISK
+                  <input type="number" min={0} value={lostIsk} onChange={(e) => setLostIsk(Number(e.target.value) || 0)} />
+                </label>
+              )}
               {loot && <span>{`Лут: ${fmtIsk(loot.sell, true)} (продажа) · ${fmtIsk(loot.buy, true)} (скупка)`}</span>}
               <button onClick={save}>Сохранить забег</button>
             </div>

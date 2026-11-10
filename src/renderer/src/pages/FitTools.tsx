@@ -177,8 +177,8 @@ const ROWS: Row[] = [
   { label: 'Сигнатура, м', get: (s) => s.navigation.signatureRadius, fmt: (v) => n1(v), lowerBetter: true },
   { label: 'Дальность захвата, км', get: (s) => s.targeting.maxRange / 1000, fmt: (v) => n1(v) },
   { label: 'Разрешение сканера, мм', get: (s) => s.targeting.scanResolution, fmt: (v) => n1(v) },
-  { label: 'ЦПУ занято, %', get: (s) => (s.ship.cpu.total ? (s.ship.cpu.used / s.ship.cpu.total) * 100 : 0), fmt: (v) => `${n1(v)}%`, lowerBetter: true },
-  { label: 'Реактор занят, %', get: (s) => (s.ship.power.total ? (s.ship.power.used / s.ship.power.total) * 100 : 0), fmt: (v) => `${n1(v)}%`, lowerBetter: true }
+  { label: 'Процессор занят, %', get: (s) => (s.ship.cpu.total ? (s.ship.cpu.used / s.ship.cpu.total) * 100 : 0), fmt: (v) => `${n1(v)}%`, lowerBetter: true },
+  { label: 'Энергосеть занята, %', get: (s) => (s.ship.power.total ? (s.ship.power.used / s.ship.power.total) * 100 : 0), fmt: (v) => `${n1(v)}%`, lowerBetter: true }
 ]
 
 function CompareFits({ fit, skills }: { fit: FitSpec; skills: SkillSource }) {
@@ -324,7 +324,7 @@ function PopularFits({ shipTypeId, onLoad }: { shipTypeId: number; onLoad: (f: F
   if (!data.data?.fits.length) return <Empty>{`На zKillboard нет свежих потерь ${tn(ship?.n, lang)} с модулями.`}</Empty>
   return (
     <>
-      <p className="muted small">{`Фиты ${tn(ship?.n, lang)}, с которыми их чаще всего теряли (последние ${data.data.total} потерь на zKillboard). Это реальные фиты, на которых летают игроки.`}</p>
+      <p className="muted small">{`Фиты ${tn(ship?.n, lang)}, с которыми их чаще всего теряли (последние ${data.data.total} потерь на zKillboard). Это фиты из потерь: среди них бывают и случайные, и неудачные.`}</p>
       <table className="table compact">
         <thead>
           <tr>

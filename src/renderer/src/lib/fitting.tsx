@@ -3,6 +3,7 @@ import type { FitDrone, FitModule, FitSpec, FittableType, ModuleState, Slot } fr
 import { useApp } from '../AppContext'
 import { getBasic, primeBasics } from './sde'
 import type { BoosterInfo } from '../../../shared/boosters'
+import { launchDrones } from '../../../shared/fitRules'
 
 export const SLOT_ORDER: Slot[] = ['hi', 'med', 'lo', 'rig', 'sub']
 export const SLOT_LABEL: Record<Slot | 'drone' | 'implant', string> = {
@@ -83,6 +84,14 @@ export function defaultState(info: FittableType | undefined): ModuleState {
   return info?.act && !info.burst ? 'active' : 'online'
 }
 
+/** Launches what the ship's drone bandwidth allows, up to five drones. */
+async function launchFor(fit: FitSpec): Promise<void> {
+  if (!fit.drones.length) return
+  const attrs = await window.api.sde.dogmaAttrs([fit.shipTypeId, ...fit.drones.map((d) => d.typeId)], [1271, 1272])
+  const n = launchDrones(fit.drones.map((d) => ({ count: d.count, bandwidth: attrs[d.typeId]?.[1272] ?? 0 })), attrs[fit.shipTypeId]?.[1271] ?? 0, 5)
+  fit.drones.forEach((d, i) => (d.active = n[i]))
+}
+
 // ---------- EFT import / export ----------
 
 const en = (id: number) => getBasic(id)?.n[0] ?? `#${id}`
@@ -160,12 +169,7 @@ export async function fromEft(text: string): Promise<{ fit: FitSpec; unknown: st
       fit.modules.push({ typeId: id, slot: info.slot as Slot, state: offline ? 'offline' : defaultState(info), chargeTypeId })
     } else fit.cargo!.push({ typeId: id, qty })
   }
-  // Launch as many drones as bandwidth usually allows: assume up to 5 of the first stack.
-  let toLaunch = 5
-  for (const d of fit.drones) {
-    d.active = Math.min(d.count, toLaunch)
-    toLaunch -= d.active
-  }
+  await launchFor(fit)
   return { fit, unknown }
 }
 
@@ -215,11 +219,7 @@ export async function fromEsiItems(shipTypeId: number, name: string, items: { ty
     }
     fit.modules.push({ typeId: e.module, slot: (slotOf(flag) as Slot) ?? info?.slot, state: defaultState(info), chargeTypeId: charge })
   }
-  let toLaunch = 5
-  for (const d of fit.drones) {
-    d.active = Math.min(d.count, toLaunch)
-    toLaunch -= d.active
-  }
+  await launchFor(fit)
   return fit
 }
 

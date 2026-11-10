@@ -1,3 +1,4 @@
+import { accruedSp } from '../../shared/characterRules'
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useApp } from './AppContext'
 import { ATTR, IMPLANT_BONUS, type CharAttributes } from './lib/dogma'
@@ -136,7 +137,7 @@ export function CharacterProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
       setState({
         characterId: id,
-        skills: skills ? new Map(skills.skills.map((s) => [s.skill_id, { active: s.active_skill_level, trained: s.trained_skill_level, sp: s.skillpoints_in_skill }])) : null,
+        skills: skills ? new Map(skills.skills.map((s) => [s.skill_id, { active: s.active_skill_level, trained: s.trained_skill_level, sp: accruedSp(s.skill_id, s.skillpoints_in_skill, queue, Date.now()) }])) : null,
         totalSp: skills?.total_sp ?? 0,
         unallocatedSp: skills?.unallocated_sp ?? 0,
         queue: queue ? [...queue].sort((a, b) => a.queue_position - b.queue_position) : null,

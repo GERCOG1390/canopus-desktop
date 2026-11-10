@@ -1,3 +1,4 @@
+import { langFor } from '../shared/characterRules'
 import { DEFAULT_RADAR } from '../shared/radar'
 import { app, safeStorage } from 'electron'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
@@ -36,7 +37,8 @@ export function loadSettings(): Settings {
   } catch (err) {
     console.error('Failed to read settings, using defaults', err)
   }
-  return { ...DEFAULT_SETTINGS }
+  // First start: the system's language, once Electron knows it.
+  return { ...DEFAULT_SETTINGS, lang: app.isReady() ? langFor(app.getPreferredSystemLanguages()[0]) : DEFAULT_SETTINGS.lang }
 }
 
 export function saveSettings(settings: Settings): void {

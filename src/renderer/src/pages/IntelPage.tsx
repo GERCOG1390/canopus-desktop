@@ -277,7 +277,9 @@ const NOTABLE_GROUPS: Record<number, string> = {
   1538: 'Force Auxiliary',
   659: 'Суперкарриеры',
   30: 'Титаны',
-  361: 'Бабл-генераторы'
+  361: 'Бабл-генераторы',
+  4594: 'Lancer-дредноуты',
+  5120: 'Командные карриеры'
 }
 
 function DscanTab() {
@@ -303,7 +305,9 @@ function DscanTab() {
   const byGroup = new Map<number, number>()
   ships.forEach((id) => byGroup.set(getBasic(id)!.g, (byGroup.get(getBasic(id)!.g) ?? 0) + summary.get(id)!.total))
   const shipCount = ships.reduce((s, id) => s + summary.get(id)!.total, 0)
-  const notable = [...byGroup.entries()].filter(([g]) => NOTABLE_GROUPS[g])
+  // Deployed bubbles are structures, not ships, and matter more than most ships on the scan.
+  const bubbles = typeIds.filter((id) => getBasic(id)?.g === 361).reduce((s, id) => s + summary.get(id)!.total, 0)
+  const notable = [...byGroup.entries(), ...(bubbles ? ([[361, bubbles]] as [number, number][]) : [])].filter(([g]) => NOTABLE_GROUPS[g])
   const groupKey = [...byGroup.keys()].sort().join(',')
   const groups = useAsync(() => window.api.sde.groupNames([...byGroup.keys()]), [groupKey])
   const others = typeIds.filter((id) => getBasic(id)?.c !== 6).sort((a, b) => summary.get(b)!.total - summary.get(a)!.total)
@@ -742,7 +746,7 @@ function IntelSettingsTab() {
         </label>
         <div className="row">
           <label>
-            Уведомлять о новых пилотах в локале
+            Уведомлять о новых пилотах (при следующем Ctrl+C в Local или когда пилот заговорит)
             <select value={intel.alertLevel} onChange={(e) => set({ alertLevel: e.target.value as typeof intel.alertLevel })}>
               <option value="off">Не уведомлять</option>
               <option value="hostile">Только враги по стендингам</option>
@@ -817,7 +821,7 @@ function DiscordCard() {
   return (
     <Card title="Тревоги в Discord">
       <p className="muted small">
-        В Discord: настройки канала → Интеграция → Вебхуки → Новый вебхук → «Копировать URL». Тревоги придут в канал, даже если Canopus свёрнут.
+        В Discord: настройки канала → Интеграция → Вебхуки → Новый вебхук → «Копировать URL». Тревоги придут в канал, даже если Canopus свёрнут. Новых пилотов в Local Canopus видит только при копировании списка или когда они пишут в чат.
       </p>
       <div className="row">
         <input

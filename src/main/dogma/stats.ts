@@ -1,6 +1,7 @@
 import type { FitSpec, FitStats, LayerStats, ModuleResult, SkillSource, Slot, WeaponStats, TacticalModule } from '../../shared/fit'
 import type { SdeDb } from '../../shared/sde'
 import { Dogma, shipModes, type Item } from './engine'
+import { capacitorStability } from '../../shared/fitRules'
 
 const A = {
   mass: 4,
@@ -304,9 +305,9 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   // ---------- Capacitor ----------
   const capacity = a(ship, A.capacitorCapacity)
   const rechargeSec = a(ship, A.rechargeRate) / 1000
-  const usePerSecond = moduleResults.reduce((s, r) => s + r.capPerSecond, 0)
+  const usePerSecond = moduleResults.reduce((s, r) => s + (r.shots && r.reloadSec ? (r.capPerSecond * r.cycle * r.shots) / (r.shots * r.cycle + r.reloadSec) : r.capPerSecond), 0)
   // Each active module takes its whole cost when it cycles, like the game (and Pyfa) count it.
-  const drains = moduleResults.filter((r) => r.capPerSecond && r.cycle).map((r) => ({ need: r.capPerSecond * r.cycle, cycle: r.cycle, occasional: r.occasional }))
+  const drains = moduleResults.filter((r) => r.capPerSecond && r.cycle).map((r) => ({ need: r.capPerSecond * r.cycle, cycle: r.cycle, occasional: r.occasional, shots: r.shots, reloadSec: r.reloadSec }))
   const capacitor = capacitorStability(capacity, rechargeSec, drains)
 
   // ---------- Offense ----------
@@ -474,7 +475,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       adc,
       neutResist: a(ship, ATTR_NEUT_RESIST) || 1
     },
-    capacitor: { capacity, rechargeSec, usePerSecond, ...capacitor },
+    capacitor: { capacity, rechargeSec, usePerSecond, ...capacitor, onCharges: moduleResults.some((r) => r.capPerSecond < 0) },
     offense: {
       weapons,
       totalDps: weapons.reduce((s, w) => s + w.dps, 0),
@@ -553,59 +554,3 @@ function cycleAndCap(dogma: Dogma, m: Item): { cycle: number; capPerSecond: numb
   return { cycle: every, capPerSecond: cap / every, occasional: delay > 0 }
 }
 
-/**
- * EVE capacitor: regeneration dC/dt = (10·Cmax/τ)·(√(C/Cmax) − C/Cmax), which between two moments
- * solves to C(t) = Cmax·(1 + (√(C0/Cmax) − 1)·e^(−5t/τ))². Modules take their whole cost at the
- * start of each cycle. Events are simulated in order: the capacitor runs out when a module can't
- * pay for its next cycle; surviving six hours counts as stable, at the lowest level reached
- * after the first hour (just before an activation, as the game shows it).
- */
-function capacitorStability(capacity: number, rechargeSec: number, drains: { need: number; cycle: number; occasional?: boolean }[]): { peakRecharge: number; stable: boolean; stableLevel?: number; lastsSec?: number } {
-  const peakRecharge = rechargeSec ? (2.5 * capacity) / rechargeSec : 0
-  // Occasional modules (micro jump drives) are spread over their window as the game's fitting window
-  // averages them, instead of one big bite at the start of every window.
-  const mods = drains
-    .filter((d) => d.need && d.cycle > 0)
-    .map((d) => {
-      if (!d.occasional) return d
-      const parts = Math.max(1, Math.ceil(d.cycle / 10))
-      return { ...d, need: d.need / parts, cycle: d.cycle / parts }
-    })
-  if (!mods.some((d) => d.need > 0) || !capacity || !rechargeSec) return { peakRecharge, stable: true, stableLevel: 1 }
-  const regen = (c: number, dt: number) => {
-    const r = 1 + (Math.sqrt(Math.max(0, c) / capacity) - 1) * Math.exp((-5 * dt) / rechargeSec)
-    return capacity * r * r
-  }
-  const LIMIT = 6 * 3600
-  const next = mods.map(() => 0)
-  let c = capacity
-  let t = 0
-  let low = capacity
-  for (let guard = 0; guard < 2_000_000; guard++) {
-    const at = Math.min(...next)
-    if (at > LIMIT) break
-    c = regen(c, at - t)
-    t = at
-    for (let i = 0; i < mods.length; i++) {
-      if (next[i] > t + 1e-9) continue
-      if (t >= 3600) low = Math.min(low, c)
-      if (mods[i].need > 0 && c < mods[i].need) {
-        // A micro jump drive that can't jump yet waits; the capacitor is out when the modules that run all the time can't cycle.
-        if (mods[i].occasional) {
-          next[i] += mods[i].cycle
-          continue
-        }
-        return { peakRecharge, stable: false, lastsSec: t }
-      }
-      // Capacitor boosters (negative need) can't fill past the maximum.
-      c = Math.min(capacity, c - mods[i].need)
-      next[i] += mods[i].cycle
-    }
-  }
-  // The level shown is the game's own: where the average drain meets the recharge curve,
-  // 10·C/T·(√s − s) = drain. The simulation's lowest dip after activations sits a few percent lower.
-  const drain = mods.reduce((sum, d) => sum + d.need / d.cycle, 0)
-  const k = 1 - (4 * drain * rechargeSec) / (10 * capacity)
-  const level = drain <= 0 ? 1 : k >= 0 ? 0.25 * (1 + Math.sqrt(k)) ** 2 : low / capacity
-  return { peakRecharge, stable: true, stableLevel: level }
-}

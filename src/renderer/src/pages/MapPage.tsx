@@ -85,6 +85,7 @@ function RoutePlanner() {
   const [waypointMsg, setWaypointMsg] = useState<string | null>(null)
   const [danger, setDanger] = useState<Map<number, SystemDanger>>(new Map())
   const [checking, setChecking] = useState<{ done: number; total: number } | null>(null)
+  const [failed, setFailed] = useState(0)
   const [open, setOpen] = useState<number | null>(null)
 
   useEffect(() => {
@@ -122,7 +123,7 @@ function RoutePlanner() {
 
   const rows = route.data ?? []
 
-  // Recent kills from zKillboard for systems where ESI saw ship kills in the last hour.
+  // Recent kills from zKillboard along the whole route.
   const routeKey = rows.map((r) => r.system_id).join(',')
   // The kill radar also watches this route.
   useEffect(() => {
@@ -132,7 +133,9 @@ function RoutePlanner() {
   useEffect(() => {
     setDanger(new Map())
     setOpen(null)
-    const hot = rows.filter((r) => (r.kills?.ship ?? 0) + (r.kills?.pod ?? 0) > 0).map((r) => r.system_id)
+    // Every system: ESI's own kill counts come an hour late, and a fresh camp is exactly what they would miss.
+    const hot = rows.map((r) => r.system_id)
+    setFailed(0)
     if (!hot.length) {
       setChecking(null)
       return
@@ -147,7 +150,12 @@ function RoutePlanner() {
         setDanger((m) => new Map(m).set(d.systemId, d))
         setChecking({ done, total: hot.length })
       },
-      () => cancelled
+      () => cancelled,
+      () => {
+        done++
+        setFailed((n) => n + 1)
+        setChecking({ done, total: hot.length })
+      }
     ).then(() => !cancelled && setChecking(null))
     return () => {
       cancelled = true
@@ -211,8 +219,8 @@ function RoutePlanner() {
             <Stat label="Убийств за час на маршруте" value={counts.kills} sub="корабли + капсулы" />
             <Stat
               label="Кемпов на вашем пути"
-              value={<span className={pathCamps.length ? 'bad' : 'good'}>{pathCamps.length}</span>}
-              sub={checking ? `проверяю zKillboard: ${checking.done} из ${checking.total}` : 'по свежим убийствам на воротах'}
+              value={<span className={pathCamps.length ? 'bad' : checking || failed ? '' : 'good'}>{pathCamps.length}</span>}
+              sub={checking ? `проверяю zKillboard: ${checking.done} из ${checking.total}` : failed ? `zKillboard не ответил по ${failed} из ${rows.length} систем` : 'по свежим убийствам на воротах'}
             />
           </div>
           {pathCamps.length > 0 && (
@@ -362,7 +370,7 @@ interface Signature {
 
 const SHIP_SIZE: Record<string, string> = {
   small: 'Малые (фрегаты, эсминцы)',
-  medium: 'Средние (до крейсеров)',
+  medium: 'Средние (до линейных крейсеров)',
   large: 'Большие (до линкоров)',
   xlarge: 'Фрейтеры',
   capital: 'Капиталы'

@@ -1433,9 +1433,11 @@ export function marketTypesIn(groupId: number): number[] {
 // ---------------- Capital jump routes ----------------
 
 /** Where a jump drive may land: known-space lowsec and nullsec (not highsec, wormholes or Pochven). */
-function jumpTarget(id: number, s: SdeDb['systems'][number]): boolean {
+function jumpTarget(id: number, s: SdeDb['systems'][number], jumps: SdeDb['jumps']): boolean {
   if (id < 30_000_000 || id >= 31_000_000 || !s.p) return false
   if (s.wc === 25) return false
+  // No stargates: regions like UUA-F4 that pilots can't reach, so nobody can light a cyno there.
+  if (!jumps[id]?.length) return false
   return Math.round(s.sec * 10) / 10 < 0.5
 }
 
@@ -1461,7 +1463,7 @@ export function galaxy(): GalaxyData {
     data.sec.push(s.sec)
     data.region.push(s.r)
     data.pos.push(...s.p)
-    data.jump.push(jumpTarget(id, s) ? 1 : 0)
+    data.jump.push(jumpTarget(id, s, d.jumps) ? 1 : 0)
     data.regions[s.r] ??= d.regions[s.r]
   }
   for (const [k, list] of Object.entries(d.jumps)) {
@@ -1493,13 +1495,13 @@ export function jumpRoute(from: number, to: number, rangeLy: number): JumpHop[] 
   const d = need()
   const start = d.systems[from]
   const goal = d.systems[to]
-  if (!start?.p || !goal?.p || !jumpTarget(to, goal) || rangeLy <= 0) return null
+  if (!start?.p || !goal?.p || !jumpTarget(to, goal, d.jumps) || rangeLy <= 0) return null
   const cell = rangeLy
   const key = (p: [number, number, number]) => `${Math.floor(p[0] / cell)},${Math.floor(p[1] / cell)},${Math.floor(p[2] / cell)}`
   const grid = new Map<string, number[]>()
   for (const [k, s] of Object.entries(d.systems)) {
     const id = Number(k)
-    if (!jumpTarget(id, s)) continue
+    if (!jumpTarget(id, s, d.jumps)) continue
     const g = key(s.p!)
     grid.set(g, [...(grid.get(g) ?? []), id])
   }

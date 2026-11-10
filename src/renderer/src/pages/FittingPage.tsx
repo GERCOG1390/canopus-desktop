@@ -1183,7 +1183,7 @@ function StatsPanel({
             <Delta v={s.capacitor.usePerSecond} b={b?.capacitor.usePerSecond} digits={2} better="down" />
           </KV>
           <KV label="Стабильность" className={s.capacitor.stable ? 'good' : 'bad'}>
-            {s.capacitor.stable ? `стабилен ${((s.capacitor.stableLevel ?? 1) * 100).toFixed(1)}%` : `кончится за ${fmtDuration((s.capacitor.lastsSec ?? 0) * 1000)}`}
+            {s.capacitor.stable ? `стабилен ${((s.capacitor.stableLevel ?? 1) * 100).toFixed(1)}%${s.capacitor.onCharges ? ', пока есть заряды' : ''}` : `кончится за ${fmtDuration((s.capacitor.lastsSec ?? 0) * 1000)}`}
             {s.capacitor.stable && b?.capacitor.stable && (
               <Delta v={(s.capacitor.stableLevel ?? 1) * 100} b={(b.capacitor.stableLevel ?? 1) * 100} unit="%" />
             )}
