@@ -173,6 +173,7 @@ class Side {
   readonly ewar: (Tactical & { index: number })[]
   /** The burst: resonance multipliers per layer while it runs */
   readonly adc?: NonNullable<Combatant['adc']>
+  readonly hardeners?: Combatant['hardeners']
   private cache = new Map<boolean, FitStats>()
 
   constructor(pilot: CombatPilot) {
@@ -187,12 +188,33 @@ class Side {
       this.base = off
     } else this.base = fitted
     this.pilot = pilot
+    this.hardeners = this.findHardeners()
     const p = this.base.modules.find((r) => r.tactical?.kind === 'mwd' || r.tactical?.kind === 'ab')
     if (p) {
       const m = pilot.fit.modules[p.index]
       this.prop = { kind: p.tactical!.kind as 'mwd' | 'ab', typeId: m.typeId, index: p.index, fitOn: m.state === 'active' || m.state === 'overload' }
     }
     this.ewar = ewarModules(pilot, this.base)
+  }
+
+  /** Running modules that hold up the resists: they stop when the capacitor does, and the resists go with them. */
+  private findHardeners(): Combatant['hardeners'] {
+    const d = this.base.defense
+    const others = new Set([...this.base.offense.weapons.map((w) => w.moduleIndex), ...d.repairers.map((r) => r.index), d.rah?.index, d.adc?.index])
+    const resists = (s: FitStats): string => JSON.stringify([s.defense.shield.resist, s.defense.armor.resist, s.defense.hull.resist])
+    const types = new Map<number, number[]>()
+    for (const m of this.base.modules) {
+      if (others.has(m.index) || m.occasional || m.tactical || m.capPerSecond <= 0) continue
+      const typeId = this.pilot.fit.modules[m.index].typeId
+      types.set(typeId, [...(types.get(typeId) ?? []), m.index])
+    }
+    const without = (indexes: number[]): FitStats =>
+      calculateFit({ ...this.pilot.fit, modules: this.pilot.fit.modules.map((m, i) => (indexes.includes(i) ? { ...m, state: 'online' as const } : m)) }, this.pilot.skills)
+    const indexes = [...types.values()].filter((list) => resists(without(list)) !== resists(this.base)).flat()
+    if (!indexes.length) return undefined
+    const off = without(indexes)
+    const mult = (l: 'shield' | 'armor' | 'hull') => d[l].resist.map((r, i) => (1 - r > 0 ? (1 - off.defense[l].resist[i]) / (1 - r) : 1))
+    return { indexes, mult: { shield: mult('shield'), armor: mult('armor'), hull: mult('hull') } }
   }
 
   stats(propOn: boolean): FitStats {
@@ -254,7 +276,7 @@ function combatant(side: Side, propWanted: boolean): Combatant {
   const modules = base.modules
     .filter((m) => !taken.has(m.index) && !m.occasional && m.cycle > 0 && (m.capPerSecond !== 0 || m.tactical || m.index === d.rah?.index))
     .filter((m) => m.tactical?.kind !== 'mwd' && m.tactical?.kind !== 'ab')
-    .map((m) => ({ index: m.index, need: m.capPerSecond * m.cycle, cycle: m.cycle }))
+    .map((m) => ({ index: m.index, need: m.capPerSecond * m.cycle, cycle: m.cycle, shots: m.shots, reloadSec: m.reloadSec }))
   let on: Combatant['on']
   if (side.prop && propWanted) {
     const running = side.stats(true)
@@ -273,6 +295,9 @@ function combatant(side: Side, propWanted: boolean): Combatant {
     repairers: d.repairers.map((r) => ({ ...r, need: need(r.index) })),
     rah: d.rah,
     adc: side.adc,
+    hardeners: side.hardeners,
+    lock: { range: base.targeting.maxRange, scanResolution: base.targeting.scanResolution },
+    droneControlRange: base.targeting.droneControlRange,
     modules,
     tactical: side.ewar,
     off: motion(base),

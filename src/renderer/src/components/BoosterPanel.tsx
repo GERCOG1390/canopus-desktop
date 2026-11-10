@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import type { BoosterInfo, BoosterLine } from '../../../shared/boosters'
-import type { FitBooster, FitSpec } from '../../../shared/fit'
+import type { FitBooster, FitSpec, FitStats, SkillSource } from '../../../shared/fit'
 import { useLang } from '../AppContext'
 import { locale, translate } from '../i18n'
 import { loadBoosters, withBooster } from '../lib/fitting'
@@ -12,17 +12,24 @@ import { typeImage } from './TypeLink'
 
 const n = (v: number) => v.toLocaleString(locale(), { maximumFractionDigits: 1 })
 
-function Line({ l, lang }: { l: BoosterLine; lang: Lang }) {
-  const value = `${l.value > 0 ? '+' : l.value < 0 ? '−' : ''}${n(Math.abs(l.value))}${l.percent ? '%' : ''}`
+const signed = (l: BoosterLine, v: number) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${n(Math.abs(v))}${l.percent ? '%' : ''}`
+
+/** One bonus or penalty: as it works with the pilot's skills, and the item's own figure when they differ. */
+function Line({ l, lang, applied }: { l: BoosterLine; lang: Lang; applied?: number }) {
+  const differs = applied !== undefined && Math.abs(applied - l.value) > 1e-6
   return (
     <>
-      <b>{value}</b> {tn(l.name, lang)}
+      <b>{signed(l, differs ? applied : l.value)}</b>
+      {differs ? ` (${translate('база')} ${signed(l, l.value)})` : ''} {tn(l.name, lang)}
     </>
   )
 }
 
+const chanceText = (base: number, now?: number): string =>
+  ` · ${translate('шанс')} ${n((now ?? base) * 100)}%${now !== undefined && Math.abs(now - base) > 1e-6 ? ` (${translate('база')} ${n(base * 100)}%)` : ''}`
+
 /** The boosters of a fit, with a picker for more. */
-export function BoosterPanel({ fit, onChange, compact = false }: { fit: FitSpec; onChange: (fit: FitSpec) => void; compact?: boolean }) {
+export function BoosterPanel({ fit, skills, onChange, compact = false }: { fit: FitSpec; skills?: SkillSource; onChange: (fit: FitSpec) => void; compact?: boolean }) {
   const lang = useLang()
   const [all, setAll] = useState<Map<number, BoosterInfo> | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -35,6 +42,18 @@ export function BoosterPanel({ fit, onChange, compact = false }: { fit: FitSpec;
   const [query, setQuery] = useState('')
   const [onlyMarket, setOnlyMarket] = useState(true)
   const taken = fit.boosters ?? []
+  // What the skills make of each booster: the engine's figures, for this fit.
+  const [applied, setApplied] = useState<Map<number, NonNullable<FitStats['boosters']>[number]>>(new Map())
+  const askKey = JSON.stringify([fit.shipTypeId, taken.map((b) => b.typeId), skills])
+  useEffect(() => {
+    if (!taken.length || !skills) return setApplied(new Map())
+    let live = true
+    void window.api.fit.calculate(fit, skills).then((s) => live && setApplied(new Map((s.boosters ?? []).map((b) => [b.typeId, b]))))
+    return () => {
+      live = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [askKey])
 
   const list = useMemo(() => {
     if (!all) return []
@@ -82,7 +101,7 @@ export function BoosterPanel({ fit, onChange, compact = false }: { fit: FitSpec;
               <ul className="booster-lines">
                 {info.main.map((l) => (
                   <li key={l.attr} className="good">
-                    <Line l={l} lang={lang} />
+                    <Line l={l} lang={lang} applied={applied.get(fb.typeId)?.values[l.attr]} />
                   </li>
                 ))}
                 {info.side.map((l) => (
@@ -90,9 +109,9 @@ export function BoosterPanel({ fit, onChange, compact = false }: { fit: FitSpec;
                     <label>
                       <input type="checkbox" checked={!!fb.side?.includes(l.effect)} onChange={(e) => setSide(fb.typeId, l.effect, e.target.checked)} />
                       <span>
-                        <Line l={l} lang={lang} />
+                        <Line l={l} lang={lang} applied={applied.get(fb.typeId)?.values[l.attr]} />
                       </span>
-                      <span className="muted small">{` · ${translate('шанс')} ${n(info.chance * 100)}%`}</span>
+                      <span className="muted small">{chanceText(info.chance, applied.get(fb.typeId)?.chance)}</span>
                     </label>
                   </li>
                 ))}
@@ -101,7 +120,7 @@ export function BoosterPanel({ fit, onChange, compact = false }: { fit: FitSpec;
           </div>
         )
       })}
-      {taken.some((b) => all?.get(b.typeId)?.side.length) && <p className="muted small">Побочные эффекты выпадают случайно: отметьте те, что сработали. Навыки Neurotoxin уже учтены в их силе.</p>}
+      {taken.some((b) => all?.get(b.typeId)?.side.length) && <p className="muted small">Побочные эффекты выпадают случайно: отметьте те, что сработали. Сила и шанс показаны с учётом навыков.</p>}
       {error && <p className="bad small">{error}</p>}
       {!open ? (
         <button className="ghost small" onClick={() => setOpen(true)} disabled={!all}>

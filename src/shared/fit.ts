@@ -98,6 +98,9 @@ export interface ModuleResult {
   problems: string[]
   /** Used now and then (a reactivation delay, like a micro jump drive), not cycled all the time */
   occasional?: boolean
+  /** Capacitor boosters: cycles a load of charges lasts, and the reload after it */
+  shots?: number
+  reloadSec?: number
   optimal?: number
   falloff?: number
   /** What the module does to a target or to its own ship's movement, for the combat simulator */
@@ -147,6 +150,8 @@ export interface FitStats {
     /** An assault damage control fitted (not offline): whether it is switched on in these figures, how long it runs, s, the wait after, s, and its capacitor cost, GJ */
     adc?: { index: number; typeId: number; on: boolean; duration: number; delay: number; need: number }
   }
+  /** The boosters taken, with skills applied: each attribute that gives or takes something, and the chance of a side effect */
+  boosters?: { typeId: number; values: Record<number, number>; chance: number }[]
   capacitor: {
     capacity: number
     rechargeSec: number

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
 import type { Candidate, CombatAdvice, Problem, Rated } from '../../shared/combatAdvice'
 import { frameAt, type Behavior, type Timeline, type TimelineEvent, type TimelinePoint } from '../../shared/combatTimeline'
-import type { FitBooster, FitSpec, FittableType, SavedFit } from '../../shared/fit'
+import type { FitBooster, FitSpec, FittableType, SavedFit, SkillSource } from '../../shared/fit'
 import { AppProvider, useApp, useLang } from './AppContext'
 import { ChargePicker } from './components/ChargePicker'
 import { AttrIcon } from './components/Icon'
@@ -214,6 +214,7 @@ function Simulator() {
           {you && !pickingYou && (
             <Boosters
               fit={you.fit}
+              skills={you.skills}
               onChange={(f) => setBoostA(f.boosters ?? [])}
               note={boostA ? 'Бустеры изменены только в симуляторе' : undefined}
               onReset={boostA ? () => setBoostA(undefined) : undefined}
@@ -261,7 +262,7 @@ function Simulator() {
               }
             />
           )}
-          {defender && !picking && <Boosters fit={defender.fit} onChange={(f) => setDefender((d) => d && { ...d, fit: { ...d.fit, boosters: f.boosters } })} />}
+          {defender && !picking && <Boosters fit={defender.fit} skills={defender.skills} onChange={(f) => setDefender((d) => d && { ...d, fit: { ...d.fit, boosters: f.boosters } })} />}
           {defender && result && !picking && <SideStats info={result.b} />}
           {defender && result && attacker && !picking && (
             <Tactics info={result.b} ewar={sc.ewarB !== false} onProp={(on) => setProp('b', on)} onEwar={(on) => set({ ewarB: on })} own="Его" />
@@ -324,7 +325,7 @@ function Simulator() {
               </details>
             </Card>
             <div className="combat-side-col">
-              <Summary r={result} />
+              <Summary r={result} boosters={!!(you?.fit.boosters?.length || defender?.fit.boosters?.length)} />
               <AdviceCard
                 you={you ?? attacker!}
                 defender={defender!}
@@ -346,7 +347,7 @@ function Simulator() {
             <Chart r={result} distance={sc.distance} onDistance={(d) => set({ distance: d })} />
           </Card>
           <p className="muted small">
-            Бой считается шаг за шагом: корабли движутся с инерцией, оружие стреляет циклами и перезаряжается, дезинтеграторы раскручиваются, накопитель тратится и восстанавливается, у анцилларных ремонтников кончаются заряды, нейтрализаторы и носферату работают по накопителю. Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E, (S/E·Ve/Vt)^drf). Часовые дроны считаются как турели. Reactive Armor Hardener подстраивается под урон по броне каждый цикл. Не учитываются: перегрев, ECM, дампы и дизрапторы, отключение обычных активных резистов при пустом накопителе, время полёта ракет, заряды бустеров накопителя. Значения средние, без случайных промахов.
+            Бой считается шаг за шагом: корабли движутся с инерцией, оружие стреляет циклами и перезаряжается, дезинтеграторы раскручиваются, накопитель тратится и восстанавливается, у анцилларных ремонтников кончаются заряды, нейтрализаторы и носферату работают по накопителю. Турели: шанс попадания 0,5^((ω·40 000 / (наводка·сигнатура))² + (max(0, d − оптимал) / фоллоф)²), с учётом Wrecking-попаданий. Ракеты: min(1, S/E, (S/E·Ve/Vt)^drf). Часовые дроны считаются как турели. Reactive Armor Hardener подстраивается под урон по броне каждый цикл. Цель надо захватить: дальность и время захвата считаются, дроны уходят только в пределах контроля. Без накопителя активные хардены отключаются. Assault Damage Control включается, когда остаётся половина HP. Не учитываются: перегрев, ECM, дампы и дизрапторы, командные бонусы, время полёта ракет, наводка мобильных дронов (те, что поспевают за целью, бьют в полную силу). Значения средние, без случайных промахов.
           </p>
         </>
       )}
@@ -366,10 +367,10 @@ function NumberField({ label, value, step, onChange }: { label: string; value: n
 }
 
 /** The quick answer: who wins, how hard each side hits and what holds the damage back. */
-function Summary({ r }: { r: CombatResult }) {
+function Summary({ r, boosters }: { r: CombatResult; boosters: boolean }) {
   return (
     <div className="combat-summary">
-      <Verdict r={r} />
+      <Verdict r={r} boosters={boosters} />
       <SummaryLine title="Вы → противник" d={r.ab} cls="side-a" average={r.timeline.a.averageDps} />
       <SummaryLine title="Противник → вы" d={r.ba} cls="side-b" average={r.timeline.b.averageDps} />
       <div className="combat-geo muted small">
@@ -1108,7 +1109,7 @@ function ShipName({ id, lang }: { id: number; lang: 0 | 1 }) {
   return <b className="grow">{tn(basic?.n, lang)}</b>
 }
 
-function Verdict({ r }: { r: CombatResult }) {
+function Verdict({ r, boosters }: { r: CombatResult; boosters: boolean }) {
   const tl = r.timeline
   const share = (side: CombatSideInfo, left: Timeline['a']['left']): number => {
     const total = side.hp.shield + side.hp.armor + side.hp.hull
@@ -1117,16 +1118,18 @@ function Verdict({ r }: { r: CombatResult }) {
   let text: string
   let cls = ''
   if (tl.winner === 'a') {
-    text = `Вы побеждаете за ${duration(tl.end)}, у вас осталось ${share(r.a, tl.a.left)}%`
+    text = `Вы побеждаете за ${duration(tl.end)}, у вас осталось ${share(r.a, tl.a.left)}% HP`
     cls = 'good'
   } else if (tl.winner === 'b') {
-    text = `Вы проигрываете за ${duration(tl.end)}, у противника осталось ${share(r.b, tl.b.left)}%`
+    text = `Вы проигрываете за ${duration(tl.end)}, у противника осталось ${share(r.b, tl.b.left)}% HP`
     cls = 'bad'
   } else if (tl.winner === 'both') text = `Оба погибают на ${duration(tl.end)}`
   else text = `За ${Math.round(tl.end / 60)} мин никто никого не уничтожил: у вас ${share(r.a, tl.a.left)}%, у противника ${share(r.b, tl.b.left)}%`
   return (
     <>
       <div className={`combat-verdict ${cls}`}>{text}</div>
+      <p className="muted small">Бой 1 на 1, без перегрева и командных бонусов. Проценты — доля HP, без учёта резистов.</p>
+      {boosters && <p className="muted small">Побочные эффекты бустеров учтены только отмеченные.</p>}
       {r.ifCloses && (
         <p className="warn-text small">
           {`Это держится на том, что ${Math.round(tl.b.idle * 100)}% урона противника не достаёт. Если он подойдёт: `}
@@ -1171,7 +1174,7 @@ function OrdersBox({ title, behavior, range, distance, onChange }: { title: stri
 }
 
 /** Boosters for one side of the fight, folded away until wanted. */
-function Boosters({ fit, onChange, note, onReset }: { fit: FitSpec; onChange: (fit: FitSpec) => void; note?: string; onReset?: () => void }) {
+function Boosters({ fit, skills, onChange, note, onReset }: { fit: FitSpec; skills: SkillSource; onChange: (fit: FitSpec) => void; note?: string; onReset?: () => void }) {
   const count = fit.boosters?.length ?? 0
   const [open, setOpen] = useState(count > 0)
   useEffect(() => {
@@ -1185,7 +1188,7 @@ function Boosters({ fit, onChange, note, onReset }: { fit: FitSpec; onChange: (f
       {open && (
         <>
           <p className="muted small">Действуют с первой секунды боя.</p>
-          <BoosterPanel fit={fit} onChange={onChange} compact />
+          <BoosterPanel fit={fit} skills={skills} onChange={onChange} compact />
           {note && (
             <p className="muted small">
               {note}{' '}
@@ -1212,7 +1215,10 @@ const EVENT_TEXT: Record<TimelineEvent['kind'], string> = {
   propBlocked: 'MWD выключен скрамблером',
   lostRange: 'Цель вне досягаемости оружия',
   backInRange: 'Цель снова в досягаемости',
-  adcOn: 'Включён модуль боевой живучести'
+  adcOn: 'Включён Assault Damage Control',
+  locked: 'Цель захвачена',
+  lockLost: 'Цель вне дальности захвата',
+  capBoosterReload: 'Бустер накопителя ушёл на перезарядку'
 }
 
 /** The whole body as a share of the ship: shield, armor and hull weighed by their hit points. */
@@ -1330,7 +1336,7 @@ function AdviceCard({ you, defender, sc, onApply }: { you: CombatPilot; defender
               </button>
             </>
           )}
-          {a.best.winner !== 'a' && <p className="warn-text small">Если противник ведёт себя так, этот бой не выигрывается ни на какой дистанции и ни с какими зарядами: дело в самом фите. Что мешает, смотрите ниже.</p>}
+          {a.best.winner !== 'a' && <p className="warn-text small">Если противник ведёт себя так, среди проверенных дистанций, зарядов и режимов MWD/AB победы нет. Что мешает, смотрите ниже.</p>}
           <table className="table compact">
             <tbody>
               <tr>

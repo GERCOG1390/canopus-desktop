@@ -236,6 +236,12 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
     const shots = vol > 0 ? Math.floor((db.types[m.typeId]?.cap ?? 0) / vol / perCycle + 1e-9) : 0
     return shots > 0 ? { shots, reloadSec: a(m, A.reloadTime) / 1000 } : {}
   }
+  // A capacitor booster's charges run out in a fight.
+  for (const m of dogma.modules.filter(activeState)) {
+    if (defaultEffectName(dogma, m) !== 'powerBooster') continue
+    const r = moduleResults.find((x) => x.index === m.index)
+    if (r) Object.assign(r, load(m))
+  }
   for (const m of dogma.modules.filter(activeState)) {
     const e = defaultEffectName(dogma, m)
     const { cycle } = cycleAndCap(dogma, m)
@@ -444,6 +450,13 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
 
   return {
     ship: { slots, ...res, maxActiveDrones, cargo: a(ship, A.capacity) },
+    boosters: dogma.implants
+      .filter((i) => i.off)
+      .map((i) => {
+        const srcs = i.effects.flatMap((e) => db.effects[e]?.mods ?? []).flatMap((m) => (m.src === undefined ? [] : [m.src]))
+        const chanceAttrs = Object.keys(i.base).map(Number).filter((id) => /^boosterEffectChance\d$/.test(db.attributes[id]?.name ?? ''))
+        return { typeId: i.typeId, values: Object.fromEntries(srcs.map((id) => [id, a(i, id)])), chance: Math.max(0, ...chanceAttrs.map((id) => a(i, id))) }
+      }),
     defense: {
       shield,
       armor,

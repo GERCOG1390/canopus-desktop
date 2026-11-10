@@ -2,8 +2,8 @@
 // and recharges, repairers burn charges and neuts bite, all stepped through time. Values are averages (no
 // random misses), so the same setup always gives the same fight.
 //
-// Not modelled: heat, ECM and sensor or weapon disruption, ordinary hardeners dropping when the capacitor is empty,
-// missile flight time, charges of capacitor boosters.
+// Not modelled: heat, ECM and sensor or weapon disruption, command bursts, missile flight time, the tracking of
+// mobile drones (those that keep up land in full).
 
 import type { LayerStats, TacticalModule, WeaponStats } from './fit'
 
@@ -189,6 +189,9 @@ export interface CapModule {
   index: number
   need: number
   cycle: number
+  /** Cycles a load of charges lasts, for capacitor boosters */
+  shots?: number
+  reloadSec?: number
 }
 
 export interface Motion {
@@ -214,6 +217,12 @@ export interface Combatant {
    * `duration` s, then waits `delay` s. While on, each layer's resonances are multiplied by `mult` (em, thermal, kinetic, explosive).
    */
   adc?: { index: number; need: number; duration: number; delay: number; mult: { shield: number[]; armor: number[]; hull: number[] } }
+  /** Active hardeners: their module indexes, and each layer's resonance multiplier with all of them off */
+  hardeners?: { indexes: number[]; mult: { shield: number[]; armor: number[]; hull: number[] } }
+  /** Targeting range, m, and scan resolution, mm; undefined = always locked */
+  lock?: { range: number; scanResolution: number }
+  /** How far drones can be ordered to attack, m; undefined = no limit */
+  droneControlRange?: number
   /** Everything else that draws on the capacitor */
   modules: CapModule[]
   tactical: (Tactical & { index: number })[]
@@ -225,7 +234,7 @@ export interface Combatant {
 export type TimelineEvent = {
   t: number
   side: 'a' | 'b'
-  kind: 'shieldDown' | 'armorDown' | 'dead' | 'capEmpty' | 'reload' | 'repReload' | 'propBlocked' | 'lostRange' | 'backInRange' | 'adcOn'
+  kind: 'shieldDown' | 'armorDown' | 'dead' | 'capEmpty' | 'reload' | 'repReload' | 'propBlocked' | 'lostRange' | 'backInRange' | 'adcOn' | 'locked' | 'lockLost' | 'capBoosterReload'
 }
 
 export interface TimelinePoint {
@@ -296,6 +305,8 @@ interface WeaponState {
   spool: number
   arrival: number
   firing: boolean
+  /** Drones: the order to attack has been given */
+  sent: boolean
 }
 
 interface RepState {
@@ -308,6 +319,7 @@ interface RepState {
 interface ModState extends CapModule {
   next: number
   on: boolean
+  left: number
   tactical?: Combatant['tactical'][number]
 }
 
@@ -316,6 +328,12 @@ interface State {
   c: Combatant
   /** The RAH: where it stands, whether it's running, and the armor damage of this cycle */
   rah?: { vector: number[]; running: boolean; damage: number[] }
+  /** When the lock on the other ship is done; null while there is none */
+  lockAt: number | null
+  locked: boolean
+  /** Inside targeting range last step */
+  lockInRange: boolean | null
+  capBoosterFlag: boolean
   /** The assault damage control: running until, and free to start again from */
   adc: { until: number; ready: number }
   o: Orders
@@ -349,11 +367,17 @@ function start(key: 'a' | 'b', c: Combatant, o: Orders, pos: Vec, distance: numb
   const rad = (o.heading * Math.PI) / 180
   // 0° is along the line, away from "you": towards the opponent for you, away from you for them.
   const freeDir = { x: Math.cos(rad), y: Math.sin(rad) }
+  // With a lock or a control range to respect, drones leave only when they can be ordered to.
+  const commanded = !!c.lock || c.droneControlRange !== undefined
   return {
     key,
     // The armor as it stands in the fight; the fitted figure stays with the fit.
     c: c.rah ? { ...c, armor: { ...c.armor, resist: rahResist(c.rah, c.rah.start) as LayerStats['resist'] } } : c,
     rah: c.rah ? { vector: c.rah.start, running: true, damage: [0, 0, 0, 0] } : undefined,
+    lockAt: null,
+    locked: !c.lock,
+    lockInRange: null,
+    capBoosterFlag: false,
     adc: { until: -1, ready: 0 },
     o,
     pos,
@@ -370,11 +394,12 @@ function start(key: 'a' | 'b', c: Combatant, o: Orders, pos: Vec, distance: numb
       shots: w.shots ?? 0,
       spool: 0,
       // Mobile drones have to get there first.
-      arrival: w.kind === 'drone' && (w.speed ?? 0) >= 1 ? distance / (w.speed as number) : 0,
-      firing: false
+      arrival: !commanded && w.kind === 'drone' && (w.speed ?? 0) >= 1 ? distance / (w.speed as number) : 0,
+      firing: false,
+      sent: !commanded
     })),
     reps: c.repairers.map((r) => ({ r, next: 0, shots: r.shots ?? 0, pending: null })),
-    mods: c.modules.map((m) => ({ ...m, next: 0, on: true, tactical: c.tactical.find((t) => t.index === m.index) })),
+    mods: c.modules.map((m) => ({ ...m, next: 0, on: true, left: m.shots ?? 0, tactical: c.tactical.find((t) => t.index === m.index) })),
     propNext: 0,
     propPaid: true,
     propOn: false,
@@ -435,12 +460,23 @@ function desiredVelocity(me: State, other: State, d: number, speed: number): Vec
   }
 }
 
-/** A side's layers as they take damage now: with the assault damage control's burst while it runs. */
-function withAdc(s: State, t: number): State['c'] {
-  const adc = s.c.adc
-  if (!adc || t + 1e-9 >= s.adc.until) return s.c
-  const layer = (l: LayerStats, mult: number[]): LayerStats => ({ ...l, resist: l.resist.map((r, i) => 1 - (1 - r) * mult[i]) as LayerStats['resist'] })
-  return { ...s.c, shield: layer(s.c.shield, adc.mult.shield), armor: layer(s.c.armor, adc.mult.armor), hull: layer(s.c.hull, adc.mult.hull) }
+/** Seconds to lock a target, by the game's formula. */
+export const lockTime = (scanResolution: number, signature: number): number => (scanResolution > 0 && signature > 0 ? 40000 / (scanResolution * Math.asinh(signature) ** 2) : Infinity)
+
+/**
+ * A side's layers as they take damage now: its hardeners off while there is no capacitor to run them (those stopped
+ * are taken as an even share of the whole set), and the assault damage control's burst while it runs.
+ */
+function layersNow(s: State, t: number): State['c'] {
+  const adc = s.c.adc && t + 1e-9 < s.adc.until ? s.c.adc : undefined
+  const h = s.c.hardeners
+  const off = h ? h.indexes.filter((i) => s.mods.find((m) => m.index === i)?.on === false).length / h.indexes.length : 0
+  if (!adc && !off) return s.c
+  const layer = (name: 'shield' | 'armor' | 'hull'): LayerStats => ({
+    ...s.c[name],
+    resist: s.c[name].resist.map((r, i) => 1 - Math.min(1, (1 - r) * (h ? 1 + (h.mult[name][i] - 1) * off : 1) * (adc ? adc.mult[name][i] : 1))) as LayerStats['resist']
+  })
+  return { ...s.c, shield: layer('shield'), armor: layer('armor'), hull: layer('hull') }
 }
 
 /** Damage after this layer's resists, spilling what's left to the next layer. */
@@ -566,13 +602,38 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
         targetSig: them.o.sig ?? motion.signature * stackedMultiplier(mods, 'paint', dNow),
         receding
       }
+      // A target has to be inside targeting range, and the lock takes its time; losing the range loses the lock.
+      const inLockRange = !me.c.lock || dNow <= me.c.lock.range
+      if (me.c.lock) {
+        if (!inLockRange) {
+          if (me.lockInRange !== false) log(t, me, 'lockLost')
+          me.lockAt = null
+          me.locked = false
+        } else {
+          me.lockAt ??= t + lockTime(me.c.lock.scanResolution, geo.targetSig)
+          if (!me.locked && t + 1e-9 >= me.lockAt) {
+            me.locked = true
+            log(t, me, 'locked')
+          }
+        }
+        me.lockInRange = inLockRange
+      }
+      const inControl = me.c.droneControlRange === undefined || dNow <= me.c.droneControlRange
       let anyInReach = false
       const paper = me.weapons.reduce((sum, ws) => sum + ws.w.dps, 0)
       for (const ws of me.weapons) {
-        const { factor } = application(ws.w, geo)
+        const drone = ws.w.kind === 'drone'
+        // Drones are ordered once, with a lock and inside control range; after that they keep at it by themselves.
+        if (drone && !ws.sent && me.locked && inControl) {
+          ws.sent = true
+          ws.arrival = (ws.w.speed ?? 0) >= 1 ? t + dNow / (ws.w.speed as number) : 0
+        }
+        const unreachable = drone ? !ws.sent && (!inLockRange || !inControl) : !inLockRange
+        const waiting = drone ? !ws.sent && !unreachable : inLockRange && !me.locked
+        const factor = unreachable ? 0 : application(ws.w, geo).factor
         if (factor >= WORTH_FIRING) anyInReach = true
         else if (paper > 0) me.idleSum += ws.w.dps / paper
-        if (t + 1e-9 < ws.next || t + 1e-9 < ws.arrival) continue
+        if (waiting || t + 1e-9 < ws.next || t + 1e-9 < ws.arrival) continue
         // Out of reach: nothing is fired, and a spooled weapon loses its spool.
         if (factor < WORTH_FIRING) {
           ws.spool = 0
@@ -588,8 +649,8 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
         ws.w.damage.forEach((v, i) => ((hits.get(them) as number[])[i] += v * boost * factor))
         if (ws.w.spoolMax) ws.spool = Math.min(ws.w.spoolMax, ws.spool + (ws.w.spoolPerCycle ?? 0))
         ws.firing = true
-        // A skipped cycle starts again from now, not from when it should have fired.
-        ws.next = Math.max(ws.next + ws.w.cycle, t)
+        // On time, the cycle keeps its pace between simulation steps; after waiting, it starts again from now.
+        ws.next = t - ws.next < DT + 1e-9 ? ws.next + ws.w.cycle : t + ws.w.cycle
         if (ws.w.shots) {
           ws.shots--
           if (ws.shots <= 0) {
@@ -616,10 +677,15 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
         if (t + 1e-9 < m.next) continue
         const tactical: TacticalModule | undefined = m.tactical?.t
         const aimed = tactical && tactical.kind !== 'mwd' && tactical.kind !== 'ab'
-        const reach = !aimed ? 1 : !me.o.useEwar ? 0 : 'falloff' in tactical ? ewarEfficiency(dNow, tactical.range, tactical.falloff) : (tactical as { range: number }).range >= dNow ? 1 : 0
+        const reach = !aimed ? 1 : !me.o.useEwar || !me.locked ? 0 : 'falloff' in tactical ? ewarEfficiency(dNow, tactical.range, tactical.falloff) : (tactical as { range: number }).range >= dNow ? 1 : 0
         // Nobody runs a web or a neut at something it can't reach.
         if (aimed && reach <= 0.001) {
           m.on = false
+          m.next = t + DT
+          continue
+        }
+        // A capacitor booster is pressed when there is room for its charge, not into a full capacitor.
+        if (m.need < 0 && me.cap - m.need > me.c.capacity) {
           m.next = t + DT
           continue
         }
@@ -641,6 +707,14 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
           me.c.armor.resist = rahResist(rah, me.rah.vector) as LayerStats['resist']
         }
         m.next = Math.max(m.next + m.cycle, t)
+        if (m.shots && --m.left <= 0) {
+          m.left = m.shots
+          m.next += m.reloadSec ?? 0
+          if (!me.capBoosterFlag) {
+            me.capBoosterFlag = true
+            log(t, me, 'capBoosterReload')
+          }
+        }
         if (tactical?.kind === 'neut') {
           them.cap = Math.max(0, them.cap - tactical.amount * reach * them.c.neutResist)
         } else if (tactical?.kind === 'nos') {
@@ -705,7 +779,7 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
     }
     for (const [me, them] of pairs) {
       const before = { s: them.shield, a: them.armor }
-      const dealt = applyDamage(them, withAdc(them, t), hits.get(them) as number[], (taken) => {
+      const dealt = applyDamage(them, layersNow(them, t), hits.get(them) as number[], (taken) => {
         if (them.rah) taken.forEach((v, i) => ((them.rah as NonNullable<State['rah']>).damage[i] += v))
       })
       me.outcome.dealt += dealt

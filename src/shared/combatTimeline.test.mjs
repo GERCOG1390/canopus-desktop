@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { frameAt, adaptRah, application, dependsOnStayingAway, applyDamage, isSentry, rahResist, recharge, runTimeline, stackedMultiplier, TIMELINE_MAX_SEC, turretMultiplier } from './combatTimeline.ts'
+import { frameAt, lockTime, adaptRah, application, dependsOnStayingAway, applyDamage, isSentry, rahResist, recharge, runTimeline, stackedMultiplier, TIMELINE_MAX_SEC, turretMultiplier } from './combatTimeline.ts'
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`)
 const layer = (hp, r = 0) => ({ hp, resist: [r, r, r, r], ehp: hp })
@@ -593,4 +593,98 @@ test('an emptied shield recharges by itself, as the capacitor does', () => {
   const r = run(ship({ weapons: [gun({ damage: [60, 0, 0, 0], cycle: 1000 })] }), ship({ shield: layer(50), shieldRechargeSec: 20, hull: layer(1000) }))
   const last = r.series[r.series.length - 1]
   assert.ok(last.b.s > 0.9, `shield at the end: ${last.b.s}`)
+})
+
+// ---------- Found by the pilot review: volleys, locks, drones, an empty capacitor
+
+const walker = { maxVelocity: 200, signature: 100, alignSec: 0.1 }
+const hullAt = (r, t) => r.series.find((p) => p.t >= t - 1e-9).b.h
+
+test('a weapon that waited for its target fires once when the target comes into reach, not twice', () => {
+  // 100 damage every 10 s, in reach only inside 5 km; the ship starts at 6 km and closes at 200 m/s.
+  const a = ship({ weapons: [gun({ damage: [100, 0, 0, 0], cycle: 10, optimal: 5000 })], off: walker })
+  const r = run(a, ship({ hull: layer(1000) }), { behavior: 'approach', range: 1000, speed: 200 }, {}, 6000)
+  const entered = r.series.find((p) => p.b.h < 1).t
+  close(hullAt(r, entered + 5), 1 - (100 * FULL) / 1000, 1e-6)
+})
+
+test('a cycle that is no multiple of the simulation step keeps its pace', () => {
+  // 3.7 s: volleys at 0, 3.7, … 37 are eleven; rounding each cycle up to the step would make ten.
+  const r = run(ship({ weapons: [gun({ damage: [10, 0, 0, 0], cycle: 3.7 })] }), ship({ hull: layer(10000) }))
+  close(hullAt(r, 37.6), 1 - (11 * 10 * FULL) / 10000, 1e-6)
+})
+
+test('the time to lock is the game formula', () => {
+  close(lockTime(100, 100), 40000 / (100 * Math.asinh(100) ** 2), 1e-9)
+  assert.equal(lockTime(100, 0), Infinity)
+})
+
+test('nothing fires before the lock is done, and the lock is marked', () => {
+  // 14.25 s for scan resolution 100 on signature 100.
+  const a = ship({ weapons: [gun()], lock: { range: 100000, scanResolution: 100 } })
+  const r = run(a, ship({ hull: layer(10000), off: still }))
+  assert.equal(hullAt(r, 14), 1)
+  assert.ok(hullAt(r, 16) < 1)
+  const locked = r.events.find((e) => e.kind === 'locked')
+  assert.ok(locked && locked.t > 14 && locked.t < 15, JSON.stringify(locked))
+})
+
+test('beyond targeting range the guns stay silent, whatever their reach', () => {
+  const a = ship({ weapons: [gun()], lock: { range: 5000, scanResolution: 1000 } })
+  const r = run(a, ship({ hull: layer(100) }), {}, {}, 10000)
+  assert.equal(r.b.dead, null)
+  assert.equal(r.a.dealt, 0)
+  assert.ok(r.events.some((e) => e.kind === 'lockLost'))
+})
+
+test('webs need a lock too', () => {
+  const web = { index: 7, typeId: 1, t: { kind: 'web', strength: -60, range: 20000, falloff: 0 } }
+  const a = ship({ lock: { range: 100000, scanResolution: 1 }, modules: [{ index: 7, need: 0, cycle: 5 }], tactical: [web] })
+  const fast = { maxVelocity: 1000, signature: 100, alignSec: 0.1 }
+  const r = run(a, ship({ off: fast }), {}, { behavior: 'free', heading: 90, speed: 1000 }, 10000)
+  // Far from locked at 5 s (scan resolution 1): the target still flies at full speed.
+  assert.ok(r.series.find((p) => p.t >= 5).b.v > 950)
+})
+
+test('drones can only be sent inside drone control range', () => {
+  const drone = gun({ kind: 'drone', speed: 2000, optimal: 0, falloff: 0 })
+  const far = run(ship({ weapons: [drone], droneControlRange: 20000 }), ship({ hull: layer(100) }), {}, {}, 30000)
+  assert.equal(far.a.dealt, 0)
+  const near = run(ship({ weapons: [drone], droneControlRange: 20000 }), ship({ hull: layer(100) }), {}, {}, 10000)
+  assert.ok(near.b.dead !== null)
+  // 10 km at 2000 m/s: five seconds of flight before the first bite.
+  assert.equal(hullAt(near, 4), 1)
+})
+
+test('drones already sent keep chasing a target that leaves control range', () => {
+  const drone = gun({ kind: 'drone', speed: 5000, optimal: 0, falloff: 0 })
+  const away = { maxVelocity: 3000, signature: 100, alignSec: 0.1 }
+  const r = run(ship({ weapons: [drone], droneControlRange: 20000 }), ship({ hull: layer(100), off: away }), {}, { behavior: 'flee', speed: 3000 }, 10000)
+  assert.ok(r.b.dead !== null)
+})
+
+test('out of capacitor, active hardeners stop and the resists go', () => {
+  // Armor takes 10 a second. The hardener halves it while it runs: 100 GJ pays for one 10-s cycle only.
+  const tank = ship({
+    armor: layer(1000),
+    capacity: 100,
+    modules: [{ index: 3, need: 100, cycle: 10 }],
+    hardeners: { indexes: [3], mult: { shield: [1, 1, 1, 1], armor: [2, 2, 2, 2], hull: [1, 1, 1, 1] } }
+  })
+  tank.armor.resist = [0.5, 0.5, 0.5, 0.5]
+  const r = run(ship({ weapons: [gun()] }), tank)
+  const per = (from, to) => r.series.find((p) => p.t >= from - 1e-9).b.a - r.series.find((p) => p.t >= to - 1e-9).b.a
+  close(per(2, 8), (6 * 5 * FULL) / 1000, 1e-6)
+  close(per(12, 18), (6 * 10 * FULL) / 1000, 1e-6)
+  assert.ok(r.events.some((e) => e.kind === 'capEmpty'))
+})
+
+test('a capacitor booster runs out of charges, reloads, and is not fired into a full capacitor', () => {
+  const booster = { index: 4, need: -50, cycle: 10, shots: 2, reloadSec: 100 }
+  const drain = { index: 5, need: 20, cycle: 5 }
+  const a = ship({ capacity: 100, modules: [booster, drain] })
+  const r = run(a, ship({ weapons: [gun({ damage: [0.1, 0, 0, 0] })], hull: layer(1e5) }))
+  const reload = r.events.find((e) => e.kind === 'capBoosterReload')
+  assert.ok(reload && reload.side === 'a', JSON.stringify(r.events.slice(0, 5)))
+  assert.ok(reload.t > 5, 'not spent on a full capacitor at the start')
 })

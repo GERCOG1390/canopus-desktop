@@ -510,7 +510,7 @@ function Editor() {
 
           <div className="slot-group">
             <div className="slot-head">Бустеры</div>
-            <BoosterPanel fit={f} onChange={(next) => updateFit(() => next)} />
+            <BoosterPanel fit={f} skills={skills} onChange={(next) => updateFit(() => next)} />
           </div>
         </div>
 
