@@ -1386,12 +1386,24 @@ details > summary {
   gap: 14px;
   align-items: start;
 }
+/* Narrower: slots with the module list under them, and the stats beside both, so hovering a module still shows
+   what it changes. */
 @media (max-width: 1450px) {
   .fitting-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(330px, 0.9fr);
+    grid-template-areas: 'slots stats' 'browser stats';
   }
-  .stats-col {
-    grid-column: 1 / -1;
+  .fitting-grid > .fit-col:first-child {
+    grid-area: slots;
+  }
+  .fitting-grid > .browser-col {
+    grid-area: browser;
+    position: static;
+  }
+  .fitting-grid > .stats-col {
+    grid-area: stats;
+    max-height: calc(100vh - 150px);
+    overflow-y: auto;
   }
 }
 .fit-col {
