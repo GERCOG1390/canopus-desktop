@@ -8,7 +8,7 @@ import { MissingSkillsBox } from '../components/skills'
 import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, ProgressBar, RequireLogin, SearchBox, Sec, Stat, Tabs } from '../components/ui'
 import { esi, resolveNames, systemInfo } from '../lib/esi'
-import { fmtDate, fmtDuration, fmtIsk, fmtNum } from '../lib/format'
+import { fixed, fmtDate, fmtDuration, fmtIsk, fmtNum } from '../lib/format'
 import { jitaPrices } from '../lib/market'
 import { getBasic, searchSystemsSde, searchTypesSde, tn } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
@@ -184,7 +184,7 @@ function Calculator() {
           <Stat
             label="Прибыль"
             value={<span className={profit >= 0 ? 'good' : 'bad'}>{fmtIsk(profit, true)}</span>}
-            sub={totalCost ? `маржа ${((profit / totalCost) * 100).toFixed(1)}%` : undefined}
+            sub={totalCost ? `маржа ${fixed((profit / totalCost) * 100, 1)}%` : undefined}
           />
           <Stat label="Время" value={fmtDuration(time * 1000)} sub={`${fmtIsk(profit / Math.max(1, time / 3600), true)} в час`} />
         </div>
@@ -232,7 +232,7 @@ function Calculator() {
                 </tr>
                 <tr>
                   <td>Индекс стоимости ({isReaction ? 'реакции' : 'производство'})</td>
-                  <td className="num">{(costIndex * 100).toFixed(2)}%</td>
+                  <td className="num">{fixed(costIndex * 100, 2)}%</td>
                 </tr>
                 <tr>
                   <td>Налог сооружения</td>

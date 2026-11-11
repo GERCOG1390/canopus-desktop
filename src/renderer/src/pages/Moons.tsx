@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react'
 import { useApp } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
-import { Card, Empty, ErrorBox, Loading, RequireLogin, Stat } from '../components/ui'
+import { NeedPermission, Card, Empty, ErrorBox, Loading, RequireLogin, Stat } from '../components/ui'
 import { esi, resolveNames } from '../lib/esi'
 import { fmtDuration, fmtIsk, fmtNum } from '../lib/format'
 import { jitaPrices } from '../lib/market'
@@ -79,7 +79,7 @@ export default function Moons() {
   }, [active?.id, corp.data, active?.scopes.join(' ')])
 
   if (!active) return <RequireLogin what="лунную добычу корпорации" />
-  if (!active.scopes.includes(SCOPE)) return <Empty>Нажмите «Настройки → Разрешить корпорацию». Для таймеров нужна роль Station Manager, для журнала добычи — Accountant.</Empty>
+  if (!active.scopes.includes(SCOPE)) return <NeedPermission>Нажмите «Настройки → Разрешить корпорацию». Для таймеров нужна роль Station Manager, для журнала добычи — Accountant.</NeedPermission>
   if (corp.loading) return <Loading />
 
   return (

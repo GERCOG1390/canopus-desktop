@@ -97,7 +97,7 @@ export default function HaulPlanner() {
   return (
     <>
       <Card title="Что и куда">
-        <textarea rows={6} style={{ width: '100%' }} placeholder="Tritanium 2000000&#10;Drake x 3" value={text} onChange={(e) => setText(e.target.value)} />
+        <textarea rows={6} style={{ width: '100%' }} placeholder="Например:&#10;Tritanium 2000000&#10;Drake x 3" value={text} onChange={(e) => setText(e.target.value)} />
         {!!items.data?.unknown.length && <p className="warn-text small">{`Не распознано: ${items.data.unknown.join(', ')}`}</p>}
         <div className="calc-form">
           <label>

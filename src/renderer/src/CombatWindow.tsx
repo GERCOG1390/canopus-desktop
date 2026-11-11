@@ -11,7 +11,7 @@ import { BoosterPanel } from './components/BoosterPanel'
 import { MissileLab } from './components/MissileLab'
 import { Card, CountUp, SearchBox, Tabs } from './components/ui'
 import { imageUrl } from './lib/esi'
-import { fmtNum } from './lib/format'
+import { fixed, fmtNum } from './lib/format'
 import { chargesFor, fromEft, fromEsiItems, loadCatalog, toEft } from './lib/fitting'
 import { groupByShip, loadGameFits, type GameFitting } from './lib/gameFits'
 import { CATEGORY, searchTypesSde, tn, useTypeBasic, useTypeBasics } from './lib/sde'
@@ -175,6 +175,11 @@ function Simulator() {
       ) : (
         <>
 
+      {result && attacker && defender && (
+        <div className="combat-verdict-top">
+          <Verdict r={result} boosters={!!(you?.fit.boosters?.length || defender?.fit.boosters?.length)} />
+        </div>
+      )}
       <div className="combat-versus">
         <Card className="combat-side-card side-a">
           <div className="combat-side-title">
@@ -367,10 +372,9 @@ function NumberField({ label, value, step, onChange }: { label: string; value: n
 }
 
 /** The quick answer: who wins, how hard each side hits and what holds the damage back. */
-function Summary({ r, boosters }: { r: CombatResult; boosters: boolean }) {
+function Summary({ r }: { r: CombatResult; boosters?: boolean }) {
   return (
     <div className="combat-summary">
-      <Verdict r={r} boosters={boosters} />
       <SummaryLine title="Вы → противник" d={r.ab} cls="side-a" average={r.timeline.a.averageDps} />
       <SummaryLine title="Противник → вы" d={r.ba} cls="side-b" average={r.timeline.b.averageDps} />
       <div className="combat-geo muted small">
@@ -881,7 +885,7 @@ function SideStats({ info }: { info: CombatSideInfo }) {
                 </span>
               </td>
               {info.resist[l].map((r, i) => (
-                <td key={i} className="num">{`${(r * 100).toFixed(0)}%`}</td>
+                <td key={i} className="num">{`${fixed(r * 100, 0)}%`}</td>
               ))}
               <td className="num">{fmtNum(info.hp[l])}</td>
             </tr>
@@ -1503,7 +1507,7 @@ function DirectionCard({ title, d }: { title: string; d: CombatDirection }) {
       <div className="big-stats">
         <div>
           <b>{n1(d.applied)}</b>
-          <span>{`DPS на старте из ${n1(d.paperDps)} (${pct.toFixed(0)}%)`}</span>
+          <span>{`DPS на старте из ${n1(d.paperDps)} (${fixed(pct, 0)}%)`}</span>
         </div>
       </div>
       <div className="damage-profile">
@@ -1580,7 +1584,7 @@ function WeaponRow({ w, lang }: { w: CombatDirection['weapons'][number]; lang: 0
         </span>
       </td>
       <td className="num">{`${n1(w.applied)} / ${n1(w.dps)}`}</td>
-      <td className={`num ${w.factor < 0.5 ? 'bad' : w.factor < 0.9 ? 'warn-text' : 'good'}`}>{`${(w.factor * 100).toFixed(0)}%`}</td>
+      <td className={`num ${w.factor < 0.5 ? 'bad' : w.factor < 0.9 ? 'warn-text' : 'good'}`}>{`${fixed(w.factor * 100, 0)}%`}</td>
       <td className="muted small">
         {w.limit ?? ''}
         {w.spoolMax ? <div>{`раскрутка до ×${(1 + w.spoolMax).toLocaleString(locale(), { maximumFractionDigits: 2 })}`}</div> : null}

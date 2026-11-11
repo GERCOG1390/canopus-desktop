@@ -7,7 +7,7 @@ import { useApp } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, RequireLogin, Stat } from '../components/ui'
 import { esi } from '../lib/esi'
-import { fmtIsk, fmtNum } from '../lib/format'
+import { fixed, fmtIsk, fmtNum } from '../lib/format'
 import { jitaPrices } from '../lib/market'
 import { useAsync } from '../lib/useAsync'
 
@@ -170,7 +170,7 @@ export default function Trades() {
       {days > 30 && <p className="warn-text small">Журнал ESI хранит налоги и комиссии только за 30 дней: за более долгий срок они неполные, и чистая прибыль завышена.</p>}
       <div className="stats-row">
         <Stat label="Чистая прибыль" value={fmtIsk(net, true)} sub={`с продаж ${fmtIsk(gross, true)} минус налоги и комиссии по этим сделкам`} />
-        <Stat label="Оборот (продажи)" value={fmtIsk(turnover, true)} sub={turnover ? `маржа ${((gross / turnover) * 100).toFixed(1)}%` : undefined} />
+        <Stat label="Оборот (продажи)" value={fmtIsk(turnover, true)} sub={turnover ? `маржа ${fixed((gross / turnover) * 100, 1)}%` : undefined} />
         <Stat label="Налог с продаж" value={fmtIsk(fees.tax, true)} />
         <Stat label="Брокерские комиссии" value={fmtIsk(fees.broker, true)} />
         <Stat label="Не продано" value={fmtIsk(stock.reduce((a, i) => a + i.leftCost, 0), true)} sub={stockValue ? `в Jita ${fmtIsk(stockValue, true)}` : undefined} />
@@ -203,7 +203,7 @@ export default function Trades() {
                     <td className="num">{fmtIsk(avgSell, true)}</td>
                     <td className={`num ${perUnit < 0 ? 'bad' : ''}`}>{fmtIsk(perUnit, true)}</td>
                     <td className={`num ${i.profit < 0 ? 'bad' : 'good'}`}>{fmtIsk(i.profit, true)}</td>
-                    <td className="num">{avgSell ? `${((perUnit / avgSell) * 100).toFixed(1)}%` : '—'}</td>
+                    <td className="num">{avgSell ? `${fixed((perUnit / avgSell) * 100, 1)}%` : '—'}</td>
                   </tr>
                 )
               })}

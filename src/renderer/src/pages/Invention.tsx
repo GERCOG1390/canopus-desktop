@@ -9,7 +9,7 @@ import { useCharacter } from '../CharacterContext'
 import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, SearchBox, Stat } from '../components/ui'
 import { esi } from '../lib/esi'
-import { fmtIsk, fmtNum } from '../lib/format'
+import { fixed, fmtIsk, fmtNum } from '../lib/format'
 import { jitaPrices } from '../lib/market'
 import { searchSystemsSde, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
@@ -20,7 +20,7 @@ const SCC_SURCHARGE = 0.04
 /** An invention job's base: this share of the item's estimated value. */
 const INVENTION_JOB_SHARE = 0.02
 
-const pct = (v: number): string => `${(v * 100).toFixed(1)}%`
+const pct = (v: number): string => `${fixed(v * 100, 1)}%`
 
 const RELIC_CATEGORY = 34
 

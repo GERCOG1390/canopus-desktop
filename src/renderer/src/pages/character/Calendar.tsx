@@ -4,7 +4,7 @@ import { Glyph } from '../../components/Glyph'
 import { useState } from 'react'
 import { useApp } from '../../AppContext'
 import { GameButton } from '../../components/GameButton'
-import { Card, Empty, ErrorBox, Loading } from '../../components/ui'
+import { NeedPermission, Card, Empty, ErrorBox, Loading } from '../../components/ui'
 import { esi } from '../../lib/esi'
 import { fmtDate } from '../../lib/format'
 import { hasScope, SCOPE } from '../../lib/gameActions'
@@ -34,7 +34,7 @@ export default function Calendar({ id }: { id: number }) {
   const [version, setVersion] = useState(0)
   const [open, setOpen] = useState<number | null>(null)
   const events = useAsync(() => esi<EventSummary[]>(`/characters/${id}/calendar/`, { characterId: id, fresh: version > 0 }), [id, version])
-  if (!hasScope(active, SCOPE.readCalendar)) return <Empty>Чтобы видеть календарь, нажмите «Настройки → Разрешить действия в игре» и войдите заново.</Empty>
+  if (!hasScope(active, SCOPE.readCalendar)) return <NeedPermission>Чтобы видеть календарь, нажмите «Настройки → Разрешить действия в игре» и войдите заново.</NeedPermission>
   if (events.loading) return <Loading />
   if (events.error) return <ErrorBox error={events.error} />
   if (!events.data?.length) return <Empty>Ближайших событий нет.</Empty>

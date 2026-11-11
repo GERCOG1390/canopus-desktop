@@ -139,14 +139,16 @@ export default function Wars() {
           <button onClick={() => void load()} disabled={!!progress}>
             {unread > 0 && wars ? `Смотреть дальше: ещё ${fmtNum(Math.min(WAR_PORTION, unread))}` : 'Проверить войны'}
           </button>
+          <div className="tabs">
           {[
             ['running', 'Идут'],
             ['mine', 'Мои']
           ].map(([id, label]) => (
-            <button key={id} className={`chip-btn small${filter === id ? ' active' : ''}`} onClick={() => setFilter(id as typeof filter)}>
+            <button key={id} className={filter === id ? 'tab active' : 'tab'} onClick={() => setFilter(id as typeof filter)}>
               {label}
             </button>
           ))}
+          </div>
           <input placeholder="Поиск по названию" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
         {progress && (

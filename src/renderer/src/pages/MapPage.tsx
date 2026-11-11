@@ -486,7 +486,7 @@ function WormholeConnections() {
                   <td className="mono">{s.in_signature}</td>
                   <td className="muted">{SHIP_SIZE[s.max_ship_size] ?? s.max_ship_size}</td>
                   <td className={`num ${s.remaining_hours <= 2 ? 'bad' : ''}`}>{s.remaining_hours} ч</td>
-                  <td className="num">{jumps.has(s.in_system_id) ? jumps.get(s.in_system_id) ?? '—' : ''}</td>
+                  <td className="num">{jumps.get(s.in_system_id) ?? '—'}</td>
                 </tr>
               ))}
             </tbody>

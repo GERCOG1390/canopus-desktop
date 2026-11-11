@@ -64,7 +64,7 @@ function Lookup({ types, onPick }: { types: WormholeType[]; onPick: (w: Wormhole
   }, [code])
   return (
     <Card title="Поиск: код дыры или J-система">
-      <input value={q} placeholder="Например, C247 или J100001" onChange={(e) => setQ(e.target.value)} />
+      <input className="wh-search" value={q} placeholder="Например, C247 или J100001" onChange={(e) => setQ(e.target.value)} />
       {hole && (
         <div className="wh-card">
           <HoleSummary w={hole} />
@@ -172,7 +172,7 @@ function TypeTable({ types, selected, onPick }: { types: WormholeType[]; selecte
               <td className="muted small">{passes(w.jumpMass)}</td>
               <td>
                 {w.jumpMass > 0 && (
-                  <button className="ghost small" onClick={() => onPick(w)}>
+                  <button className="ghost small row-action" onClick={() => onPick(w)}>
                     В калькулятор
                   </button>
                 )}

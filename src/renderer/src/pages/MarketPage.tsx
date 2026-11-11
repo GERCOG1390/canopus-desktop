@@ -11,7 +11,7 @@ import { GameButton } from '../components/GameButton'
 import { openMarketInGame, SCOPE } from '../lib/gameActions'
 import { Arbitrage, LpStore } from './MarketTools'
 import Trades from './Trades'
-import { fmtDate, fmtIsk, fmtNum } from '../lib/format'
+import { fixed, fmtDate, fmtIsk, fmtNum } from '../lib/format'
 import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/market'
 import { getBasic, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
@@ -219,7 +219,7 @@ function HubRow({ name, price, minSell, maxBuy }: { name: string; price?: Price;
       <td>{name}</td>
       <td className={`num ${sell && sell === minSell ? 'good' : ''}`}>{sell ? fmtIsk(sell) : '—'}</td>
       <td className={`num ${buy && buy === maxBuy ? 'good' : ''}`}>{buy ? fmtIsk(buy) : '—'}</td>
-      <td className="num">{spread == null ? '—' : `${spread.toFixed(1)}%`}</td>
+      <td className="num">{spread == null ? '—' : `${fixed(spread, 1)}%`}</td>
       <td className="num">{fmtNum(price?.sell.volume)}</td>
     </tr>
   )

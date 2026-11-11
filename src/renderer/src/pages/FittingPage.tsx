@@ -18,7 +18,7 @@ import { TrialSkills } from '../components/TrialSkills'
 import { TypeLink, TypeName } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, SearchBox } from '../components/ui'
 import { imageUrl } from '../lib/esi'
-import { fmtDate, fmtDuration, fmtNum } from '../lib/format'
+import { fixed, fmtDate, fmtDuration, fmtNum } from '../lib/format'
 import { chargesFor, defaultState, fromEft, loadCatalog, nextState, SLOT_LABEL, SLOT_ORDER, toEft, useFitting } from '../lib/fitting'
 import { CATEGORY, getBasic, searchTypesSde, tn, useTypeBasics } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
@@ -890,7 +890,7 @@ function Layer({ name, attr, l, prev }: { name: string; attr: number; l: LayerSt
       {l.resist.map((r, i) => (
         <td key={i} className={`res res-${RES_CLASS[i]}`}>
           <div className="res-fill" style={{ width: `${Math.max(0, r) * 100}%` }} />
-          <span>{(r * 100).toFixed(1)}%</span>
+          <span>{fixed(r * 100, 1)}%</span>
           <Delta v={r * 100} b={prev ? prev.resist[i] * 100 : undefined} />
         </td>
       ))}
@@ -1183,7 +1183,7 @@ function StatsPanel({
             <Delta v={s.capacitor.usePerSecond} b={b?.capacitor.usePerSecond} digits={2} better="down" />
           </KV>
           <KV label="Стабильность" className={s.capacitor.stable ? 'good' : 'bad'}>
-            {s.capacitor.stable ? `стабилен ${((s.capacitor.stableLevel ?? 1) * 100).toFixed(1)}%${s.capacitor.onCharges ? ', пока есть заряды' : ''}` : `кончится за ${fmtDuration((s.capacitor.lastsSec ?? 0) * 1000)}`}
+            {s.capacitor.stable ? `стабилен ${fixed((s.capacitor.stableLevel ?? 1) * 100, 1)}%${s.capacitor.onCharges ? ', пока есть заряды' : ''}` : `кончится за ${fmtDuration((s.capacitor.lastsSec ?? 0) * 1000)}`}
             {s.capacitor.stable && b?.capacitor.stable && (
               <Delta v={(s.capacitor.stableLevel ?? 1) * 100} b={(b.capacitor.stableLevel ?? 1) * 100} unit="%" />
             )}

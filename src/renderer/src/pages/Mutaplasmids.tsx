@@ -1,6 +1,7 @@
 // Mutaplasmids: pick a module and a mutaplasmid, see each attribute's range — the module's own value times the
 // mutaplasmid's multipliers — and set where each roll landed to get the abyssal module's numbers.
 
+import { fixed } from '../lib/format'
 import { useEffect, useMemo, useState } from 'react'
 import { useApp, useLang } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
@@ -121,7 +122,7 @@ export default function Mutaplasmids() {
                     <td className="num muted small">{show(r, rolledValue(r.base, r.min, r.max, 1))}</td>
                     <td className="num muted small">{show(r, r.base)}</td>
                     <td className={`num ${cls}`}>{show(r, value)}</td>
-                    <td className={`num small ${cls}`}>{`${change >= 0 ? '+' : ''}${change.toFixed(1)}%`}</td>
+                    <td className={`num small ${cls}`}>{`${change >= 0 ? '+' : ''}${fixed(change, 1)}%`}</td>
                   </tr>
                 )
               })}

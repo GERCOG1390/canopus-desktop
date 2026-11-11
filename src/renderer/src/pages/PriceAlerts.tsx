@@ -104,7 +104,7 @@ export default function PriceAlerts() {
                     <td className="num">{now ? fmtIsk(now, true) : '—'}</td>
                     <td className="num">{isTriggered(a, now) ? <span className="good">Сработало</span> : <span className="muted">Ждём</span>}</td>
                     <td className="num">
-                      <button className="ghost small danger" onClick={() => save(alerts.filter((x) => x.id !== a.id))}>
+                      <button className="ghost small danger row-action" onClick={() => save(alerts.filter((x) => x.id !== a.id))}>
                         Удалить
                       </button>
                     </td>

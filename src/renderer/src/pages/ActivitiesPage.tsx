@@ -203,7 +203,7 @@ function Signatures() {
           В игре: окно сканера зондов → <b>Ctrl+A</b>, <b>Ctrl+C</b>. Canopus разберёт сигнатуры автоматически, запомнит их для системы и при следующем копировании покажет новые и
           исчезнувшие. Или вставьте вручную:
         </p>
-        <textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="ABC-123	Cosmic Signature	Data Site	Central Guristas Survey Site	100,0%	3,44 AU" />
+        <textarea rows={4} value={text} onChange={(e) => setText(e.target.value)} placeholder="Например:&#10;ABC-123	Cosmic Signature	Data Site	Central Guristas Survey Site	100,0%	3,44 AU" />
         <div className="row">
           <button disabled={!text.trim()} onClick={() => apply(text, system?.name ?? null)}>
             Разобрать

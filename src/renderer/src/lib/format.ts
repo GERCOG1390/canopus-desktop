@@ -5,16 +5,19 @@ import { locale } from '../i18n'
 const nf0 = () => new Intl.NumberFormat(locale(), { maximumFractionDigits: 0 })
 const nf2 = () => new Intl.NumberFormat(locale(), { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+/** A number with fixed decimals in the interface's own decimal mark. */
+export const fixed = (n: number, digits: number): string => n.toLocaleString(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false })
+
 export const fmtNum = (n: number | null | undefined): string => (n == null || Number.isNaN(n) ? '—' : nf0().format(n))
 
 export function fmtIsk(n: number | null | undefined, compact = false): string {
   if (n == null || Number.isNaN(n)) return '—'
   if (compact) {
     const abs = Math.abs(n)
-    if (abs >= 1e12) return `${(n / 1e12).toFixed(2)}T ISK`
-    if (abs >= 1e9) return `${(n / 1e9).toFixed(2)}B ISK`
-    if (abs >= 1e6) return `${(n / 1e6).toFixed(2)}M ISK`
-    if (abs >= 1e3) return `${(n / 1e3).toFixed(1)}K ISK`
+    if (abs >= 1e12) return `${fixed(n / 1e12, 2)}T ISK`
+    if (abs >= 1e9) return `${fixed(n / 1e9, 2)}B ISK`
+    if (abs >= 1e6) return `${fixed(n / 1e6, 2)}M ISK`
+    if (abs >= 1e3) return `${fixed(n / 1e3, 1)}K ISK`
   }
   return `${nf2().format(n)} ISK`
 }

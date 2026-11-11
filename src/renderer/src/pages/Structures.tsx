@@ -3,7 +3,7 @@
 
 import { useApp } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
-import { Card, Empty, ErrorBox, Loading, RequireLogin, Sec } from '../components/ui'
+import { NeedPermission, Card, Empty, ErrorBox, Loading, RequireLogin, Sec } from '../components/ui'
 import { esi, systemInfo } from '../lib/esi'
 import { fmtDuration } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
@@ -49,7 +49,7 @@ export default function Structures() {
   }, [active?.id, active?.scopes.join(' ')])
 
   if (!active) return <RequireLogin what="структуры корпорации" />
-  if (!active.scopes.includes(SCOPE)) return <Empty>Нажмите «Настройки → Разрешить корпорацию». В игре у персонажа должна быть роль Station Manager.</Empty>
+  if (!active.scopes.includes(SCOPE)) return <NeedPermission>Нажмите «Настройки → Разрешить корпорацию». В игре у персонажа должна быть роль Station Manager.</NeedPermission>
   if (data.loading && !data.data) return <Loading />
   if (data.error)
     return <ErrorBox error={/403/.test(data.error) ? 'ESI отказал: у персонажа нет роли Station Manager в корпорации.' : data.error} />

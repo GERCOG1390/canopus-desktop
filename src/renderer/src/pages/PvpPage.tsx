@@ -4,7 +4,7 @@ import { useApp } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, SearchBox, Sec, Stat, Tabs, CountUp } from '../components/ui'
 import { esi, imageUrl, resolveIds, resolveNames, systemInfo, type SystemInfo } from '../lib/esi'
-import { fmtAgo, fmtIsk, fmtNum } from '../lib/format'
+import { fixed, fmtAgo, fmtIsk, fmtNum } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 import BattleReportTab from './BattleReport'
 import CombatLogReport from './CombatLogReport'
@@ -232,7 +232,7 @@ function PilotBoard({ pilot }: { pilot: Pilot }) {
       <div className="stats-row">
         <Stat label="Уничтожено" value={<CountUp value={stats.shipsDestroyed ?? 0} format={(v) => fmtNum(Math.round(v))} />} sub={fmtIsk(stats.iskDestroyed ?? 0, true)} />
         <Stat label="Потеряно" value={fmtNum(stats.shipsLost ?? 0)} sub={fmtIsk(stats.iskLost ?? 0, true)} />
-        <Stat label="ISK-эффективность" value={efficiency == null ? '—' : `${efficiency.toFixed(1)}%`} />
+        <Stat label="ISK-эффективность" value={efficiency == null ? '—' : `${fixed(efficiency, 1)}%`} />
         <Stat label="Соло-киллов" value={fmtNum(stats.soloKills ?? 0)} sub={stats.dangerRatio !== undefined ? `Опасность ${stats.dangerRatio}% · в банде ${stats.gangRatio ?? 0}%` : undefined} />
       </div>
 

@@ -134,7 +134,7 @@ export default function Agents() {
                   </td>
                   <td className="num">{a.jumps ?? '—'}</td>
                   <td className="num">
-                    <GameButton scope={SCOPE.openWindow} action={(who) => openInfoInGame(who, a.id)} title="Открыть карточку агента в клиенте игры" done="открыто в игре" className="ghost small">
+                    <GameButton scope={SCOPE.openWindow} action={(who) => openInfoInGame(who, a.id)} title="Открыть карточку агента в клиенте игры" done="открыто в игре" className="ghost small row-action">
                       Открыть в игре
                     </GameButton>
                   </td>

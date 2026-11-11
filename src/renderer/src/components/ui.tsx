@@ -1,3 +1,4 @@
+import { useApp } from '../AppContext'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { imageUrl } from '../lib/esi'
 import { Glyph, type GlyphName } from './Glyph'
@@ -129,6 +130,16 @@ export function Empty({ children, icon = 'star', actions }: { children: ReactNod
       <div>{children}</div>
       {actions && <div className="empty-actions">{actions}</div>}
     </div>
+  )
+}
+
+/** A screen that needs a permission the pilot hasn't given: says why, and opens the place to give it. */
+export function NeedPermission({ children }: { children: ReactNode }) {
+  const { navigate } = useApp()
+  return (
+    <Empty icon="gear" actions={<button onClick={() => navigate('settings')}>Открыть настройки</button>}>
+      {children}
+    </Empty>
   )
 }
 

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../AppContext'
 import { GameButton } from '../components/GameButton'
-import { Card, Empty, ErrorBox, Loading, RequireLogin } from '../components/ui'
+import { NeedPermission, Card, Empty, ErrorBox, Loading, RequireLogin } from '../components/ui'
 import { esi, imageUrl, resolveIds, resolveNames } from '../lib/esi'
 import { hasScope, openNewMailInGame, SCOPE } from '../lib/gameActions'
 import { fmtDate } from '../lib/format'
@@ -53,7 +53,7 @@ export default function MailPage() {
   if (!hasScope(active, SCOPE.readMail))
     return (
       <div className="page">
-        <Empty>Чтобы читать и отправлять почту, нажмите «Настройки → Разрешить действия в игре» и войдите заново.</Empty>
+        <NeedPermission>Чтобы читать и отправлять почту, нажмите «Настройки → Разрешить действия в игре» и войдите заново.</NeedPermission>
       </div>
     )
   return <Mailbox id={active.id} />

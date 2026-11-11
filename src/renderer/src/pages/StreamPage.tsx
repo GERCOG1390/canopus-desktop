@@ -80,7 +80,7 @@ export default function StreamPage() {
             />
           </label>
         </div>
-        <label className="check">
+        <label className="check stream-wallet">
           <input type="checkbox" checked={s.showWallet} onChange={(e) => set({ showWallet: e.target.checked })} />
           Показывать изменение кошелька за сессию
         </label>

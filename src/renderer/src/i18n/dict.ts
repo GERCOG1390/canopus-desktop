@@ -112,6 +112,7 @@ export const EXACT: Record<string, string> = {
   'Сила штрафа (тир влияет только на неё):': 'Penalty strength (the tier only changes this):',
   'Журнал ESI хранит налоги и комиссии только за 30 дней: за более долгий срок они неполные, и чистая прибыль завышена.': 'ESI\'s journal keeps taxes and fees for 30 days only: over a longer period they are incomplete and the net profit is overstated.',
   '— пустой разъём —': '— empty socket —',
+  'Открыть настройки': 'Open Settings',
   // ---- visual pass
   'Состав флота': 'Fleet composition',
   'Мои контракты': 'My contracts',
@@ -2260,6 +2261,7 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^Например:\n([\s\S]*)$/, 'For example:\n$1'],
   [/^с продаж (.+) минус налоги и комиссии по этим сделкам$/, '$1 from sales, less taxes and fees on these deals'],
   [/^налог и брокерская (.+)$/, 'tax and broker fee $1'],
   [/^Реликт за попытку \(0 — по Jita: (.+)\)$/, 'Relic per attempt (0 = Jita: $1)'],

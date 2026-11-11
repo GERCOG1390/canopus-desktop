@@ -135,7 +135,7 @@ function LocalTab() {
 
       {!scan ? (
         <Card>
-          <Empty>Скопируйте список пилотов из окна Local (Ctrl+A, Ctrl+C) — или вставьте его сюда:</Empty>
+          <p className="muted small">Скопируйте список пилотов из окна Local (Ctrl+A, Ctrl+C) — или вставьте его сюда:</p>
           <textarea rows={5} value={manual} onChange={(e) => setManual(e.target.value)} placeholder="Имена пилотов, по одному в строке" />
           <div className="row">
             <button disabled={!manual.trim()} onClick={() => scanText(manual)}>

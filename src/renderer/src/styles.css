@@ -12,7 +12,7 @@
   --text: #e6e6e2;
   --text-2: #cbcbc6;
   --muted: #9d9e99;
-  --faint: #74767b;
+  --faint: #8a8c91;
   --accent: #3dbf9c;
   --on-accent: #04140f;
   --star: #ffd98a;
@@ -466,8 +466,25 @@ label.check {
   flex-direction: row;
   align-items: center;
   gap: 8px;
-  font-size: var(--fs-base);
-  color: var(--text);
+  font-size: var(--fs-md);
+  color: var(--text-2);
+}
+/* A tick box in a form grid sits on the line of the fields, and takes the room its words need. */
+.calc-form label.check,
+.row label.check {
+  align-self: end;
+  min-height: 32px;
+}
+.calc-form label.check {
+  grid-column: span 2;
+}
+.row label.check {
+  white-space: nowrap;
+}
+.calc-form label.check input,
+.row label.check input {
+  width: auto;
+  flex: none;
 }
 
 kbd {
@@ -1358,7 +1375,9 @@ details > summary {
   flex-wrap: wrap;
 }
 .fit-name {
-  width: 280px;
+  flex: 1 1 180px;
+  max-width: 280px;
+  min-width: 140px;
   font-weight: 600;
 }
 .fitting-grid {
@@ -1367,7 +1386,7 @@ details > summary {
   gap: 14px;
   align-items: start;
 }
-@media (max-width: 1250px) {
+@media (max-width: 1450px) {
   .fitting-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -3004,6 +3023,9 @@ html.overlay-mode body {
 }
 
 /* Capital jump planner */
+.jump-form .searchbox {
+  min-width: 0;
+}
 .jump-form {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -3812,7 +3834,7 @@ button.danger-fill:hover:not(:disabled) {
   flex-wrap: wrap;
   align-items: flex-end;
 }
-.freelance-filters input:first-child {
+.freelance-filters > input:first-child {
   min-width: 220px;
   flex: 1 1 220px;
 }
@@ -4839,6 +4861,46 @@ textarea {
 .empty-icon {
   color: var(--accent-text);
   opacity: 0.75;
+}
+/* Inside a card the empty state is a quiet line, not a second framed panel. */
+.card .empty-state {
+  border: none;
+  background: none;
+  padding: 18px 12px;
+}
+.card .empty-state .empty-icon {
+  display: none;
+}
+/* Buttons repeated on every row show on the row in use only. */
+.row-action,
+button.row-action:disabled {
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+}
+tr:hover button.row-action,
+tr:focus-within button.row-action,
+button.row-action:focus-visible {
+  opacity: 1;
+}
+tr:hover button.row-action:disabled {
+  opacity: 0.5;
+}
+.wh-search {
+  width: 320px;
+  max-width: 100%;
+}
+.combat-verdict-top {
+  margin: 0 0 12px;
+}
+.doctrine-char img {
+  vertical-align: middle;
+}
+.doctrine-char,
+.doctrine-fit {
+  white-space: nowrap;
+}
+.stream-wallet {
+  margin-top: 8px;
 }
 .empty-actions {
   display: flex;

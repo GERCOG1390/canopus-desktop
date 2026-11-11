@@ -9,7 +9,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../AppContext'
 import { GameButton } from '../components/GameButton'
 import { TypeLink } from '../components/TypeLink'
-import { Card, Empty, ErrorBox, Loading, RequireLogin, Stat, Tabs } from '../components/ui'
+import { NeedPermission, Card, Empty, ErrorBox, Loading, RequireLogin, Stat, Tabs } from '../components/ui'
 import Doctrines from './Doctrines'
 import { esi, imageUrl, resolveIds, resolveNames } from '../lib/esi'
 import { hasScope, SCOPE } from '../lib/gameActions'
@@ -72,7 +72,7 @@ export default function FleetPage() {
 function FleetTab() {
   const { active } = useApp()
   if (!active) return <RequireLogin what="флот" />
-  if (!hasScope(active, SCOPE.readFleet)) return <Empty>Чтобы видеть и вести флот, нажмите «Настройки → Разрешить действия в игре» и войдите заново.</Empty>
+  if (!hasScope(active, SCOPE.readFleet)) return <NeedPermission>Чтобы видеть и вести флот, нажмите «Настройки → Разрешить действия в игре» и войдите заново.</NeedPermission>
   return <Fleet who={active} />
 }
 

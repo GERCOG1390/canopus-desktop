@@ -366,7 +366,7 @@ export function LpStore() {
           <label>
             Или точное название
             <div className="row">
-              <input value={manual} placeholder="Например, Caldari Navy" onChange={(e) => setManual(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void pickManual()} />
+              <input className="wh-search" value={manual} placeholder="Например, Caldari Navy" onChange={(e) => setManual(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && void pickManual()} />
               <button className="ghost" disabled={!manual.trim()} onClick={() => void pickManual()}>
                 Открыть
               </button>
