@@ -1,6 +1,7 @@
 // Market tools: hub arbitrage and the LP store calculator.
 
 import { useEffect, useMemo, useState } from 'react'
+import { lpOfferValue } from '../../../shared/lpStore'
 import type { MarketNode } from '../../../shared/sde'
 import { useApp, useLang } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
@@ -308,15 +309,12 @@ export function LpStore() {
       .map((o) => {
         const isBpc = basics[o.type_id]?.c === BLUEPRINT_CATEGORY
         const p = prices.get(o.type_id)
-        const unit = basis === 'sell' ? (p?.sell.best ?? 0) : (p?.buy.best ?? 0)
-        const required = o.required_items.reduce((s, r) => s + (prices.get(r.type_id)?.sell.best ?? 0) * r.quantity, 0)
-        // Selling by order pays the broker's fee on top of the tax.
-        const gross = unit * o.quantity * (1 - (tax + (basis === 'sell' ? broker : 0)) / 100)
-        const value = gross - o.isk_cost - required
-        return { o, isBpc, unit, required, value, perLp: o.lp_cost ? value / o.lp_cost : 0, volume: p?.sell.volume ?? 0, priced: unit > 0 }
+        const v = lpOfferValue(o, (id) => { const x = prices.get(id); return x && { sell: x.sell.best, buy: x.buy.best } }, basis, tax, broker)
+        return { o, isBpc, ...v, volume: p?.sell.volume ?? 0 }
       })
       .filter((r) => (showBpc || !r.isBpc) && r.o.lp_cost > 0)
-      .sort((a, b) => b.perLp - a.perLp)
+      // Offers without a full price at the bottom: their figure is unknown, not a bargain.
+      .sort((a, b) => Number(b.priced) - Number(a.priced) || b.perLp - a.perLp)
   }, [store.data, basis, tax, broker, showBpc])
 
   const myLp = mine.data?.find((m) => m.id === corp?.id)?.lp ?? 0
@@ -439,8 +437,9 @@ export function LpStore() {
                         </div>
                       ))}
                       {r.required > 0 && <div className="muted">{fmtIsk(r.required, true)}</div>}
+                      {r.unit > 0 && !r.priced && <div className="warn small">у части предметов нет цены в Jita</div>}
                     </td>
-                    <td className="num">{r.priced ? fmtIsk(r.unit * r.o.quantity, true) : <span className="muted">нет цены</span>}</td>
+                    <td className="num">{r.unit > 0 ? fmtIsk(r.unit * r.o.quantity, true) : <span className="muted">нет цены</span>}</td>
                     <td className={`num ${r.value > 0 ? 'good' : 'bad'}`}>{r.priced ? fmtIsk(r.value, true) : '—'}</td>
                     <td className="num">
                       <b>{r.priced ? fmtNum(Math.round(r.perLp)) : '—'}</b>

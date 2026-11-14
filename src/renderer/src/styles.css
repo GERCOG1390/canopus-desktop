@@ -475,6 +475,20 @@ label.check {
   align-self: end;
   min-height: 32px;
 }
+/* LP store options: wrap instead of pushing the page sideways at narrower windows (2026-11-13). */
+.lp-form {
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.lp-form > label:not(.check) {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+.lp-form select,
+.lp-form input:not([type='checkbox']) {
+  width: 100%;
+  min-width: 0;
+}
 .calc-form label.check {
   grid-column: span 2;
 }

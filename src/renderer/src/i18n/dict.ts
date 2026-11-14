@@ -113,6 +113,7 @@ export const EXACT: Record<string, string> = {
   'Журнал ESI хранит налоги и комиссии только за 30 дней: за более долгий срок они неполные, и чистая прибыль завышена.': 'ESI\'s journal keeps taxes and fees for 30 days only: over a longer period they are incomplete and the net profit is overstated.',
   '— пустой разъём —': '— empty socket —',
   'Открыть настройки': 'Open Settings',
+  'у части предметов нет цены в Jita': 'some items have no Jita price',
   // ---- visual pass
   'Состав флота': 'Fleet composition',
   'Мои контракты': 'My contracts',
