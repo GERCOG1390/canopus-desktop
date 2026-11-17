@@ -123,9 +123,14 @@ The fitting engine now needs a newer game-data format: Canopus rebuilds it once 
 - Identical modules collapse into one row ("6× Heavy Assault Missile Launcher II"): change state or ammo for all at once.
 - Ammo picker grouped by tech level with damage-type icons.
 - Firepower with damage profile; hover the DPS to see DPS with reload and the split between weapons and drones. EHP and resistances per layer, active tank, capacitor stability, navigation and targeting.
-- Calculate with **all skills V** or with **your character's skills**: what to train and how long it takes.
+- Calculate with **all skills V, IV, III or I** or with **your character's skills**: what to train and how long it takes.
+- **Damage graph**: applied DPS over distance, the target's speed or its signature — target presets, your own speed and heading, your webs and painters counted where they reach, drone control range, up to four fits on one graph.
+- **Ammo table**: every charge the fit's guns and launchers take, side by side, with the best on the chosen target and one-click loading.
+- **Incoming damage profiles**: omni, one type, your own named profiles, or what each mission NPC faction shoots, worked out from the game data; EHP, active tank and the reactive armor hardener follow the profile.
+- **Fleet boosts**: command bursts from a booster (hull, Tech II bursts, mindlink) or a saved booster fit, read from CCP's buff data — the strongest of each burst applies, stacking penalties as in the game.
+- **Effects from other ships**: webs, painters, remote shield and armor repair, neutralizers, sensor dampeners, tracking and guidance disruptors (with scripts) and ECM — one module on the hull carrying it, or a whole saved fit such as a logistics cruiser.
 - Fit cost at Jita prices, side-by-side fit comparison and **popular fits from zKillboard** for the same hull.
-- Import / export EFT, open fits from your character, current ship, a killmail or Show Info — and **save a fit straight to your in-game fittings**.
+- Import / export EFT (mutated modules included), **all your Pyfa fits at once** (several EFT fits or Pyfa's XML file), open fits from your character, current ship, a killmail or Show Info — and **save a fit straight to your in-game fittings**.
 - **Price optimizer**: the same stats for less ISK (cheaper versions of your modules that keep every number), or the upgrades that add the most to a chosen stat per million ISK within a budget.
 - **Fit snapshot**: the whole fit and its stats on one picture, to copy or save as PNG.
 - **Boosters**: all 300 combat boosters in the game (147 on the market), one per slot; the bonus always applies and you tick the side effects that struck.
@@ -208,14 +213,15 @@ New Eden at the real coordinates from the SDE, rotate and zoom, region and syste
 
 ### Market and industry
 - Market browser with the in-game category tree, prices in Jita, Amarr, Dodixie, Rens and Hek, the order book and 90-day history.
-- **Arbitrage between trade hubs** by market category, with taxes, margin, volume and profit per m³.
+- **Arbitrage between trade hubs** by market category, walked through the real order books: what you can actually buy and sell at a profit after tax, with a **cargo hold** field for the profit of one trip and the best load.
+- **Honest numbers**: what selling really fetches (a slow item's lone listing is checked against its real trades), batches bought up the order book, sales tax and broker's fee from your skills and standings.
 - Loot appraisal (English or Russian names), LP store, your orders with outbid detection.
 - **My trades**: real profit per item from your wallet (sales matched to earlier purchases), sales tax and broker fees.
 - **Price alerts** at Jita — in the tray and optionally on Discord; **public contracts** that beat Jita; **injectors and SP**: what SP costs you and a skill-farm month.
 - **Production chain**: everything an item takes, build or buy at each step, with a multibuy list. **Invention** with every decryptor compared. **Ore for minerals**: the cheapest compressed-ore mix for a mineral list.
-- Manufacturing and reaction calculator (ME / TE, structure bonuses, system cost index, taxes), industry jobs and planetary colonies with extractor timers.
+- Manufacturing and reaction calculator (ME / TE, engineering complexes and refineries, Tech I / II rigs by system security, system cost index, taxes), industry jobs and planetary colonies with extractor timers and income netted across colonies.
 - **Corporation structures** — fuel, state with timers and services; alerts for low fuel, attacks, lost shields / armor (with the out-of-reinforce time) and finished moon extractions, also to Discord.
-- **Moon mining** — refinery extraction timers and who mined what from your moons.
+- **Moon mining** — refinery extraction timers and who mined what from your moons, valued by the minerals it reprocesses into.
 
 | Arbitrage | Market | Industry |
 |---|---|---|
