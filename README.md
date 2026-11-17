@@ -75,6 +75,21 @@ Your characters, fits from the same dogma engine as the desktop app, the market,
 
 **[Get it on the App Store](https://apps.apple.com/us/app/canopus-for-eve-online/id6829985678)** · iOS / iPadOS 26.5 or later
 
+## New in 1.4
+
+**Coming from Pyfa?** Everything you theorycraft with is here, on the same numbers:
+
+- **Damage graph** — applied DPS over distance (or over the target's speed or signature), with target presets, your own speed and heading, your webs and painters counted where they reach, up to four fits on one graph.
+- **Ammo table** — every charge your guns or launchers take, side by side, and the one that lands most on the chosen target.
+- **Incoming damage profiles** — omni, one type, your own named profiles, or what each mission NPC faction really shoots (from the game data); the reactive armor hardener settles to it.
+- **Fleet boosts** — command bursts from a booster you pick or from a saved booster fit, with the strongest of each burst applying.
+- **Effects from other ships** — webs, painters, remote repairs, neutralizers, dampeners, tracking and guidance disruptors (with scripts) and ECM, from a single module on its hull or a whole saved fit (a logistics cruiser, a recon).
+- **All skills V / IV / III / I** sets, **mutated modules** from Pyfa's EFT, and **importing all your Pyfa fits** at once (several EFT fits or the XML file).
+
+**Honest market numbers everywhere.** What selling really fetches — not a lone listing nobody takes (it is checked against the real trades), arbitrage walked through the real order books (with a **cargo hold** field: the profit of one trip and the best load), batches bought up the order book, fees from your skills and standings, PI income netted across colonies, rigs and the system's security in industry, moon ore valued by its minerals.
+
+The fitting engine now needs a newer game-data format: Canopus rebuilds it once on the first start (about 100 MB).
+
 ## New in 1.3
 
 - **Combat simulator, now fought over time**, with a replay on the map and **Find the best**.
