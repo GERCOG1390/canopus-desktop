@@ -1,4 +1,6 @@
 import { BoosterPanel } from '../components/BoosterPanel'
+import { FleetPanel } from '../components/FleetPanel'
+import { ProjectedPanel } from '../components/ProjectedPanel'
 import { Glyph } from '../components/Glyph'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { FitSpec, FitStats, FittableType, LayerStats, ModuleState, SavedFit, SkillSource, Slot } from '../../../shared/fit'
@@ -9,6 +11,9 @@ import { AttrIcon } from '../components/Icon'
 import { useInfo } from '../components/InfoContext'
 import { ChargePicker } from '../components/ChargePicker'
 import { FitCost } from '../components/FitCost'
+import { DamageProfilePicker, profileLabel, useDamageProfile } from '../components/DamageProfilePicker'
+import { armorAgainst, layerEhp, tankAgainst } from '../../../shared/damageProfile.ts'
+import { isFittingXml, loadFromCargo, toEftBlocks } from '../../../shared/fitImport.ts'
 import { FitTools, type FitTool } from './FitTools'
 import { GameButton } from '../components/GameButton'
 import { saveFitToGame, SCOPE } from '../lib/gameActions'
@@ -24,7 +29,15 @@ import { CATEGORY, getBasic, searchTypesSde, tn, useTypeBasics } from '../lib/sd
 import { useAsync } from '../lib/useAsync'
 import { locale, translate } from '../i18n'
 
-type SkillMode = 'all5' | 'char'
+/** Every skill at one level (all5 … all0), or the character's own */
+type SkillMode = 'all5' | 'all4' | 'all3' | 'all1' | 'all0' | 'char'
+const ALL_LEVELS: [SkillMode, string][] = [
+  ['all5', 'Все навыки V'],
+  ['all4', 'Все навыки IV'],
+  ['all3', 'Все навыки III'],
+  ['all1', 'Все навыки I'],
+  ['all0', 'Без навыков']
+]
 
 /** Ship attributes holding the slot counts; their icons head each slot group. */
 const SLOT_ATTR: Record<Slot, number> = { hi: 14, med: 13, lo: 12, rig: 1137, sub: 1367 }
@@ -48,15 +61,57 @@ function StartScreen() {
   /** Market group "Ships" — the root of the in-game ship browser. */
   const SHIPS_MARKET_GROUP = 4
 
+  const [imported, setImported] = useState<string | null>(null)
+
+  /** The EVE XML file has charges only in the cargo: load them into the modules that take them. */
+  async function withCharges(fit: FitSpec): Promise<FitSpec> {
+    if (!isFittingXml(eft) || !fit.cargo?.length) return fit
+    const ids = [...new Set(fit.modules.map((m) => m.typeId))]
+    const lists = new Map(await Promise.all(ids.map(async (id) => [id, await chargesFor(id).catch(() => [])] as const)))
+    return { ...fit, modules: loadFromCargo(fit.modules, fit.cargo, (id) => lists.get(id) ?? []) }
+  }
+
+  /** One fit opens in the editor; several (Pyfa's export, the game's XML file) go to the saved fits. */
   async function importEft() {
     setError(null)
+    setImported(null)
+    const blocks = toEftBlocks(eft)
+    if (blocks.length > 1) {
+      const unknown = new Set<string>()
+      const failed: string[] = []
+      let done = 0
+      let updated = 0
+      // Imported again (Pyfa exported a second time): the saved fit of the same ship and name is updated, not copied.
+      const existing = new Map((saved.data ?? []).map((s) => [`${s.shipTypeId}|${s.name}`, s.id]))
+      for (const block of blocks) {
+        try {
+          const r = await fromEft(block)
+          if (r.unknown.length) unknown.add(`${r.fit.name}: ${r.unknown.join(', ')}`)
+          const id = existing.get(`${r.fit.shipTypeId}|${r.fit.name}`)
+          await window.api.fit.save({ ...(await withCharges(r.fit)), id })
+          if (id) updated++
+          done++
+        } catch (e) {
+          failed.push(`${block.split('\n')[0]} — ${(e as Error).message}`)
+        }
+      }
+      saved.reload()
+      setImported(`${translate('Сохранено фитов:')} ${done}${updated ? ` (${translate('обновлено')} ${updated})` : ''}`)
+      const problems = [...(unknown.size ? [translate('Не распознано:'), ...unknown] : []), ...failed]
+      if (problems.length) setError(problems.join('\n'))
+      return
+    }
     try {
-      const { fit, unknown } = await fromEft(eft)
-      setFit(fit)
+      const { fit, unknown } = await fromEft(blocks[0] ?? eft)
+      setFit(await withCharges(fit))
       if (unknown.length) setError(`Не распознано: ${unknown.join(', ')}`)
     } catch (e) {
       setError((e as Error).message)
     }
+  }
+
+  async function openFile(file: File | undefined) {
+    if (file) setEft(await file.text())
   }
 
   return (
@@ -78,7 +133,8 @@ function StartScreen() {
           <MarketTree root={SHIPS_MARKET_GROUP} order="size" onPick={(id) => newFit({ id })} className="ship-tree" />
         </Card>
         <div className="col-stack">
-        <Card title="Импорт EFT">
+        <Card title="Импорт EFT и Pyfa">
+          <p className="muted small">Один фит или сразу много: несколько EFT подряд или XML-файл фитов из Pyfa (File → Backup All Fittings или Export Fittings) и из игры. Несколько фитов сохраняются в «Сохранённые фиты»; уже импортированные обновляются.</p>
           <textarea rows={6} value={eft} onChange={(e) => setEft(e.target.value)} placeholder={'[Rifter, My Rifter]\nGyrostabilizer II\n...\n125mm Gatling AutoCannon II, EMP S'} />
           <div className="row">
             <button onClick={importEft} disabled={!eft.trim()}>
@@ -87,7 +143,13 @@ function StartScreen() {
             <button className="ghost" onClick={async () => setEft(await navigator.clipboard.readText())}>
               Вставить из буфера
             </button>
+            <label className="button ghost file-button">
+              Открыть файл…
+              <input type="file" accept=".xml,.txt,.cfg" hidden onChange={(e) => void openFile(e.target.files?.[0])} />
+            </label>
+            {!!eft.trim() && toEftBlocks(eft).length > 1 && <span className="muted small">{`${translate('Фитов в тексте:')} ${toEftBlocks(eft).length}`}</span>}
           </div>
+          {imported && <div className="good small">{imported}</div>}
           <ErrorBox error={error} />
         </Card>
         <Card title="Сохранённые фиты">
@@ -145,7 +207,9 @@ function useSkillSource(mode: SkillMode, trial: Record<number, number> = {}): Sk
     if (mode === 'char' && char.skills) {
       return { mode: 'char', levels: { ...Object.fromEntries([...char.skills.entries()].map(([id, s]) => [id, s.active])), ...(has ? trial : {}) } }
     }
-    return has ? { mode: 'all5', overrides: trial } : { mode: 'all5' }
+    const level = Number(mode.slice(3)) || 0
+    const base: SkillSource = mode === 'char' || level === 5 ? { mode: 'all5' } : { mode: 'all5', level }
+    return has && base.mode === 'all5' ? { ...base, overrides: trial } : base
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, char.skills, key])
 }
@@ -324,7 +388,11 @@ function Editor() {
       <div className="fitting-toolbar">
         <input className="fit-name" value={f.name} onChange={(e) => updateFit((x) => ({ ...x, name: e.target.value }))} />
         <select value={mode} onChange={(e) => setMode(e.target.value as SkillMode)} title="Навыки для расчёта">
-          <option value="all5">Все навыки V</option>
+          {ALL_LEVELS.map(([m, label]) => (
+            <option key={m} value={m}>
+              {label}
+            </option>
+          ))}
           <option value="char" disabled={!char.skills}>
             Навыки: {active?.name ?? 'войдите'}
           </option>
@@ -387,7 +455,7 @@ function Editor() {
               </div>
             </div>
             {mode === 'char' && reqs.data && <MissingSkillsBox reqs={reqs.data as Record<number, SkillReq>} title="Фит" />}
-            {reqs.data && (mode === 'all5' || char.skills) && (
+            {reqs.data && (mode === 'all5' || (mode === 'char' && char.skills)) && (
               <TrialSkills reqs={reqs.data as Record<number, SkillReq>} allV={mode === 'all5'} trial={trial} onChange={setTrial} />
             )}
             {mode === 'all5' && char.skills && reqs.data && (
@@ -512,6 +580,16 @@ function Editor() {
             <div className="slot-head">Бустеры</div>
             <BoosterPanel fit={f} skills={skills} onChange={(next) => updateFit(() => next)} />
           </div>
+
+          <div className="slot-group">
+            <div className="slot-head">Флотский бустер (бёрсты)</div>
+            <FleetPanel fit={f} onChange={(next) => updateFit(() => next)} />
+          </div>
+
+          <div className="slot-group">
+            <div className="slot-head">Эффекты от других кораблей</div>
+            <ProjectedPanel fit={f} stats={stats} onChange={(next) => updateFit(() => next)} />
+          </div>
         </div>
 
         <div className="fit-col browser-col">
@@ -579,7 +657,8 @@ function groupModules<T extends { m: FitSpec['modules'][number]; i: number }>(mo
   if (expanded) return mods.map((x) => [x])
   const groups = new Map<string, T[]>()
   for (const x of mods) {
-    const key = `${x.m.typeId}:${x.m.state}:${x.m.chargeTypeId ?? ''}`
+    // Mutated modules each rolled differently: never grouped.
+    const key = x.m.mutated ? `mutated:${x.i}` : `${x.m.typeId}:${x.m.state}:${x.m.chargeTypeId ?? ''}`
     groups.set(key, [...(groups.get(key) ?? []), x])
   }
   return [...groups.values()]
@@ -632,6 +711,11 @@ function ModuleRow({
         </button>
       )}
       <TypeLink id={m.typeId} size={24} />
+      {m.mutated && (
+        <span className="mutated-badge small" title="Мутированный модуль: значения атрибутов из импорта">
+          мутация
+        </span>
+      )}
       <span className="grow" />
       {info?.charges && (
         <ChargePicker charges={charges.data ?? (m.chargeTypeId ? [m.chargeTypeId] : [])} value={m.chargeTypeId} onChange={onCharge} />
@@ -873,7 +957,7 @@ function KV({ attr, label, children, className = '' }: { attr?: number; label: s
 
 const RES_CLASS = ['em', 'th', 'ki', 'ex']
 
-function Layer({ name, attr, l, prev }: { name: string; attr: number; l: LayerStats; prev?: LayerStats }) {
+function Layer({ name, attr, l, prev, w }: { name: string; attr: number; l: LayerStats; prev?: LayerStats; w: readonly number[] }) {
   return (
     <tr>
       <td>
@@ -895,8 +979,8 @@ function Layer({ name, attr, l, prev }: { name: string; attr: number; l: LayerSt
         </td>
       ))}
       <td className="num">
-        {fmtNum(l.ehp)}
-        <Delta v={l.ehp} b={prev?.ehp} digits={0} />
+        {fmtNum(layerEhp(l, w))}
+        <Delta v={layerEhp(l, w)} b={prev ? layerEhp(prev, w) : undefined} digits={0} />
       </td>
     </tr>
   )
@@ -987,6 +1071,9 @@ function ResourceCard({ label, used, total, unit, prev }: { label: string; used:
 
 /** The numbers a pilot checks first, above the editor; they follow the previewed module too. */
 function FitMetrics({ stats: s, base: b }: { stats: FitStats; base?: FitStats }) {
+  const profile = useDamageProfile()
+  const ehp = tankAgainst(s.defense, profile.w).ehp
+  const ehpBase = b ? tankAgainst(b.defense, profile.w).ehp : undefined
   const damage = s.offense.weapons.reduce((acc, w) => acc.map((x, i) => x + w.damage[i] / (w.cycle || 1)) as number[], [0, 0, 0, 0])
   const damageTotal = damage.reduce((a, x) => a + x, 0)
   return (
@@ -1017,10 +1104,12 @@ function FitMetrics({ stats: s, base: b }: { stats: FitStats; base?: FitStats })
       <div className="stat metric">
         <div className="metric-head">
           <span className="stat-label">Эффективное HP</span>
-          <Delta v={s.defense.ehp} b={b?.defense.ehp} digits={0} />
+          <Delta v={ehp} b={ehpBase} digits={0} />
         </div>
-        <div className="metric-value">{fmtNum(s.defense.ehp)}</div>
-        <div className="stat-sub">{b ? `было ${fmtNum(b.defense.ehp)}` : `${fmtNum(s.defense.hp)} HP без сопротивлений`}</div>
+        <div className="metric-value">{fmtNum(ehp)}</div>
+        <div className="stat-sub">
+          {ehpBase !== undefined ? `было ${fmtNum(ehpBase)}` : profile.id === 'omni' ? `${fmtNum(s.defense.hp)} HP без сопротивлений` : `против: ${profileLabel(profile)}`}
+        </div>
       </div>
       <ResourceCard label="Процессор" used={s.ship.cpu.used} total={s.ship.cpu.total} unit="tf" prev={b?.ship.cpu.used} />
       <ResourceCard label="Энергосеть" used={s.ship.power.used} total={s.ship.power.total} unit="MW" prev={b?.ship.power.used} />
@@ -1042,6 +1131,9 @@ function StatsPanel({
 }) {
   const damage = s.offense.weapons.reduce((acc, w) => acc.map((x, i) => x + w.damage[i] / (w.cycle || 1)) as number[], [0, 0, 0, 0])
   const damageTotal = damage.reduce((a, b) => a + b, 0)
+  const profile = useDamageProfile()
+  const tank = tankAgainst(s.defense, profile.w)
+  const tankBase = b ? tankAgainst(b.defense, profile.w) : undefined
   return (
     <div className={`stats-panel ${b ? 'previewing' : ''}`}>
       {preview && (
@@ -1126,6 +1218,7 @@ function StatsPanel({
 
       <section>
         <h4>Системы защиты</h4>
+        <DamageProfilePicker />
         <table className="table compact resist-table">
           <thead>
             <tr>
@@ -1139,9 +1232,9 @@ function StatsPanel({
             </tr>
           </thead>
           <tbody>
-            <Layer name="Щит" attr={ICON.shield} l={s.defense.shield} prev={b?.defense.shield} />
-            <Layer name="Броня" attr={ICON.armor} l={s.defense.armor} prev={b?.defense.armor} />
-            <Layer name="Корпус" attr={ICON.hull} l={s.defense.hull} prev={b?.defense.hull} />
+            <Layer name="Щит" attr={ICON.shield} l={s.defense.shield} prev={b?.defense.shield} w={profile.w} />
+            <Layer name="Броня" attr={ICON.armor} l={armorAgainst(s.defense, profile.w)} prev={b ? armorAgainst(b.defense, profile.w) : undefined} w={profile.w} />
+            <Layer name="Корпус" attr={ICON.hull} l={s.defense.hull} prev={b?.defense.hull} w={profile.w} />
           </tbody>
         </table>
         <div className="kv-list">
@@ -1152,18 +1245,27 @@ function StatsPanel({
           {s.defense.shieldBoost > 0 && (
             <KV attr={ICON.shield} label="Накачка щита">
               {n1(s.defense.shieldBoost)} HP/с
+              {!!s.projected?.shieldRep && <span className="muted small">{` (${translate('извне')} +${n1(s.projected.shieldRep)})`}</span>}
               <Delta v={s.defense.shieldBoost} b={b?.defense.shieldBoost} />
             </KV>
           )}
           {s.defense.armorRepair > 0 && (
             <KV attr={ICON.armor} label="Ремонт брони">
               {n1(s.defense.armorRepair)} HP/с
+              {!!s.projected?.armorRep && <span className="muted small">{` (${translate('извне')} +${n1(s.projected.armorRep)})`}</span>}
               <Delta v={s.defense.armorRepair} b={b?.defense.armorRepair} />
             </KV>
           )}
-          {s.defense.activeTankEhp > 0 && <KV label="Активный танк">{n1(s.defense.activeTankEhp)} EHP/с
-              <Delta v={s.defense.activeTankEhp} b={b?.defense.activeTankEhp} />
-            </KV>}
+          {tank.activeTank > 0 && (
+            <KV label="Активный танк">
+              {n1(tank.activeTank)} EHP/с
+              <Delta v={tank.activeTank} b={tankBase?.activeTank} />
+            </KV>
+          )}
+          <KV label="Танк с регенерацией щита">
+            {n1(tank.withRegen)} EHP/с
+            <Delta v={tank.withRegen} b={tankBase?.withRegen} />
+          </KV>
         </div>
       </section>
 

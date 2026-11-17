@@ -414,6 +414,14 @@ export function compressedOres(): CompressedOre[] {
   return out
 }
 
+/** What each type reprocesses into, per batch of its portion size. */
+export function reprocessYields(typeIds: number[]): Record<number, { portion: number; yields: [number, number][] }> {
+  const d = need()
+  const out: Record<number, { portion: number; yields: [number, number][] }> = {}
+  for (const id of typeIds) if (d.reprocess[id]?.length) out[id] = { portion: d.types[id]?.portion ?? 1, yields: d.reprocess[id] }
+  return out
+}
+
 const DECRYPTOR_GROUP = 1304
 
 /** Items that can be invented (T2 products of blueprints with an invention activity). */
@@ -1572,4 +1580,19 @@ export function skillPlan(goals: { typeId: number; level?: number }[]): PlanStep
     } else requirementTree(g.typeId).forEach(visit)
   }
   return out
+}
+
+/** Dogma attribute ids by their names ("maxRange" → 54), for mutated modules written by name. */
+export function attributeIds(names: string[]): Record<string, number> {
+  const d = need()
+  const want = new Set(names)
+  const out: Record<string, number> = {}
+  for (const [id, a] of Object.entries(d.attributes)) if (want.has(a.name)) out[a.name] = Number(id)
+  return out
+}
+
+/** Dogma attribute names by id, for writing mutated modules out. */
+export function attributeNames(ids: number[]): Record<number, string> {
+  const d = need()
+  return Object.fromEntries(ids.filter((id) => d.attributes[id]).map((id) => [id, d.attributes[id].name]))
 }

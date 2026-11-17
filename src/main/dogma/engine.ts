@@ -4,6 +4,7 @@
 import type { ModuleState, SkillSource, Slot } from '../../shared/fit'
 import type { DogmaEffect, DogmaModifier, SdeDb } from '../../shared/sde'
 import { boosterSideEffects } from '../../shared/boosters'
+import { strongestBuffs } from '../../shared/fleetBuffs.ts'
 
 export const CATEGORY = { SHIP: 6, MODULE: 7, CHARGE: 8, SKILL: 16, DRONE: 18, IMPLANT: 20, SUBSYSTEM: 32 }
 /** Modifiers from these categories are never stacking-penalized. */
@@ -85,6 +86,13 @@ export class Dogma {
   mode: Item | null = null
   /** System-wide effect source (abyssal weather celestial), its warfare buffs applied in link() */
   environment: Item | null = null
+  /**
+   * Webs and painters other ships put on this one: a post-percent change of an attribute of the ship, scaled by
+   * the hull's resistance to it (an attribute of the ship, 1 = none), stacking-penalized like modules.
+   */
+  readonly projected: { attr: number; value: number; resist: number; on?: { items: 'module' | 'charge'; skill: number } }[] = []
+  /** Fleet warfare buffs on the fit (command bursts): buff id → value, the strongest source of each kept */
+  readonly fleetBuffs = new Map<number, number>()
   private readonly evaluating = new Set<string>()
 
   constructor(
@@ -99,7 +107,7 @@ export class Dogma {
       skills.mode === 'all5'
         ? Object.values(db.types)
             .filter((t) => t.pub && db.groups[t.g]?.c === CATEGORY.SKILL)
-            .map((t) => [t.id, skills.overrides?.[t.id] ?? 5])
+            .map((t) => [t.id, skills.overrides?.[t.id] ?? skills.level ?? 5])
         : Object.entries(skills.levels).map(([id, lvl]) => [Number(id), lvl])
     for (const [id, level] of levels) {
       if (!db.types[id] || level <= 0) continue
@@ -135,8 +143,10 @@ export class Dogma {
     }
   }
 
-  addModule(typeId: number, slot: Slot, state: ModuleState, chargeTypeId: number | undefined, index: number): Item {
+  /** `rolled`: a mutated module's attribute values, over the base module's own. */
+  addModule(typeId: number, slot: Slot, state: ModuleState, chargeTypeId: number | undefined, index: number, rolled?: Record<number, number>): Item {
     const m = this.makeItem('module', typeId, state)
+    if (rolled) Object.assign(m.base, rolled)
     m.slot = slot
     m.index = index
     this.modules.push(m)
@@ -179,6 +189,13 @@ export class Dogma {
     this.environment = this.makeItem('ship', typeId)
     // Not a ship: penalized like a module unless the buff says otherwise.
     this.environment.category = 0
+  }
+
+  /** Warfare buffs from a fleet booster. Bursts of the same buff don't add up: the strongest one applies. */
+  addFleetBuffs(list: { id: number; value: number }[]): void {
+    const current = [...this.fleetBuffs].map(([id, value]) => ({ id, value }))
+    this.fleetBuffs.clear()
+    for (const [id, value] of strongestBuffs([...current, ...list], this.db.dbuffs ?? {})) this.fleetBuffs.set(id, value)
   }
 
   effect(id: number): DogmaEffect | undefined {
@@ -285,6 +302,37 @@ export class Dogma {
       }
     }
     if (this.environment) this.linkEnvironment(this.environment)
+    if (this.fleetBuffs.size) this.linkFleetBuffs()
+    if (this.projected.length) {
+      const source = this.makeItem('module', this.ship.typeId)
+      source.category = 0
+      for (const p of this.projected) {
+        // Disruptors work on the fit's turrets or missiles (what needs Gunnery or Missile Launcher Operation).
+        const targets = p.on ? (p.on.items === 'module' ? this.modules : this.charges).filter((i) => i.reqSkills.has(p.on!.skill)) : [this.ship]
+        for (const t of targets) this.addModifier(t, p.attr, { source, srcAttr: 0, op: 6, value: () => p.value * this.attr(this.ship, p.resist) })
+      }
+    }
+  }
+
+  /**
+   * Fleet buffs as the SDE's dbuff collections describe them: on the ship, or on what is fitted to it (all of it,
+   * a group, or what needs a skill). Stacking-penalized with modules where the attribute is (resistances, speed),
+   * as the game does it; hit points and other stackable attributes aren't.
+   */
+  private linkFleetBuffs(): void {
+    const source = this.makeItem('module', this.ship.typeId)
+    source.category = 0
+    const fitted = this.locatedIn('ship')
+    for (const [id, value] of this.fleetBuffs) {
+      const def = this.db.dbuffs[id]
+      const add = (targets: Item[], attr: number) => {
+        for (const t of targets) this.addModifier(t, attr, { source, srcAttr: 0, op: def.op, value: () => value })
+      }
+      def.item?.forEach((attr) => add([this.ship], attr))
+      def.loc?.forEach((attr) => add(fitted, attr))
+      def.locGroup?.forEach(([group, attr]) => add(fitted.filter((i) => i.group === group), attr))
+      def.locSkill?.forEach(([skill, attr]) => add(fitted.filter((i) => i.reqSkills.has(skill)), attr))
+    }
   }
 
   /**
@@ -492,4 +540,19 @@ export function shipModes(db: SdeDb, shipTypeId: number): { id: number; name: st
     : []
   byShip.set(shipTypeId, list)
   return list
+}
+
+/**
+ * A fit put together in the engine (modules, drones, implants, boosters, tactical mode), not yet linked: what
+ * the fitting works out, and what a fit gives others (its projected modules, its command bursts).
+ */
+export function dogmaOf(db: SdeDb, spec: { shipTypeId: number; modules: { typeId: number; slot: Slot; state: ModuleState; chargeTypeId?: number; mutated?: { attrs: Record<number, number> } }[]; drones?: { typeId: number; count: number; active: number }[]; implants?: number[]; boosters?: { typeId: number; side?: number[] }[]; mode?: number }, skills: SkillSource): Dogma {
+  const d = new Dogma(db, spec.shipTypeId, skills)
+  spec.modules.forEach((m, i) => d.addModule(m.typeId, m.slot, m.state, m.chargeTypeId, i, m.mutated?.attrs))
+  spec.drones?.forEach((x, i) => d.addDrone(x.typeId, x.count, Math.min(x.active, x.count), i))
+  spec.implants?.forEach((id) => d.addImplant(id))
+  spec.boosters?.forEach((b) => d.addBooster(b.typeId, b.side))
+  const mode = spec.mode ?? shipModes(db, spec.shipTypeId)[0]?.id
+  if (mode) d.setMode(mode)
+  return d
 }

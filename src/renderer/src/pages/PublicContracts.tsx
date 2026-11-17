@@ -9,7 +9,8 @@ import { Card, Empty, ProgressBar, SearchBox, Stat } from '../components/ui'
 import { esi, resolveLocations } from '../lib/esi'
 import { fmtDate, fmtIsk, fmtNum } from '../lib/format'
 import { openContractInGame, SCOPE } from '../lib/gameActions'
-import { jitaPrices } from '../lib/market'
+import { jitaPrices, saleOf, withSales } from '../lib/market'
+import { translate } from '../i18n'
 import { searchTypesSde, tn } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 import { limitedFor } from '../../../shared/esiLimit'
@@ -98,7 +99,8 @@ export default function PublicContracts() {
         return !!items?.length && (!item || sells(items, item.id))
       })
       const ids = new Set(matching.flatMap((c) => (contents.get(c.contract_id) ?? []).map((i) => i.type_id)))
-      const prices = await jitaPrices([...ids])
+      // Contract items are valued at what selling them really fetches (a slow item's sell order may never fill).
+      const prices = await jitaPrices([...ids]).then((p) => withSales(p))
       const places = await resolveLocations(matching.map((c) => c.start_location_id ?? 0), active?.id ?? null)
       if (run.current !== me) return
       const rows = matching.map((contract) => {
@@ -106,9 +108,9 @@ export default function PublicContracts() {
         return {
           contract,
           items,
-          deal: dealOf(contract, items, (id) => prices.get(id)?.sell.best ?? 0),
+          deal: dealOf(contract, items, (id) => saleOf(prices.get(id))),
           place: places.get(contract.start_location_id ?? 0) ?? '—',
-          unit: (id: number) => prices.get(id)?.sell.best ?? 0
+          unit: (id: number) => saleOf(prices.get(id))
         }
       })
       setWaitSeconds(limited)
@@ -120,7 +122,8 @@ export default function PublicContracts() {
     }
   }
 
-  const rows = [...(result?.rows ?? [])].sort((a, b) => (sort === 'gain' ? b.deal.gain - a.deal.gain : a.deal.cost - b.deal.cost)).slice(0, 200)
+  // Open auctions after the rest by gain: their gain at the opening bid is only a ceiling.
+  const rows = [...(result?.rows ?? [])].sort((a, b) => (sort === 'gain' ? Number(a.deal.open) - Number(b.deal.open) || b.deal.gain - a.deal.gain : a.deal.cost - b.deal.cost)).slice(0, 200)
   return (
     <>
       <Card title="Публичные контракты">
@@ -252,7 +255,9 @@ export default function PublicContracts() {
                         {r.deal.unpriced > 0 && <div className="warn-text small">{`без цены: ${r.deal.unpriced}`}</div>}
                       </td>
                       <td className="num">
-                        <span className={r.deal.gain >= 0 ? 'good' : 'bad'}>{fmtIsk(r.deal.gain, true)}</span>
+                        <span className={r.deal.open ? 'muted' : r.deal.gain >= 0 ? 'good' : 'bad'} title={r.deal.open ? translate('Аукцион без выкупа: цену решат ставки, это потолок выгоды') : undefined}>
+                          {r.deal.open ? `≤ ${fmtIsk(r.deal.gain, true)}` : fmtIsk(r.deal.gain, true)}
+                        </span>
                       </td>
                       <td className="num small">{fmtDate(r.contract.date_expired)}</td>
                       <td className="num">

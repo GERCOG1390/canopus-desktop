@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cheapestMix, planOres, splitTrailingQty, resolveListLines } from './orePlan.ts'
+import { cheapestMix, planOres, splitTrailingQty, resolveListLines, refinedValue } from './orePlan.ts'
 
 const close = (a, b, eps = 1e-6) => assert.ok(Math.abs(a - b) < eps, `${a} ≈ ${b}`)
 
@@ -83,4 +83,11 @@ test('a list line: the real name wins over a number at its end', () => {
     ],
     unknown: ['Nonsense 5']
   })
+})
+
+// Audit 2026-11-16: mining and moon ledgers valued raw ore at its Jita buy, often missing or junk for moon ore.
+test('ore valued by its minerals: whole batches, the yield on each mineral', () => {
+  const v = refinedValue(250, 100, [[34, 400], [35, 200]], 0.7, (m) => (m === 34 ? 4 : 10))
+  // 2 whole batches; 280 Tritanium × 4 + 140 Pyerite × 10 each.
+  assert.equal(v, 2 * (280 * 4 + 140 * 10))
 })

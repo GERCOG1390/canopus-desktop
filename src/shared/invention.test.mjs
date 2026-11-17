@@ -59,3 +59,11 @@ test('materials round up and stay at one per run at least', () => {
   const r = inventionRun({ ...base, materials: [{ quantity: 1, price: 10 }] }, { price: 0, chance: 1, me: 3, te: 0, runs: 0 })
   assert.equal(r.materialCost, 100) // 1 × 10 × 0.95 = 9.5 → max(10 runs, 10)
 })
+
+// Audit 2026-11-16: an engineering complex's cut of the job cost (Raitaru 3%, Azbel 4%, Sotiyo 5% of the system
+// index) counted on the industry page but not here.
+test("the structure's job-cost cut applies to the system index of the manufacturing job", () => {
+  const plain = inventionRun(base, null)
+  const sotiyo = inventionRun({ ...base, costCut: 5 }, null)
+  close(plain.jobCost - sotiyo.jobCost, base.eivPerRun * plain.runs * base.costIndex * 0.05)
+})

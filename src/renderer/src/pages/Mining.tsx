@@ -8,6 +8,7 @@ import { Card, Empty, ErrorBox, Loading, Stat } from '../components/ui'
 import { esi, systemInfo } from '../lib/esi'
 import { fmtIsk, fmtNum } from '../lib/format'
 import { jitaPrices } from '../lib/market'
+import { refinedValue } from '../../../shared/orePlan'
 import { useAsync } from '../lib/useAsync'
 
 const SCOPE = 'esi-industry.read_character_mining.v1'
@@ -27,6 +28,9 @@ export default function Mining() {
   const miners = characters.filter((c) => c.scopes.includes(SCOPE))
   const [days, setDays] = useState(30)
   const [view, setView] = useState<View>('ore')
+  /** Ore at its own Jita buy, or by its minerals after reprocessing */
+  const [basis, setBasis] = useState<'raw' | 'refined'>('raw')
+  const [refineYield, setRefineYield] = useState(69.6)
 
   const ledger = useAsync(async () => {
     const rows = await Promise.all(
@@ -37,15 +41,24 @@ export default function Mining() {
     )
     const entries = rows.flat()
     const types = [...new Set(entries.map((e) => e.type))]
-    const [prices, basics] = await Promise.all([jitaPrices(types), window.api.sde.basics(types)])
+    const [prices, basics, refines] = await Promise.all([jitaPrices(types), window.api.sde.basics(types), window.api.sde.reprocessYields(types)])
+    // The minerals' own prices, for valuing ore by what it reprocesses into.
+    const minerals = [...new Set(Object.values(refines).flatMap((r) => r.yields.map(([m]) => m)))]
+    const mineralPrices = minerals.length ? await jitaPrices(minerals) : new Map()
     const systems = new Map(await Promise.all([...new Set(entries.map((e) => e.system))].map(async (id) => [id, (await systemInfo(id).catch(() => null))?.name ?? String(id)] as const)))
-    return { entries, prices, basics, systems }
+    return { entries, prices, basics, systems, refines, mineralPrices }
   }, [miners.map((c) => c.id).join(',')])
 
   const d = ledger.data
   const since = new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10)
   const shown = useMemo(() => (d?.entries ?? []).filter((e) => e.date >= since), [d, since])
-  const unit = (type: number) => d?.prices.get(type)?.buy.best ?? 0
+  // Raw ore at Jita buy, or what its minerals fetch at Jita buy after reprocessing at the chosen yield (moon ore
+  // often has no honest buy order of its own).
+  const unit = (type: number) => {
+    const r = d?.refines[type]
+    if (basis === 'refined' && r) return refinedValue(r.portion, r.portion, r.yields, refineYield / 100, (m) => d?.mineralPrices.get(m)?.buy.best ?? 0) / r.portion
+    return d?.prices.get(type)?.buy.best ?? 0
+  }
   const vol = (type: number) => d?.basics[type]?.v ?? 0
   const total = shown.reduce((a, e) => ({ isk: a.isk + e.quantity * unit(e.type), m3: a.m3 + e.quantity * vol(e.type) }), { isk: 0, m3: 0 })
 
@@ -61,7 +74,7 @@ export default function Mining() {
     }
     return [...map].sort((a, b) => (view === 'day' ? String(b[0]).localeCompare(String(a[0])) : b[1].isk - a[1].isk))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shown, view])
+  }, [shown, view, basis, refineYield])
 
   if (!characters.length) return <Empty>Войдите персонажами через EVE SSO, чтобы видеть журнал добычи.</Empty>
   if (!miners.length) return <Empty>Персонажам не хватает разрешения на журнал добычи — войдите ими заново в «Настройках».</Empty>
@@ -97,6 +110,22 @@ export default function Mining() {
               <option value="character">По персонажам</option>
               <option value="system">По системам</option>
             </select>
+            <select value={basis} onChange={(e) => setBasis(e.target.value as typeof basis)} title="Сырую лунную руду в Jita часто не покупают: корпорации считают по минералам">
+              <option value="raw">Руда по Jita buy</option>
+              <option value="refined">Минералы после переработки (Jita buy)</option>
+            </select>
+            {basis === 'refined' && (
+              <input
+                type="number"
+                className="yield-input"
+                min={1}
+                max={100}
+                step={0.1}
+                value={refineYield}
+                title="Выход переработки, %: NPC-станция со всеми навыками V — 69,6"
+                onChange={(e) => setRefineYield(Math.min(100, Math.max(1, Number(e.target.value) || 1)))}
+              />
+            )}
             <button className="ghost" onClick={ledger.reload}>
               Обновить
             </button>

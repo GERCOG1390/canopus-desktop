@@ -9,12 +9,14 @@ import * as dogma from './dogma'
 import * as combat from './dogma/combat'
 import * as npc from './dogma/npc'
 import * as abyss from './dogma/abyss'
-import type { NpcFaction } from '../shared/npc'
+import * as fleet from './dogma/fleet'
+import * as projected from './dogma/projected'
+import { NPC_FACTIONS, type NpcFaction } from '../shared/npc'
 import type { AbyssFaction, AbyssWeather } from '../shared/abyss'
 import type { CombatPilot, CombatScenario } from '../shared/combat'
 import { handleIconScheme, registerIconScheme } from './icons'
 import type { AgentQuery } from '../shared/agents'
-import type { FitSpec, SkillSource } from '../shared/fit'
+import type { FitSpec, FleetBoost, SkillSource } from '../shared/fit'
 import type { IntelSettings, OverlaySummary } from '../shared/intel'
 import * as intel from './intel'
 import { loadSettings, saveSettings } from './storage'
@@ -315,6 +317,7 @@ function registerIpc(): void {
   ipcMain.handle('sde:regions', () => sde.regionList())
   ipcMain.handle('sde:haulVolumes', (_e, ids: number[]) => sde.haulVolumes(ids))
   ipcMain.handle('sde:compressedOres', () => sde.compressedOres())
+  ipcMain.handle('sde:reprocessYields', (_e, ids: number[]) => sde.reprocessYields(ids))
   ipcMain.handle('sde:inventableTypes', () => sde.inventableTypes())
   ipcMain.handle('sde:inventionFor', (_e, id: number) => sde.inventionFor(id))
   ipcMain.handle('sde:agents', (_e, q: AgentQuery) => sde.agents(q))
@@ -365,10 +368,28 @@ function registerIpc(): void {
   ipcMain.handle('sde:marketTypesIn', (_e, groupId: number) => sde.marketTypesIn(groupId))
   ipcMain.handle('sde:requiredSkills', (_e, ids: number[]) => sde.requiredSkills(ids))
   ipcMain.handle('sde:skillPlan', (_e, goals: { typeId: number; level?: number }[]) => sde.skillPlan(goals))
+  ipcMain.handle('sde:attributeIds', (_e, names: string[]) => sde.attributeIds(names))
+  ipcMain.handle('sde:attributeNames', (_e, ids: number[]) => sde.attributeNames(ids))
   ipcMain.handle('sde:dogmaAttrs', (_e, ids: number[], attrIds: number[]) => sde.dogmaAttrs(ids, attrIds))
   ipcMain.handle('sde:blueprintForProduct', (_e, id: number) => sde.blueprintForProduct(id))
 
   ipcMain.handle('fit:calculate', (_e, spec: FitSpec, skills: SkillSource) => dogma.calculateFit(spec, skills))
+  ipcMain.handle('fit:fleetOptions', () => {
+    const db = sde.sdeForDogma()
+    const charges = fleet.burstCharges(db)
+    const ships = fleet.boosterShips(db)
+    return {
+      ships,
+      charges,
+      mindlinks: fleet.mindlinks(db),
+      family: Object.fromEntries(charges.map((c) => [c, db.types[fleet.burstModuleFor(db, c) ?? 0]?.n ?? ['', '']])),
+      highSlots: Object.fromEntries(ships.map((s) => [s, db.dogma[s]?.a[14] ?? 0]))
+    }
+  })
+  ipcMain.handle('fit:fleetDetails', (_e, boost: FleetBoost) => fleet.burstDetails(sde.sdeForDogma(), boost))
+  ipcMain.handle('fit:projectedOptions', () => projected.projectedOptions(sde.sdeForDogma()))
+  ipcMain.handle('fit:projectedHulls', (_e, typeId: number) => projected.carrierHulls(sde.sdeForDogma(), typeId))
+  ipcMain.handle('fit:npcProfiles', () => Object.fromEntries(NPC_FACTIONS.map((f) => [f, npc.npcDamageProfile(f)]).filter(([, w]) => w)))
   ipcMain.handle('fit:npcDamage', (_e, spec: FitSpec, skills: SkillSource, faction: NpcFaction, distance?: number) => npc.npcDamage(spec, skills, faction, distance))
   ipcMain.handle('fit:abyss', (_e, spec: FitSpec, skills: SkillSource, weather: AbyssWeather, strength: number, faction?: AbyssFaction) => abyss.abyssPlan(spec, skills, weather, strength, faction))
   ipcMain.handle('fit:modes', (_e, shipTypeId: number) => dogma.modesOf(shipTypeId))

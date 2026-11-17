@@ -9,6 +9,9 @@ import { pipeline } from 'node:stream/promises'
 import yauzl from 'yauzl'
 import { SDE_FORMAT, type Bonus, type L10n, type SdeDb } from '../../shared/sde'
 
+/** Dogma operation codes of the dbuff collections' operation names. */
+const DBUFF_OP: Record<string, number> = { PreAssignment: -1, PreMul: 0, PreDiv: 1, ModAdd: 2, ModSub: 3, PostMul: 4, PostDiv: 5, PostPercent: 6, PostAssignment: 7 }
+
 export const SDE_BASE = 'https://developers.eveonline.com/static-data/tranquility'
 
 export async function latestBuild(): Promise<{ buildNumber: number; releaseDate: string }> {
@@ -115,7 +118,8 @@ export async function buildSde(
     npcCorps: {},
     divisions: {},
     agents: [],
-    mutaplasmids: {}
+    mutaplasmids: {},
+    dbuffs: {}
   }
   const descriptions: Record<number, L10n> = {}
 
@@ -190,6 +194,20 @@ export async function buildSde(
       for (const x of r.dogmaAttributes ?? []) a[x.attributeID] = x.value
       const effects = (r.dogmaEffects ?? []) as Row[]
       db.dogma[r._key] = { a, e: effects.map((x) => x.effectID), de: effects.find((x) => x.isDefault)?.effectID }
+    },
+    dbuffCollections: (r) => {
+      const op = DBUFF_OP[r.operationName as string]
+      if (op === undefined) return
+      const list = (key: string) => (r[key] as Row[] | undefined) ?? []
+      db.dbuffs[r._key] = {
+        n: r.displayName ? l10n(r.displayName) : undefined,
+        agg: r.aggregateMode === 'Minimum' ? 'min' : 'max',
+        op,
+        item: list('itemModifiers').map((m) => m.dogmaAttributeID),
+        loc: list('locationModifiers').map((m) => m.dogmaAttributeID),
+        locGroup: list('locationGroupModifiers').map((m) => [m.groupID, m.dogmaAttributeID]),
+        locSkill: list('locationRequiredSkillModifiers').map((m) => [m.skillID, m.dogmaAttributeID])
+      }
     },
     typeBonus: (r) => {
       db.bonuses[r._key] = {

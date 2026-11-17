@@ -1,5 +1,5 @@
-import { ACCOUNTING_ID as ACCOUNTING, BROKER_RELATIONS_ID as BROKER_RELATIONS, INDUSTRY_ID as INDUSTRY, ADVANCED_INDUSTRY_ID as ADVANCED_INDUSTRY } from '../lib/skillIds'
-import { FACILITIES, brokerPct, extractorPerHour, jobTimeFactor, salesTaxPct, type Facility } from '../../../shared/industryRules'
+import { INDUSTRY_ID as INDUSTRY, ADVANCED_INDUSTRY_ID as ADVANCED_INDUSTRY, REACTIONS_ID as REACTIONS } from '../lib/skillIds'
+import { FACILITIES, colonyIncome, extractorPerHour, jobTimeFactor, reactionTimeFactor, rigBonus, securityBand, type Facility } from '../../../shared/industryRules'
 import { useCharacter } from '../CharacterContext'
 import { useEffect, useState, type ChangeEvent } from 'react'
 import type { PiSchematic, SkillReq } from '../../../shared/sde'
@@ -9,7 +9,10 @@ import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, ProgressBar, RequireLogin, SearchBox, Sec, Stat, Tabs } from '../components/ui'
 import { esi, resolveNames, systemInfo } from '../lib/esi'
 import { fixed, fmtDate, fmtDuration, fmtIsk, fmtNum } from '../lib/format'
-import { jitaPrices } from '../lib/market'
+import { batchCost, jitaPrices, saleOf, withSales, type Price } from '../lib/market'
+import { SaleNote } from '../components/SaleNote'
+import { useFeeDefaults, useTradeFees } from '../lib/tradeFees'
+import { translate } from '../i18n'
 import { getBasic, searchSystemsSde, searchTypesSde, tn } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
 import Structures from './Structures'
@@ -105,16 +108,13 @@ function Calculator() {
   const [te, setTe] = useState(20)
   const [facility, setFacility] = useState<Facility['id']>('npc')
   const place = FACILITIES.find((f) => f.id === facility)!
+  /** Engineering or reaction rigs on the structure: none, Tech I or Tech II */
+  const [rigMe, setRigMe] = useState<0 | 1 | 2>(0)
+  const [rigTe, setRigTe] = useState<0 | 1 | 2>(0)
   const [broker, setBroker] = useState(1.5)
   const char = useCharacter()
   const skill = (id: number): number => (char.skills ? (char.skills.get(id)?.active ?? 0) : 5)
   // Fees from the pilot's skills once they are known; the fields stay editable.
-  useEffect(() => {
-    if (!char.skills) return
-    setSalesTax(Number(salesTaxPct(skill(ACCOUNTING)).toFixed(2)))
-    setBroker(Number(brokerPct(skill(BROKER_RELATIONS)).toFixed(2)))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [char.skills])
   // An invented blueprint starts at ME 2 / TE 4, not at the 10 / 20 of a researched original.
   const inventable = useAsync(() => window.api.sde.inventableTypes(), [])
   const invented = !!product && !!inventable.data?.includes(product.id)
@@ -124,6 +124,8 @@ function Calculator() {
   }, [product?.id, invented])
   const [facilityTax, setFacilityTax] = useState(0.25)
   const [salesTax, setSalesTax] = useState(3.37)
+  // The pilot's own fees in Jita (skills and standings); the fields stay editable.
+  useFeeDefaults(useTradeFees(), setSalesTax, setBroker)
   const [priceBasis, setPriceBasis] = useState<'sell' | 'buy'>('sell')
   const [system, setSystem] = useState<{ id: number; name: string }>({ id: 30000142, name: 'Jita' })
 
@@ -133,7 +135,8 @@ function Calculator() {
     if (!bp.data) return null
     const ids = [bp.data.productTypeID, ...bp.data.materials.map((m) => m.typeid)]
     const [prices, adjusted, indices, sys] = await Promise.all([
-      jitaPrices(ids),
+      // The product's sale price checked against what it trades at (a slow item's sell order may never fill).
+      jitaPrices(ids).then((p) => withSales(p, undefined, [bp.data!.productTypeID])),
       esi<{ type_id: number; adjusted_price?: number }[]>('/markets/prices/'),
       esi<{ solar_system_id: number; cost_indices: { activity: string; cost_index: number }[] }[]>('/industry/systems/'),
       systemInfo(system.id)
@@ -145,10 +148,25 @@ function Calculator() {
   }, [bp.data, system.id])
 
   const isReaction = bp.data?.activity === REACTION
+  // Reactions run only in refineries, manufacturing in stations and engineering complexes.
+  useEffect(() => {
+    if (!!place.reactions !== isReaction) setFacility(isReaction ? 'athanor' : 'npc')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReaction])
   const effectiveMe = isReaction ? 0 : me
-  // Refineries have no material bonus of their own, and engineering complexes run no reactions.
-  const structureBonus = isReaction ? 0 : place.me
+  // The system's security sets what a rig is worth (null-sec 2.1×, low-sec 1.9× for manufacturing).
+  const band = securityBand(market.data?.sys.security_status ?? 1)
+  const rigMeBonus = place.id === 'npc' ? 0 : rigBonus('me', rigMe, band, isReaction)
+  const rigTeBonus = place.id === 'npc' ? 0 : rigBonus('te', rigTe, band, isReaction)
+  // The hull's role bonus and the rig: two savings, one after the other.
+  const structureBonus = (1 - (1 - place.me / 100) * (1 - rigMeBonus / 100)) * 100
   const effectiveTe = isReaction ? 0 : te
+  const qtyOf = (base: number) => Math.max(runs, Math.ceil(Number((base * runs * (1 - effectiveMe / 100) * (1 - structureBonus / 100)).toFixed(2))))
+  // Bought from sell orders, a batch runs up the book: each material's cost for the quantity the job needs.
+  const depth = useAsync(
+    async () => (bp.data && priceBasis === 'sell' ? batchCost(bp.data.materials.map((m) => ({ typeId: m.typeid, qty: qtyOf(m.quantity) }))) : null),
+    [bp.data, priceBasis, runs, effectiveMe, structureBonus]
+  )
 
   let body = <Empty>Выберите предмет, который хотите произвести (поиск на русском или английском).</Empty>
   if (product && bp.loading) body = <Loading label="Загружаю чертёж…" />
@@ -162,25 +180,39 @@ function Calculator() {
     const price = (id: number) => (priceBasis === 'sell' ? prices.get(id)?.sell.best : prices.get(id)?.buy.best) ?? 0
 
     const rows = materials.map((m) => {
-      const qty = Math.max(runs, Math.ceil(Number((m.quantity * runs * (1 - effectiveMe / 100) * (1 - structureBonus / 100)).toFixed(2))))
-      return { ...m, qty, unit: price(m.typeid), total: qty * price(m.typeid) }
+      const qty = qtyOf(m.quantity)
+      const book = depth.data?.get(m.typeid)
+      // The book's average for this many when it has them; the best order otherwise (and the shortfall shown).
+      const unit = book && book.avg > 0 ? Math.max(book.avg, price(m.typeid)) : price(m.typeid)
+      return { ...m, qty, unit, total: qty * unit, short: book?.short ?? 0 }
     })
     const materialCost = rows.reduce((s, r) => s + r.total, 0)
     const eiv = materials.reduce((s, m) => s + m.quantity * (adj.get(m.typeid) ?? 0), 0) * runs
     const jobCost = eiv * (costIndex * (1 - (isReaction ? 0 : place.cost) / 100) + facilityTax / 100 + SCC_SURCHARGE)
     const outputQty = details.productQuantity * runs
-    const productSell = prices.get(details.productTypeID)?.sell.best ?? 0
+    const productPrice = prices.get(details.productTypeID)
+    const productSell = saleOf(productPrice)
     const revenue = outputQty * productSell
     const tax = revenue * ((salesTax + broker) / 100)
     const totalCost = materialCost + jobCost
     const profit = revenue - tax - totalCost
-    const time = details.time * runs * (1 - effectiveTe / 100) * (isReaction ? 1 : (1 - place.time / 100) * jobTimeFactor(skill(INDUSTRY), skill(ADVANCED_INDUSTRY)))
+    const time =
+      details.time *
+      runs *
+      (1 - effectiveTe / 100) *
+      (1 - place.time / 100) *
+      (1 - rigTeBonus / 100) *
+      (isReaction ? reactionTimeFactor(skill(REACTIONS)) : jobTimeFactor(skill(INDUSTRY), skill(ADVANCED_INDUSTRY)))
 
     body = (
       <>
         <div className="stats-row">
           <Stat label="Себестоимость" value={fmtIsk(totalCost, true)} sub={`за ед. ${fmtIsk(totalCost / outputQty, true)}`} />
-          <Stat label={`Продажа ${fmtNum(outputQty)} шт (Jita sell)`} value={fmtIsk(revenue, true)} sub={`налог и брокерская ${fmtIsk(tax, true)}`} />
+          <Stat
+            label={`Продажа ${fmtNum(outputQty)} шт (Jita sell)`}
+            value={fmtIsk(revenue, true)}
+            sub={<SaleNote p={productPrice} fallback={`налог и брокерская ${fmtIsk(tax, true)}`} />}
+          />
           <Stat
             label="Прибыль"
             value={<span className={profit >= 0 ? 'good' : 'bad'}>{fmtIsk(profit, true)}</span>}
@@ -206,7 +238,10 @@ function Calculator() {
                       <TypeLink id={r.typeid} />
                     </td>
                     <td className="num">{fmtNum(r.qty)}</td>
-                    <td className="num">{fmtIsk(r.unit)}</td>
+                    <td className="num">
+                      {fmtIsk(r.unit)}
+                      {r.short > 0 && <div className="warn small">{`${translate('в Jita не хватает')} ${fmtNum(r.short)}`}</div>}
+                    </td>
                     <td className="num">{fmtIsk(r.total, true)}</td>
                   </tr>
                 ))}
@@ -306,12 +341,29 @@ function Calculator() {
           <label>
             Сооружение
             <select value={facility} onChange={(e) => setFacility(e.target.value as Facility['id'])}>
-              {FACILITIES.map((f) => (
+              {FACILITIES.filter((f) => !!f.reactions === isReaction).map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name}
                 </option>
               ))}
             </select>
+          </label>
+          <label title="Риги на сокращение материалов и времени; их сила зависит от безопасности системы (null ×2,1, low ×1,9 для производства)">
+            Риги ME / TE
+            <span className="row rig-pick">
+              {(['me', 'te'] as const).map((k) => (
+                <select
+                  key={k}
+                  value={k === 'me' ? rigMe : rigTe}
+                  disabled={place.id === 'npc'}
+                  onChange={(e) => (k === 'me' ? setRigMe : setRigTe)(Number(e.target.value) as 0 | 1 | 2)}
+                >
+                  <option value={0}>{`${k.toUpperCase()}: нет`}</option>
+                  <option value={1}>{k.toUpperCase()}: Tech I</option>
+                  <option value={2}>{k.toUpperCase()}: Tech II</option>
+                </select>
+              ))}
+            </span>
           </label>
           <label>
             Налог сооружения, %
@@ -499,16 +551,18 @@ function Planets() {
       }
       return net
     })
-    const outIds = [...new Set(nets.flatMap((n) => [...n].filter(([, q]) => q > 0).map(([id]) => id)))]
-    const prices = outIds.length ? await jitaPrices(outIds).catch(() => new Map()) : new Map()
-    return colonies.map((c, i) => {
+    const allIds = [...new Set(nets.flatMap((n) => [...n.keys()]))]
+    const prices: Map<number, Price> = allIds.length ? await jitaPrices(allIds).then((p) => withSales(p)).catch(() => new Map()) : new Map()
+    // The whole pilot: what planets ship to each other counted once, what they lack bought.
+    const total = colonyIncome(nets, (id) => saleOf(prices.get(id)), (id) => prices.get(id)?.sell.best ?? 0)
+    const list = colonies.map((c, i) => {
       const extractors = details[i].pins.filter((p) => p.extractor_details)
       const expiries = extractors.map((p) => (p.expiry_time ? new Date(p.expiry_time).getTime() : 0))
       const output = [...nets[i]].filter(([, q]) => q > 0.01)
       return {
         ...c,
         output,
-        perHour: output.reduce((s, [id, q]) => s + q * (prices.get(id)?.sell.best ?? 0), 0),
+        perHour: output.reduce((s, [id, q]) => s + q * saleOf(prices.get(id)), 0),
         name: names.get(c.planet_id) ?? String(c.planet_id),
         system: systems[i],
         extractors,
@@ -517,21 +571,23 @@ function Planets() {
         factories: details[i].pins.filter((p) => p.schematic_id).length
       }
     })
+    return { list, total }
   }, [active?.id])
 
   if (!active) return <RequireLogin what="колонии" />
   if (loading) return <Loading />
   if (!data) return <ErrorBox error={error} />
-  const sorted = [...data].sort((a, b) => (a.expiry ?? Infinity) - (b.expiry ?? Infinity))
+  const sorted = [...data.list].sort((a, b) => (a.expiry ?? Infinity) - (b.expiry ?? Infinity))
   const expired = sorted.filter((c) => c.expiry !== null && c.expiry <= now).length
-  const income = data.reduce((s, c) => s + c.perHour, 0)
+  // Net across colonies (what planets ship to each other counted once), not the sum of the planets' surpluses.
+  const income = data.total
 
   return (
     <>
       <div className="stats-row">
-        <Stat label="Колоний" value={data.length} />
+        <Stat label="Колоний" value={data.list.length} />
         <Stat label="Экстракторы остановлены" value={<span className={expired ? 'bad' : 'good'}>{expired}</span>} />
-        <Stat label="Выход в час (Jita sell)" value={fmtIsk(income, true)} sub={`${fmtIsk(income * 24, true)} в сутки, до налогов`} />
+        <Stat label="Выход в час (Jita sell)" value={fmtIsk(income, true)} sub={`${fmtIsk(income * 24, true)} в сутки, до налогов; перевозка между планетами учтена`} />
       </div>
       <Card
         actions={
@@ -540,7 +596,7 @@ function Planets() {
           </button>
         }
       >
-        {!data.length ? (
+        {!data.list.length ? (
           <Empty>Колоний нет.</Empty>
         ) : (
           <table className="table">

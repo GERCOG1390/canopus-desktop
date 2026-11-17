@@ -2,13 +2,14 @@
 // each sell matched to earlier buys of the same item (first in, first out), sales tax and broker
 // fees from the wallet journal, and what is left unsold valued at Jita.
 
+import { netTradeProfit } from '../../../shared/tradeNet.ts'
 import { useMemo, useState } from 'react'
 import { useApp } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, RequireLogin, Stat } from '../components/ui'
 import { esi } from '../lib/esi'
 import { fixed, fmtIsk, fmtNum } from '../lib/format'
-import { jitaPrices } from '../lib/market'
+import { jitaPrices, saleOf, withSales, type Price } from '../lib/market'
 import { useAsync } from '../lib/useAsync'
 
 const SCOPE = 'esi-wallet.read_character_wallet.v1'
@@ -129,7 +130,8 @@ export default function Trades() {
     return { tax: sum('transaction_tax'), broker: sum('brokers_fee') }
   }, [data.data, since])
   const stockTypes = items.filter((i) => i.left > 0).map((i) => i.type)
-  const prices = useAsync(async () => (stockTypes.length ? jitaPrices(stockTypes) : new Map()), [stockTypes.join(',')])
+  // Stock left is valued at what selling it really fetches.
+  const prices = useAsync(async () => (stockTypes.length ? jitaPrices(stockTypes).then((p) => withSales(p)) : new Map<number, Price>()), [stockTypes.join(',')])
 
   if (!active) return <RequireLogin what="сделки" />
   if (!ids.length) return <Empty>Нужен доступ к кошельку — войдите персонажем заново в «Настройках».</Empty>
@@ -140,11 +142,10 @@ export default function Trades() {
   // Tax and fees are paid on every deal, the gross only covers sales matched to a purchase: count the same deals on both sides.
   const allSold = (data.data?.txs ?? []).filter((t) => !t.is_buy && Date.parse(t.date) >= since).reduce((a, t) => a + t.quantity * t.unit_price, 0)
   const matchedSold = items.filter((i) => i.matched).reduce((a, i) => a + i.soldIsk, 0)
-  const matchedShare = allSold > 0 ? Math.min(1, matchedSold / allSold) : 1
-  const net = gross - (fees.tax + fees.broker) * matchedShare
+  const { net, share: matchedShare } = netTradeProfit(gross, fees.tax, fees.broker, allSold, matchedSold)
   const turnover = items.reduce((a, i) => a + i.soldIsk, 0)
   const stock = items.filter((i) => i.left > 0)
-  const stockValue = stock.reduce((a, i) => a + i.left * ((prices.data?.get(i.type)?.sell.best as number | undefined) ?? 0), 0)
+  const stockValue = stock.reduce((a, i) => a + i.left * saleOf(prices.data?.get(i.type)), 0)
   const rows = view === 'profit' ? items.filter((i) => i.matched).sort((a, b) => b.profit - a.profit) : stock.sort((a, b) => b.leftCost - a.leftCost)
 
   return (
@@ -222,7 +223,8 @@ export default function Trades() {
             </thead>
             <tbody>
               {rows.map((i) => {
-                const jita = (prices.data?.get(i.type)?.sell.best as number | undefined) ?? 0
+                // What selling it really fetches, as the total above counts it.
+                const jita = saleOf(prices.data?.get(i.type))
                 return (
                   <tr key={i.type}>
                     <td>

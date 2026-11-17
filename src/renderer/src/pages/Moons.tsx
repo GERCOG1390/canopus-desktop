@@ -2,13 +2,14 @@
 // the refineries (Station Manager role) and who mined what from the moons in the last 30 days
 // (observer ledgers, Accountant role), valued at the best Jita buy order.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useApp } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
 import { NeedPermission, Card, Empty, ErrorBox, Loading, RequireLogin, Stat } from '../components/ui'
 import { esi, resolveNames } from '../lib/esi'
 import { fmtDuration, fmtIsk, fmtNum } from '../lib/format'
 import { jitaPrices } from '../lib/market'
+import { refinedValue } from '../../../shared/orePlan'
 import { useAsync } from '../lib/useAsync'
 
 const SCOPE = 'esi-industry.read_corporation_mining.v1'
@@ -64,19 +65,36 @@ export default function Moons() {
         observers.map((o) => esi<LedgerRow[]>(`/corporation/${corp.data}/mining/observers/${o.observer_id}/`, { characterId: active.id, allPages: true }).catch(() => []))
       )
     ).flat()
-    const [names, prices] = await Promise.all([resolveNames(rows.map((r) => r.character_id)), jitaPrices([...new Set(rows.map((r) => r.type_id))])])
+    const types = [...new Set(rows.map((r) => r.type_id))]
+    const [names, prices, refines] = await Promise.all([resolveNames(rows.map((r) => r.character_id)), jitaPrices(types), window.api.sde.reprocessYields(types)])
+    const minerals = [...new Set(Object.values(refines).flatMap((r) => r.yields.map(([m]) => m)))]
+    const mineralPrices = minerals.length ? await jitaPrices(minerals) : new Map()
+    return { rows, names, prices, refines, mineralPrices }
+  }, [active?.id, corp.data, active?.scopes.join(' ')])
+
+  // Moon ore by its minerals after reprocessing (raw moon ore rarely has an honest Jita buy order), or raw.
+  const [basis, setBasis] = useState<'refined' | 'raw'>('refined')
+  const [refineYield, setRefineYield] = useState(69.6)
+  const valued = useMemo(() => {
+    const l = ledger.data
+    if (!l) return null
+    const unit = (type: number) => {
+      const r = l.refines[type]
+      if (basis === 'refined' && r) return refinedValue(r.portion, r.portion, r.yields, refineYield / 100, (m) => l.mineralPrices.get(m)?.buy.best ?? 0) / r.portion
+      return l.prices.get(type)?.buy.best ?? 0
+    }
     const by = <K,>(key: (r: LedgerRow) => K) => {
       const m = new Map<K, { units: number; isk: number }>()
-      for (const r of rows) {
+      for (const r of l.rows) {
         const g = m.get(key(r)) ?? { units: 0, isk: 0 }
         g.units += r.quantity
-        g.isk += r.quantity * (prices.get(r.type_id)?.buy.best ?? 0)
+        g.isk += r.quantity * unit(r.type_id)
         m.set(key(r), g)
       }
       return [...m].sort((a, b) => b[1].isk - a[1].isk)
     }
-    return { pilots: by((r) => r.character_id), ores: by((r) => r.type_id), names, total: rows.reduce((a, r) => a + r.quantity * (prices.get(r.type_id)?.buy.best ?? 0), 0) }
-  }, [active?.id, corp.data, active?.scopes.join(' ')])
+    return { pilots: by((r) => r.character_id), ores: by((r) => r.type_id), names: l.names, total: l.rows.reduce((a, r) => a + r.quantity * unit(r.type_id), 0) }
+  }, [ledger.data, basis, refineYield])
 
   if (!active) return <RequireLogin what="лунную добычу корпорации" />
   if (!active.scopes.includes(SCOPE)) return <NeedPermission>Нажмите «Настройки → Разрешить корпорацию». Для таймеров нужна роль Station Manager, для журнала добычи — Accountant.</NeedPermission>
@@ -123,19 +141,37 @@ export default function Moons() {
         <Loading />
       ) : ledger.error ? (
         <ErrorBox error={roleError(ledger.error, 'Accountant')} />
-      ) : ledger.data ? (
+      ) : valued ? (
         <>
+          <div className="row">
+            <select value={basis} onChange={(e) => setBasis(e.target.value as typeof basis)} title="Сырую лунную руду в Jita часто не покупают: корпорации считают по минералам">
+              <option value="refined">Минералы после переработки (Jita buy)</option>
+              <option value="raw">Руда по Jita buy</option>
+            </select>
+            {basis === 'refined' && (
+              <input
+                type="number"
+                className="yield-input"
+                min={1}
+                max={100}
+                step={0.1}
+                value={refineYield}
+                title="Выход переработки, %: NPC-станция со всеми навыками V — 69,6"
+                onChange={(e) => setRefineYield(Math.min(100, Math.max(1, Number(e.target.value) || 1)))}
+              />
+            )}
+          </div>
           <div className="stats-row">
-            <Stat label="Добыто с лун за 30 дней (Jita, покупка)" value={fmtIsk(ledger.data.total, true)} />
-            <Stat label="Пилотов" value={ledger.data.pilots.length} />
+            <Stat label="Добыто с лун за 30 дней" value={fmtIsk(valued.total, true)} sub={basis === 'refined' ? `минералы, выход ${refineYield}%, Jita buy` : 'руда, Jita buy'} />
+            <Stat label="Пилотов" value={valued.pilots.length} />
           </div>
           <div className="two-col">
             <Card title="По пилотам">
               <table className="table">
                 <tbody>
-                  {ledger.data.pilots.map(([id, g]) => (
+                  {valued.pilots.map(([id, g]) => (
                     <tr key={id}>
-                      <td translate="no">{ledger.data!.names.get(id) ?? id}</td>
+                      <td translate="no">{valued.names.get(id) ?? id}</td>
                       <td className="num">{fmtNum(g.units)}</td>
                       <td className="num">{fmtIsk(g.isk, true)}</td>
                     </tr>
@@ -146,7 +182,7 @@ export default function Moons() {
             <Card title="По руде">
               <table className="table">
                 <tbody>
-                  {ledger.data.ores.map(([id, g]) => (
+                  {valued.ores.map(([id, g]) => (
                     <tr key={id}>
                       <td>
                         <TypeLink id={id} />

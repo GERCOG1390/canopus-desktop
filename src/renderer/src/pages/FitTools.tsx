@@ -17,9 +17,11 @@ import { getBasic, primeBasics, tn, useTypeBasics } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 import { locale } from '../i18n'
 import { FitAbyss } from './FitAbyss'
+import { FitGraph } from './FitGraph'
+import { FitAmmo } from './FitAmmo'
 import { FitOptimize } from './FitOptimize'
 
-export type FitTool = 'learn' | 'compare' | 'popular' | 'optimize' | 'abyss'
+export type FitTool = 'learn' | 'graph' | 'ammo' | 'compare' | 'popular' | 'optimize' | 'abyss'
 
 const n1 = (v: number, d = 1) => v.toLocaleString(locale(), { maximumFractionDigits: d })
 
@@ -49,6 +51,8 @@ export function FitTools({
     >
       <Tabs
         tabs={[
+          { id: 'graph', label: 'График урона' },
+          { id: 'ammo', label: 'Патроны' },
           { id: 'learn', label: 'Что выучить' },
           { id: 'optimize', label: 'Оптимизация по цене' },
           { id: 'abyss', label: 'Бездна' },
@@ -58,6 +62,8 @@ export function FitTools({
         value={tool}
         onChange={setTool}
       />
+      {tool === 'graph' && <FitGraph fit={fit} skills={skills} />}
+      {tool === 'ammo' && <FitAmmo fit={fit} skills={skills} onChange={onChange} />}
       {tool === 'learn' && <WhatToLearn fit={fit} />}
       {tool === 'optimize' && <FitOptimize fit={fit} skills={skills} onChange={onChange} />}
       {tool === 'abyss' && <FitAbyss fit={fit} skills={skills} />}
@@ -181,54 +187,59 @@ const ROWS: Row[] = [
   { label: 'Энергосеть занята, %', get: (s) => (s.ship.power.total ? (s.ship.power.used / s.ship.power.total) * 100 : 0), fmt: (v) => `${n1(v)}%`, lowerBetter: true }
 ]
 
-function CompareFits({ fit, skills }: { fit: FitSpec; skills: SkillSource }) {
+/** "+ add a fit…": the fits saved in Canopus and the character's fits in the game, as a FitSpec. */
+export function AddFitSelect({ onAdd, label = '+ добавить фит для сравнения…' }: { onAdd: (f: FitSpec) => void; label?: string }) {
   const lang = useLang()
   const { active } = useApp()
-  const [others, setOthers] = useState<FitSpec[]>([])
   const saved = useAsync(() => window.api.fit.list(), [])
   const game = useAsync(async () => (active ? await loadGameFits(active.id).catch(() => []) : []), [active?.id])
   useTypeBasics([...(saved.data ?? []).map((f) => f.shipTypeId), ...(game.data ?? []).map((f) => f.ship_type_id)])
-  const fits = [fit, ...others]
-  const stats = useAsync(() => Promise.all(fits.map((f) => window.api.fit.calculate(f, skills))), [JSON.stringify(fits), JSON.stringify(skills)])
 
   async function add(value: string) {
     const [kind, id] = value.split(':')
     if (kind === 's') {
       const f = saved.data?.find((x) => x.id === id) as SavedFit | undefined
-      if (f) setOthers((o) => [...o, f].slice(-3))
+      if (f) onAdd(f)
     } else if (kind === 'g') {
       const f = game.data?.find((x) => String(x.fitting_id) === id)
-      if (f) {
-        const spec = await fromEsiItems(f.ship_type_id, f.name, f.items.map((i) => ({ typeId: i.type_id, flag: i.flag, qty: i.quantity })))
-        setOthers((o) => [...o, spec].slice(-3))
-      }
+      if (f) onAdd(await fromEsiItems(f.ship_type_id, f.name, f.items.map((i) => ({ typeId: i.type_id, flag: i.flag, qty: i.quantity }))))
     }
   }
 
   return (
+    <select value="" onChange={(e) => void add(e.target.value)}>
+      <option value="">{label}</option>
+      {!!saved.data?.length && (
+        <optgroup label="Сохранённые в Canopus">
+          {saved.data.map((f) => (
+            <option key={f.id} value={`s:${f.id}`}>
+              {`${tn(getBasic(f.shipTypeId)?.n, lang)} — ${f.name}`}
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {!!game.data?.length && (
+        <optgroup label="Фиты из игры">
+          {game.data.map((f) => (
+            <option key={f.fitting_id} value={`g:${f.fitting_id}`}>
+              {`${tn(getBasic(f.ship_type_id)?.n, lang)} — ${f.name}`}
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </select>
+  )
+}
+
+function CompareFits({ fit, skills }: { fit: FitSpec; skills: SkillSource }) {
+  const [others, setOthers] = useState<FitSpec[]>([])
+  const fits = [fit, ...others]
+  const stats = useAsync(() => Promise.all(fits.map((f) => window.api.fit.calculate(f, skills))), [JSON.stringify(fits), JSON.stringify(skills)])
+
+  return (
     <>
       <div className="row">
-        <select value="" onChange={(e) => void add(e.target.value)}>
-          <option value="">+ добавить фит для сравнения…</option>
-          {!!saved.data?.length && (
-            <optgroup label="Сохранённые в Canopus">
-              {saved.data.map((f) => (
-                <option key={f.id} value={`s:${f.id}`}>
-                  {`${tn(getBasic(f.shipTypeId)?.n, lang)} — ${f.name}`}
-                </option>
-              ))}
-            </optgroup>
-          )}
-          {!!game.data?.length && (
-            <optgroup label="Фиты из игры">
-              {game.data.map((f) => (
-                <option key={f.fitting_id} value={`g:${f.fitting_id}`}>
-                  {`${tn(getBasic(f.ship_type_id)?.n, lang)} — ${f.name}`}
-                </option>
-              ))}
-            </optgroup>
-          )}
-        </select>
+        <AddFitSelect onAdd={(f) => setOthers((o) => [...o, f].slice(-3))} />
         <span className="muted small">Все фиты считаются с одними и теми же навыками — теми, что выбраны в фитинге.</span>
       </div>
       {stats.loading ? (

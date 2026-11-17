@@ -6,7 +6,8 @@ import { useApp, useLang } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, SearchBox, Stat } from '../components/ui'
 import { fmtIsk, fmtNum } from '../lib/format'
-import { jitaPrices, parseItemList } from '../lib/market'
+import { translate } from '../i18n'
+import { batchCost, jitaPrices, parseItemList } from '../lib/market'
 import { searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 import { planOres, resolveListLines, splitTrailingQty } from '../../../shared/orePlan'
@@ -18,6 +19,8 @@ export default function OrePlan() {
   const lang = useLang()
   const [text, setText] = useState(SAMPLE)
   const [refine, setRefine] = useState(70)
+  /** Reprocessing tax, percent: the share of minerals the station or structure owner keeps */
+  const [refineTax, setRefineTax] = useState(0)
   const [runs, setRuns] = useState(1)
   const [bpMe, setBpMe] = useState(10)
   const [fillError, setFillError] = useState<string | null>(null)
@@ -55,12 +58,23 @@ export default function OrePlan() {
     return {
       unknown,
       needs,
-      result: planOres(needs, infos, refine / 100, new Map(needs.map((n) => [n.id, sell(n.id)]))),
+      // The owner's tax takes its share of what comes out: it lowers the yield.
+      result: planOres(needs, infos, (refine / 100) * (1 - refineTax / 100), new Map(needs.map((n) => [n.id, sell(n.id)]))),
       raw: new Map(ores.data.map((o) => [o.id, o.rawVolume]))
     }
-  }, [text, refine, ores.data])
+  }, [text, refine, refineTax, ores.data])
 
   const r = plan.data?.result
+  // Ore and minerals bought by the thousand run up Jita's sell orders: both sides costed up the book.
+  const book = useAsync(async () => {
+    if (!r || !plan.data) return null
+    const m = await batchCost([...r.lines.map((l) => ({ typeId: l.id, qty: l.units })), ...plan.data.needs.map((n) => ({ typeId: n.id, qty: n.qty }))])
+    const cost = (id: number, qty: number, best: number) => qty * Math.max(m.get(id)?.avg || 0, best)
+    return {
+      ore: r.lines.reduce((s, l) => s + cost(l.id, l.units, l.cost / Math.max(1, l.units)), 0),
+      minerals: plan.data.needs.reduce((s, n) => s + cost(n.id, n.qty, 0), 0) || r.mineralCost
+    }
+  }, [r])
   return (
     <>
       <Card title="Какие минералы нужны">
@@ -77,9 +91,13 @@ export default function OrePlan() {
             ME чертежа, %
             <input type="number" min={0} max={10} value={bpMe} onChange={(e) => setBpMe(Math.max(0, Math.min(10, Number(e.target.value) || 0)))} />
           </label>
-          <label>
+          <label title="NPC-станция со всеми навыками V: 50 × 1,15 × 1,1 × 1,1 ≈ 69,6%. Структура: база 50% (Athanor +2%, Tatara +5,5% к выходу), риг 51/53% × множитель безопасности (1 / 1,06 / 1,12), импланты">
             Выход переработки, %
             <input type="number" min={1} max={100} step={0.1} value={refine} onChange={(e) => setRefine(Math.min(100, Math.max(1, Number(e.target.value) || 1)))} />
+          </label>
+          <label title="Доля минералов, которую забирает владелец: NPC-станция — до 5% в зависимости от стендинга к её корпорации, структура — налог, который выставил владелец">
+            Налог переработки, %
+            <input type="number" min={0} max={50} step={0.5} value={refineTax} onChange={(e) => setRefineTax(Math.min(50, Math.max(0, Number(e.target.value) || 0)))} />
           </label>
         </div>
         {fillError && <p className="warn-text small">{fillError}</p>}
@@ -100,9 +118,16 @@ export default function OrePlan() {
       ) : (
         <>
           <div className="stats-row">
-            <Stat label="Руда обойдётся" value={fmtIsk(r.oreCost, true)} />
-            <Stat label="Минералы в Jita" value={fmtIsk(r.mineralCost, true)} />
-            <Stat label="Выгода руды" value={<span className={r.mineralCost - r.oreCost >= 0 ? 'good' : 'bad'}>{fmtIsk(r.mineralCost - r.oreCost, true)}</span>} />
+            <Stat label="Руда обойдётся" value={fmtIsk(book.data?.ore ?? r.oreCost, true)} sub={book.data ? translate('по стакану Jita') : undefined} />
+            <Stat label="Минералы в Jita" value={fmtIsk(book.data?.minerals ?? r.mineralCost, true)} sub={book.data ? translate('по стакану Jita') : undefined} />
+            <Stat
+              label="Выгода руды"
+              value={
+                <span className={(book.data?.minerals ?? r.mineralCost) - (book.data?.ore ?? r.oreCost) >= 0 ? 'good' : 'bad'}>
+                  {fmtIsk((book.data?.minerals ?? r.mineralCost) - (book.data?.ore ?? r.oreCost), true)}
+                </span>
+              }
+            />
           </div>
           <Card title="Сколько купить">
             <table className="table compact">

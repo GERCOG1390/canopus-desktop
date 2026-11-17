@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { mutationRef, splitMutations } from '../../../shared/fitImport.ts'
 import type { FitDrone, FitModule, FitSpec, FittableType, ModuleState, Slot } from '../../../shared/fit'
 import { useApp } from '../AppContext'
 import { getBasic, primeBasics } from './sde'
@@ -96,11 +97,32 @@ async function launchFor(fit: FitSpec): Promise<void> {
 
 const en = (id: number) => getBasic(id)?.n[0] ?? `#${id}`
 
+/** Attribute names for writing mutated modules out, filled by primeAttributeNames(). */
+const attrNames = new Map<number, string>()
+export async function primeAttributeNames(fit: FitSpec): Promise<void> {
+  const ids = [...new Set(fit.modules.flatMap((m) => Object.keys(m.mutated?.attrs ?? {}).map(Number)))].filter((id) => !attrNames.has(id))
+  if (ids.length) Object.entries(await window.api.sde.attributeNames(ids)).forEach(([id, n]) => attrNames.set(Number(id), n))
+}
+
 export function toEft(fit: FitSpec): string {
   const lines = [`[${en(fit.shipTypeId)}, ${fit.name || 'Canopus fit'}]`]
+  // Mutated modules as Pyfa writes them: "Name [1]" in the slot, the rolled values in a block at the end.
+  const mutated: string[] = []
   for (const slot of ['lo', 'med', 'hi', 'rig', 'sub'] as Slot[]) {
     for (const m of fit.modules.filter((x) => x.slot === slot)) {
-      lines.push(`${en(m.typeId)}${m.chargeTypeId ? `, ${en(m.chargeTypeId)}` : ''}${m.state === 'offline' ? ' /OFFLINE' : ''}`)
+      let ref = ''
+      if (m.mutated && Object.keys(m.mutated.attrs).length) {
+        const n = mutated.length / 3 + 1
+        ref = ` [${n}]`
+        mutated.push(
+          `[${n}] ${en(m.typeId)}`,
+          `  ${m.mutated.mutaplasmid ? en(m.mutated.mutaplasmid) : ''}`,
+          `  ${Object.entries(m.mutated.attrs)
+            .map(([id, v]) => `${attrNames.get(Number(id)) ?? id} ${v}`)
+            .join(', ')}`
+        )
+      }
+      lines.push(`${en(m.typeId)}${ref}${m.chargeTypeId ? `, ${en(m.chargeTypeId)}` : ''}${m.state === 'offline' ? ' /OFFLINE' : ''}`)
     }
     lines.push('')
   }
@@ -120,6 +142,7 @@ export function toEft(fit: FitSpec): string {
     lines.push('')
     for (const c of fit.cargo) lines.push(`${en(c.typeId)} x${c.qty}`)
   }
+  if (mutated.length) lines.push('', '', ...mutated)
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }
 
@@ -134,7 +157,10 @@ async function exactType(name: string): Promise<number | null> {
 export async function fromEft(text: string): Promise<{ fit: FitSpec; unknown: string[] }> {
   const catalog = await loadCatalog()
   const boosters = await loadBoosters().catch(() => new Map<number, BoosterInfo>())
-  const lines = text.split(/\r?\n/).map((l) => l.trim())
+  // Pyfa's mutated modules: "Name [1]" in the slot, the rolled values in a block after the fit.
+  const { body, mutations } = splitMutations(text)
+  const attrIds = mutations.size ? await window.api.sde.attributeIds([...new Set([...mutations.values()].flatMap((m) => Object.keys(m.attrs)))]) : {}
+  const lines = body.split(/\r?\n/).map((l) => l.trim())
   const head = /^\[(.+?),\s*(.*)\]$/.exec(lines.find((l) => l.startsWith('[')) ?? '')
   if (!head) throw new Error('Не найдена первая строка вида [Корабль, Название]')
   const shipTypeId = await exactType(head[1])
@@ -153,7 +179,11 @@ export async function fromEft(text: string): Promise<{ fit: FitSpec; unknown: st
     const offline = /\/offline$/i.test(line)
     const clean = line.replace(/\s*\/offline$/i, '')
     const qtyMatch = /^(.+?)\s+x(\d+)$/i.exec(clean)
-    const [namePart, chargeName] = (qtyMatch ? qtyMatch[1] : clean).split(/,\s*/)
+    const [rawName, chargeName] = (qtyMatch ? qtyMatch[1] : clean).split(/,\s*/)
+    const ref = mutationRef(rawName)
+    const mutation = ref ? mutations.get(ref.ref) : undefined
+    // A mutated module is worked out as the module it was made from, with the rolled values over its own.
+    const namePart = mutation?.base ?? ref?.name ?? rawName
     const id = await exactType(namePart)
     if (!id) {
       unknown.push(namePart)
@@ -166,7 +196,16 @@ export async function fromEft(text: string): Promise<{ fit: FitSpec; unknown: st
     else if (!info && boosters.has(id)) fit.boosters = [...(fit.boosters ?? []), { typeId: id }]
     else if (info && !qtyMatch) {
       const chargeTypeId = chargeName ? ((await exactType(chargeName)) ?? undefined) : undefined
-      fit.modules.push({ typeId: id, slot: info.slot as Slot, state: offline ? 'offline' : defaultState(info), chargeTypeId })
+      const rolled = mutation ? Object.fromEntries(Object.entries(mutation.attrs).flatMap(([n, v]) => (attrIds[n] ? [[attrIds[n], v]] : []))) : undefined
+      const mutaplasmid = mutation?.mutaplasmid ? ((await exactType(mutation.mutaplasmid)) ?? undefined) : undefined
+      if (mutation) Object.keys(mutation.attrs).filter((n) => !attrIds[n]).forEach((n) => unknown.push(`${namePart}: ${n}`))
+      fit.modules.push({
+        typeId: id,
+        slot: info.slot as Slot,
+        state: offline ? 'offline' : defaultState(info),
+        chargeTypeId,
+        ...(rolled && Object.keys(rolled).length ? { mutated: { attrs: rolled, ...(mutaplasmid ? { mutaplasmid } : {}) } } : {})
+      })
     } else fit.cargo!.push({ typeId: id, qty })
   }
   await launchFor(fit)
@@ -249,6 +288,7 @@ export function FittingProvider({ children }: { children: ReactNode }) {
   const [savedId, setSavedId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (fit) void primeAttributeNames(fit)
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(fit))
     } catch {

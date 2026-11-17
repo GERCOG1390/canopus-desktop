@@ -1,6 +1,9 @@
 import type { FitSpec, FitStats, LayerStats, ModuleResult, SkillSource, Slot, WeaponStats, TacticalModule } from '../../shared/fit'
+import { ecmJamChance, neutBite } from '../../shared/projectedRules.ts'
+import { EWAR_BONUS, projectedFromFit, projectedValue } from './projected'
+import { burstBuffs, burstBuffsOfFit } from './fleet'
 import type { SdeDb } from '../../shared/sde'
-import { Dogma, shipModes, type Item } from './engine'
+import { Dogma, shipModes, stackingProduct, type Item } from './engine'
 import { capacitorStability } from '../../shared/fitRules'
 
 const A = {
@@ -69,6 +72,8 @@ const RESONANCE = {
   hull: [113, 110, 109, 111]
 } as const
 
+/** Sensor strength attribute → the ECM strength attribute that works against it */
+const ECM_FOR_SENSOR: Record<number, number> = { 208: 241, 209: 239, 210: 240, 211: 238 }
 const SENSORS: [number, string][] = [
   [208, 'Радар'],
   [209, 'Ладар'],
@@ -87,6 +92,16 @@ const ATTR_SPOOL_STEP = 2733
 /** Charges an ancillary repairer burns per cycle */
 const ATTR_CHARGE_RATE = 56
 const ATTR_NEUT_RESIST = 2045
+/** stasisWebifierResistance, targetPainterResistance, remoteRepairImpedance: 1 = none resisted */
+const ATTR_WEB_RESIST = 2115
+const ATTR_PAINT_RESIST = 2114
+const ATTR_REP_IMPEDANCE = 2116
+/** sensorDampenerResistance, weaponDisruptionResistance, ECMResistance */
+const ATTR_DAMP_RESIST = 2112
+const ATTR_DISRUPT_RESIST = 2113
+const ATTR_ECM_RESIST = 2253
+const SKILL_GUNNERY = 3300
+const SKILL_MISSILES = 3319
 const ATTR_RAH_SHIFT = 1849
 const ATTR_EMP_RANGE = 99
 const ATTR_AOE_VELOCITY = 653
@@ -122,7 +137,7 @@ export function subsystemSlots(db: SdeDb, shipTypeId: number): number {
 
 export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraShipAttrs: number[] = []): FitStats {
   const dogma = new Dogma(db, spec.shipTypeId, skills)
-  spec.modules.forEach((m, i) => dogma.addModule(m.typeId, m.slot, m.state, m.chargeTypeId, i))
+  spec.modules.forEach((m, i) => dogma.addModule(m.typeId, m.slot, m.state, m.chargeTypeId, i, m.mutated?.attrs))
   spec.drones.forEach((d, i) => dogma.addDrone(d.typeId, d.count, Math.min(d.active, d.count), i))
   spec.implants.forEach((id) => dogma.addImplant(id))
   spec.boosters?.forEach((b) => dogma.addBooster(b.typeId, b.side))
@@ -130,6 +145,29 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   const mode = spec.mode ?? shipModes(db, spec.shipTypeId)[0]?.id
   if (mode) dogma.setMode(mode)
   if (spec.environment) dogma.setEnvironment(spec.environment)
+  if (spec.fleet?.bursts.length) dogma.addFleetBuffs(burstBuffs(db, spec.fleet))
+  spec.boosterFits?.forEach((f) => dogma.addFleetBuffs(burstBuffsOfFit(db, f)))
+  const projected = [
+    ...(spec.projected ?? []).flatMap((p) => {
+      const v = projectedValue(db, p.typeId, p.shipTypeId, p.chargeTypeId)
+      return v ? Array.from({ length: Math.max(0, p.count) }, () => v) : []
+    }),
+    ...(spec.projectedFits ?? []).flatMap((p) => {
+      const list = projectedFromFit(db, p.fit)
+      return Array.from({ length: Math.max(0, p.count) }, () => list).flat()
+    })
+  ]
+  for (const p of projected) {
+    if (p.kind === 'web') dogma.projected.push({ attr: A.maxVelocity, value: p.amount, resist: ATTR_WEB_RESIST })
+    if (p.kind === 'paint') dogma.projected.push({ attr: A.signatureRadius, value: p.amount, resist: ATTR_PAINT_RESIST })
+    const on = p.kind === 'td' ? { items: 'module' as const, skill: SKILL_GUNNERY } : p.kind === 'gd' ? { items: 'charge' as const, skill: SKILL_MISSILES } : undefined
+    if (p.kind === 'damp' || p.kind === 'td' || p.kind === 'gd') {
+      for (const [src, attr] of EWAR_BONUS[p.kind]!) {
+        const value = p.bonuses?.[src]
+        if (value) dogma.projected.push({ attr, value, resist: p.kind === 'damp' ? ATTR_DAMP_RESIST : ATTR_DISRUPT_RESIST, ...(on ? { on } : {}) })
+      }
+    }
+  }
   dogma.link()
 
   const ship = dogma.ship
@@ -299,6 +337,14 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
     }
   }
 
+  // Remote repairs others give the fit, cut by its remote repair impedance.
+  const impedance = a(ship, ATTR_REP_IMPEDANCE) || 1
+  const incoming = (kind: string) => projected.filter((p) => p.kind === kind && p.cycle > 0).reduce((s, p) => s + (p.amount / p.cycle) * impedance, 0)
+  const remoteShield = incoming('shieldRep')
+  const remoteArmor = incoming('armorRep')
+  shieldBoost += remoteShield
+  armorRepair += remoteArmor
+
   const avgRes = (l: LayerStats) => 1 - l.resist.reduce((s, x) => s + x, 0) / 4
   const activeTankEhp = shieldBoost / (avgRes(shield) || 1) + armorRepair / (avgRes(armor) || 1) + hullRepair / (avgRes(hull) || 1)
 
@@ -308,6 +354,12 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   const usePerSecond = moduleResults.reduce((s, r) => s + (r.shots && r.reloadSec ? (r.capPerSecond * r.cycle * r.shots) / (r.shots * r.cycle + r.reloadSec) : r.capPerSecond), 0)
   // Each active module takes its whole cost when it cycles, like the game (and Pyfa) count it.
   const drains = moduleResults.filter((r) => r.capPerSecond && r.cycle).map((r) => ({ need: r.capPerSecond * r.cycle, cycle: r.cycle, occasional: r.occasional, shots: r.shots, reloadSec: r.reloadSec }))
+  // Neutralizers on the fit drain each cycle, cut by its resistance to energy warfare.
+  const neutResistance = a(ship, ATTR_NEUT_RESIST) || 1
+  const neuts = projected.filter((p) => p.kind === 'neut' && p.cycle > 0)
+  const signature = a(ship, A.signatureRadius)
+  for (const p of neuts) drains.push({ need: neutBite(p.amount, neutResistance, signature, p.sigRes), cycle: p.cycle, occasional: undefined, shots: undefined, reloadSec: undefined })
+  const neutPerSec = neuts.reduce((s, p) => s + neutBite(p.amount, neutResistance, signature, p.sigRes) / p.cycle, 0)
   const capacitor = capacitorStability(capacity, rechargeSec, drains)
 
   // ---------- Offense ----------
@@ -445,6 +497,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   const mass = a(ship, A.mass)
   const agility = a(ship, A.agility)
   const sensor = SENSORS.map(([id, name]) => [a(ship, id), name] as [number, string]).sort((x, y) => y[0] - x[0])[0]
+  const sensorId = [...SENSORS].sort((x, y) => a(ship, y[0]) - a(ship, x[0]))[0][0]
 
   const shipAttrs: Record<number, number> = {}
   for (const id of extraShipAttrs) shipAttrs[id] = a(ship, id)
@@ -475,7 +528,7 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       adc,
       neutResist: a(ship, ATTR_NEUT_RESIST) || 1
     },
-    capacitor: { capacity, rechargeSec, usePerSecond, ...capacitor, onCharges: moduleResults.some((r) => r.capPerSecond < 0) },
+    capacitor: { capacity, rechargeSec, usePerSecond: usePerSecond + neutPerSec, ...capacitor, onCharges: moduleResults.some((r) => r.capPerSecond < 0) },
     offense: {
       weapons,
       totalDps: weapons.reduce((s, w) => s + w.dps, 0),
@@ -502,6 +555,23 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       droneControlRange: a(dogma.char, 458)
     },
     modules: moduleResults,
+    projected: projected.length
+      ? {
+          speedMult: stackingProduct(projected.filter((p) => p.kind === 'web').map((p) => 1 + (p.amount * (a(ship, ATTR_WEB_RESIST) || 1)) / 100)),
+          sigMult: stackingProduct(projected.filter((p) => p.kind === 'paint').map((p) => 1 + (p.amount * (a(ship, ATTR_PAINT_RESIST) || 1)) / 100)),
+          shieldRep: remoteShield,
+          armorRep: remoteArmor,
+          neut: neutPerSec,
+          lockMult: stackingProduct(projected.filter((p) => p.kind === 'damp').map((p) => 1 + ((p.bonuses?.[309] ?? 0) * (a(ship, ATTR_DAMP_RESIST) || 1)) / 100)),
+          scanMult: stackingProduct(projected.filter((p) => p.kind === 'damp').map((p) => 1 + ((p.bonuses?.[566] ?? 0) * (a(ship, ATTR_DAMP_RESIST) || 1)) / 100)),
+          disruptors: projected.filter((p) => p.kind === 'td' || p.kind === 'gd').length,
+          ecmChance: ecmJamChance(
+            projected.filter((p) => p.kind === 'ecm').map((p) => p.bonuses?.[ECM_FOR_SENSOR[sensorId]] ?? 0),
+            a(ship, ATTR_ECM_RESIST) || 1,
+            a(ship, sensorId)
+          )
+        }
+      : undefined,
     problems,
     shipAttrs
   }

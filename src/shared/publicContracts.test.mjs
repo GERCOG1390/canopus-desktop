@@ -63,3 +63,12 @@ test('an auction counts at its buyout when it has one, its opening bid otherwise
   // buyout means nothing on a plain exchange
   assert.equal(dealOf(contract({ price: 10, buyout: 70 }), items, () => 100).gain, 90)
 })
+
+// Audit 2026-11-16: an auction with no buyout starting at 1 ISK topped "best deal" — its final price is unknown.
+test('an auction without a buyout: the gain is only a ceiling, marked open', () => {
+  const d = dealOf({ type: 'auction', price: 1 }, [{ type_id: 1, quantity: 1, is_included: true }], () => 1_000_000)
+  assert.equal(d.open, true)
+  assert.equal(d.gain, 1_000_000 - 1)
+  const b = dealOf({ type: 'auction', price: 1, buyout: 900_000 }, [{ type_id: 1, quantity: 1, is_included: true }], () => 1_000_000)
+  assert.equal(b.open, false)
+})

@@ -12,7 +12,9 @@ import { uiLang } from '../i18n'
 import { TypeLink, TypeName } from '../components/TypeLink'
 import { Card, Empty, Loading, SearchBox, Sec, Stat } from '../components/ui'
 import { fmtIsk, fmtNum, roundSec } from '../lib/format'
-import { jitaPrices } from '../lib/market'
+import { jitaPrices, saleOf, withSales } from '../lib/market'
+import { useTradeFees } from '../lib/tradeFees'
+import { translate } from '../i18n'
 import { searchSystemsSde, tn, useTypeBasics } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 
@@ -87,6 +89,7 @@ export default function PiCalculator() {
   const [startTier, setStartTier] = useState(0)
   const [rateInput, setRateInput] = useState<number | null>(null)
   const [tax, setTax] = useState(10)
+  const fees = useTradeFees()
   const [sellBasis, setSellBasis] = useState<'sell' | 'buy'>('sell')
   const [taxImports, setTaxImports] = useState(true)
   const [carry, setCarry] = useState(true)
@@ -141,7 +144,8 @@ export default function PiCalculator() {
   }, [tree])
 
   const priceIds = chosen ? [chosen, ...totals.buy.keys()] : []
-  const prices = useAsync(async () => (priceIds.length ? jitaPrices(priceIds) : null), [priceIds.join(',')])
+  // The product is sold: checked against what it trades at; inputs are bought at the sell order.
+  const prices = useAsync(async () => (priceIds.length ? jitaPrices(priceIds).then((p) => (chosen ? withSales(p, undefined, [chosen]) : p)) : null), [priceIds.join(',')])
 
   if (sde.state === 'downloading' || sde.state === 'building') {
     return <Loading label={`База SDE обновляется для планетарки${sde.progress ? ` — ${Math.round(sde.progress * 100)}%` : ''}…`} />
@@ -153,7 +157,7 @@ export default function PiCalculator() {
 
   const price = (id: number, basis: 'sell' | 'buy') => prices.data?.get(id)?.[basis].best ?? 0
   const base = (id: number) => meta.data?.base.get(id) ?? 0
-  const revenue = chosen ? rate * price(chosen, sellBasis) : 0
+  const revenue = chosen ? rate * (sellBasis === 'sell' ? saleOf(prices.data?.get(chosen)) : price(chosen, 'buy')) : 0
   const buyCost = [...totals.buy].reduce((s, [id, r]) => s + r * price(id, 'sell'), 0)
   const exportTax = chosen ? rate * base(chosen) * (tax / 100) : 0
   const importTax = taxImports ? [...totals.buy].reduce((s, [id, r]) => s + r * base(id) * (tax / 100) * 0.5, 0) : 0
@@ -165,7 +169,9 @@ export default function PiCalculator() {
   }
   if (tree && carry) walkCarried(tree, 0)
   const carryTax = transferTax(carried, tax)
-  const profit = revenue - buyCost - exportTax - importTax - carryTax
+  // Selling on the market pays the sales tax, and a sell order the broker fee too (the pilot's skills and standings).
+  const marketFees = revenue * ((fees.tax + (sellBasis === 'sell' ? fees.broker : 0)) / 100)
+  const profit = revenue - marketFees - buyCost - exportTax - importTax - carryTax
   const extracted = [...totals.extract].sort((a, b) => b[1] - a[1])
 
   return (
@@ -237,6 +243,7 @@ export default function PiCalculator() {
             <Stat label="Выручка в час" value={fmtIsk(revenue, true)} sub={`${fmtNum(rate)} шт × ${fmtIsk(price(chosen, sellBasis), true)}`} />
             <Stat label="Закупка в час" value={fmtIsk(buyCost, true)} sub={startTier ? `покупка P${startTier} по Jita sell` : 'всё из добычи'} />
             <Stat label="Налоги таможни в час" value={fmtIsk(exportTax + importTax + carryTax, true)} sub={`вывоз ${fmtIsk(exportTax, true)} · ввоз ${fmtIsk(importTax, true)} · перевозка ${fmtIsk(carryTax, true)}`} />
+            <Stat label="Налог с продаж и брокерская в час" value={fmtIsk(marketFees, true)} sub={`${fees.tax}%${sellBasis === 'sell' ? ` + ${fees.broker}%` : ''} · ${translate(fees.basis)}`} />
             <Stat
               label="Прибыль"
               value={<span className={profit >= 0 ? 'good' : 'bad'}>{`${fmtIsk(profit, true)} / час`}</span>}

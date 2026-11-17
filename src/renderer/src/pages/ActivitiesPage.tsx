@@ -8,7 +8,7 @@ import { fmtDate, fmtDuration, fmtIsk, fmtNum } from '../lib/format'
 import { useLang } from '../AppContext'
 import { TypeLink } from '../components/TypeLink'
 import { SearchBox } from '../components/ui'
-import { jitaPrices, parseItemList } from '../lib/market'
+import { jitaPrices, parseItemList, saleOf, withSales } from '../lib/market'
 import { CATEGORY, searchTypesSde, tn, useTypeBasic } from '../lib/sde'
 import { useAsync, useTick } from '../lib/useAsync'
 import Mining from './Mining'
@@ -433,7 +433,8 @@ interface AbyssRun {
 async function appraiseLoot(text: string): Promise<{ sell: number; buy: number; unknown: string[] }> {
   const items = parseItemList(text)
   const ids = await window.api.intel.resolveTypeNames(items.map((i) => i.name))
-  const prices = await jitaPrices(Object.values(ids))
+  // Loot is sold: valued at what it really fetches (abyssal loot is often slow, with lone listings).
+  const prices = await jitaPrices(Object.values(ids)).then((p) => withSales(p))
   let sell = 0
   let buy = 0
   const unknown: string[] = []
@@ -443,7 +444,7 @@ async function appraiseLoot(text: string): Promise<{ sell: number; buy: number; 
       unknown.push(it.name)
       continue
     }
-    sell += (prices.get(id)?.sell.best ?? 0) * it.qty
+    sell += saleOf(prices.get(id)) * it.qty
     buy += (prices.get(id)?.buy.best ?? 0) * it.qty
   }
   return { sell, buy, unknown }

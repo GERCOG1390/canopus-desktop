@@ -6,7 +6,8 @@ import { useCharacter } from '../CharacterContext'
 import { TypeLink } from '../components/TypeLink'
 import { Card, ErrorBox, Loading, Stat } from '../components/ui'
 import { fmtIsk, fmtNum } from '../lib/format'
-import { jitaPrices } from '../lib/market'
+import { jitaPrices, saleOf, withSales } from '../lib/market'
+import { useFeeDefaults, useTradeFees } from '../lib/tradeFees'
 import { useAsync } from '../lib/useAsync'
 import { farmMonth, injectorGain, spCost } from '../../../shared/skillFarm'
 
@@ -19,14 +20,16 @@ export default function SkillFarm() {
   const [spPerHour, setSpPerHour] = useState(2700)
   const [days, setDays] = useState(30)
   const [salesTax, setSalesTax] = useState(3.37)
+  useFeeDefaults(useTradeFees(), setSalesTax)
   const [plexPerMonth, setPlexPerMonth] = useState(500)
   const [otherCost, setOtherCost] = useState(0)
-  const prices = useAsync(() => jitaPrices([PLEX, INJECTOR, EXTRACTOR]), [])
+  // Injectors are sold: checked against what they trade at (PLEX and extractors are bought).
+  const prices = useAsync(() => jitaPrices([PLEX, INJECTOR, EXTRACTOR]).then((p) => withSales(p, undefined, [INJECTOR])), [])
   if (prices.loading && !prices.data) return <Loading />
   if (!prices.data) return <ErrorBox error={prices.error} />
   const sell = (id: number): number => prices.data?.get(id)?.sell.best ?? 0
   const totalSp = char.totalSp || 0
-  const m = farmMonth({ spPerHour, days, injectorPrice: sell(INJECTOR), extractorPrice: sell(EXTRACTOR), salesTax: salesTax / 100, plexPrice: sell(PLEX), plexPerMonth, otherCost })
+  const m = farmMonth({ spPerHour, days, injectorPrice: saleOf(prices.data?.get(INJECTOR)), extractorPrice: sell(EXTRACTOR), salesTax: salesTax / 100, plexPrice: sell(PLEX), plexPerMonth, otherCost })
   const num = (value: number, set: (v: number) => void, step: number | string = 1) => (
     <input type="number" min={0} step={step} value={value} onChange={(e) => set(Math.max(0, Number(e.target.value) || 0))} />
   )

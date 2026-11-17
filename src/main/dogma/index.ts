@@ -6,6 +6,7 @@ import type { FitMetrics, FitSpec, FitStats, FitVariant, SavedFit, SkillSource }
 import { fittableFor, requiredSkills, sdeForDogma, variantsOf } from '../sde'
 import { Dogma, shipModes } from './engine'
 import { calculate } from './stats'
+import { burstBuffs, burstBuffsOfFit } from './fleet'
 import { fitMetrics } from './metrics'
 import { skillGains, type SkillGain } from './gains'
 
@@ -14,13 +15,15 @@ export { fitMetrics, skillGains, type SkillGain }
 /** Explains one attribute of one item in a fit: target is 'ship', 'char', or `${kind}:${index}`. */
 export function explainAttr(spec: FitSpec, skills: SkillSource, target: string, attrId: number) {
   const d = new Dogma(sdeForDogma(), spec.shipTypeId, skills)
-  spec.modules.forEach((m, i) => d.addModule(m.typeId, m.slot, m.state, m.chargeTypeId, i))
+  spec.modules.forEach((m, i) => d.addModule(m.typeId, m.slot, m.state, m.chargeTypeId, i, m.mutated?.attrs))
   spec.drones.forEach((x, i) => d.addDrone(x.typeId, x.count, Math.min(x.active, x.count), i))
   spec.implants.forEach((id) => d.addImplant(id))
   spec.boosters?.forEach((b) => d.addBooster(b.typeId, b.side))
   const mode = spec.mode ?? shipModes(sdeForDogma(), spec.shipTypeId)[0]?.id
   if (mode) d.setMode(mode)
   if (spec.environment) d.setEnvironment(spec.environment)
+  if (spec.fleet?.bursts.length) d.addFleetBuffs(burstBuffs(sdeForDogma(), spec.fleet))
+  spec.boosterFits?.forEach((f) => d.addFleetBuffs(burstBuffsOfFit(sdeForDogma(), f)))
   d.link()
   const [kind, idx] = target.split(':')
   const item =

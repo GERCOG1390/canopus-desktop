@@ -63,6 +63,8 @@ export interface ContractDeal {
   gain: number
   /** Offered items with no price at Jita, blueprint copies among them: the value leaves them out */
   unpriced: number
+  /** An auction without a buyout: the bidding sets the price, the gain is only a ceiling */
+  open: boolean
 }
 
 export function dealOf(contract: PublicContract, items: PublicContractItem[], price: (id: number) => number): ContractDeal {
@@ -81,5 +83,7 @@ export function dealOf(contract: PublicContract, items: PublicContractItem[], pr
   // An auction is won at its buyout at most; without one, the opening bid is only where it starts.
   const pay = contract.type === 'auction' && contract.buyout ? contract.buyout : (contract.price ?? 0)
   const cost = pay + asked
-  return { value, asked, cost, gain: value - cost, unpriced }
+  // Without a buyout the bidding decides the price: the gain at the opening bid is only a ceiling.
+  const open = contract.type === 'auction' && !contract.buyout
+  return { value, asked, cost, gain: value - cost, unpriced, open }
 }

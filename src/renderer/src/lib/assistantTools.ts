@@ -2,6 +2,9 @@
 // SDE, market, routes, intel) and the app actions it may take (open a page, load a fit). The model gets
 // numbers computed here instead of guessing them; actions in the game itself ask the user first.
 
+import { netTradeProfit } from '../../../shared/tradeNet.ts'
+import { lpOfferValue } from '../../../shared/lpStore'
+import { brokerPct } from '../../../shared/industryRules'
 import { decodeEsiName } from '../../../shared/esiText'
 import type { ToolDef } from '../../../shared/assistant'
 import type { CombatPilot } from '../../../shared/combat'
@@ -22,7 +25,7 @@ import { profitByItem, transactions, type Journal, type Tx } from '../pages/Trad
 import { saveFitToGame, setDestinationInGame, SCOPE, hasScope } from './gameActions'
 import { spForLevel } from './dogma'
 import { roundSec } from './format'
-import { jitaPrices } from './market'
+import { jitaPrices, saleOf, withSales } from './market'
 import { NPC_FACTIONS, type NpcFaction, type NpcReport } from '../../../shared/npc'
 import { ABYSS_FACTIONS, ABYSS_WEATHERS, tierStrengths, type AbyssFaction, type AbyssFitSide, type AbyssReport, type AbyssWeather } from '../../../shared/abyss'
 
@@ -368,21 +371,31 @@ const TOOLS: Tool[] = [
       if (!corp) throw new Error(`Корпорация «${a.corporation}» не найдена: нужно точное название`)
       const offers = await esi<{ type_id: number; quantity: number; lp_cost: number; isk_cost: number; required_items: { type_id: number; quantity: number }[] }[]>(`/loyalty/stores/${corp.id}/offers/`)
       const typeIds = [...new Set(offers.flatMap((o) => [o.type_id, ...o.required_items.map((r) => r.type_id)]))]
-      const [prices, basics] = await Promise.all([jitaPrices(typeIds), window.api.sde.basics(typeIds)])
+      // Products valued at what selling them really fetches (a slow item's lone listing would top the ranking).
+      const [prices, basics] = await Promise.all([jitaPrices(typeIds).then((p) => withSales(p, undefined, [...new Set(offers.map((o) => o.type_id))])), window.api.sde.basics(typeIds)])
       primeBasics(basics)
-      // Sales tax 7.5% less 11% per level of Accounting (the character's, else all V).
+      // Sales tax 7.5% less 11% per level of Accounting, broker fee by Broker Relations (the character's, else all V):
+      // the same valuation as the LP store page (shared/lpStore.ts), so both rank the offers alike.
       const accounting = ctx.char.skills ? ctx.char.level(16622) : 5
+      const brokerRelations = ctx.char.skills ? ctx.char.level(3446) : 5
       const tax = 0.075 * (1 - 0.11 * accounting)
+      const broker = brokerPct(brokerRelations)
+      const priceOf = (productId: number) => (id: number) => {
+        const p = prices.get(id)
+        if (!p) return undefined
+        // The product's checked sale price (0: it hasn't traded) caps the sell order; hand-ins are bought at it.
+        const traded = id === productId && p.sale?.checked && p.sale.unit < p.sell.best ? p.sale.unit : undefined
+        return { sell: p.sell.best, buy: p.buy.best, ...(traded !== undefined ? { traded } : {}) }
+      }
       const rows = offers
         .filter((o) => o.lp_cost > 0 && (a.include_blueprints || basics[o.type_id]?.c !== 9))
         .map((o) => {
-          const p = prices.get(o.type_id)
-          const required = o.required_items.reduce((s, r) => s + ((prices.get(r.type_id)?.sell.best as number | undefined) ?? 0) * r.quantity, 0)
-          const cost = o.isk_cost + required
-          const net = (unit: number) => (unit * o.quantity * (1 - tax) - cost) / o.lp_cost
-          return { o, sell: (p?.sell.best as number | undefined) ?? 0, buy: (p?.buy.best as number | undefined) ?? 0, required, perLpSell: net((p?.sell.best as number | undefined) ?? 0), perLpBuy: net((p?.buy.best as number | undefined) ?? 0) }
+          const bySell = lpOfferValue(o, priceOf(o.type_id), 'sell', tax * 100, broker)
+          const byBuy = lpOfferValue(o, priceOf(o.type_id), 'buy', tax * 100, broker)
+          return { o, sell: bySell.unit, required: bySell.required, priced: bySell.priced, perLpSell: bySell.perLp, perLpBuy: byBuy.priced ? byBuy.perLp : undefined }
         })
-        .filter((r) => r.sell > 0)
+        // An offer with a hand-in or a product without a price (or one that hasn't traded) isn't a bargain.
+        .filter((r) => r.priced && r.sell > 0)
         .sort((x, y) => y.perLpSell - x.perLpSell)
         .slice(0, Math.min(40, a.limit ?? 20))
       // Real liquidity of the best offers: units traded a day in Jita over the last 30 days.
@@ -402,7 +415,8 @@ const TOOLS: Tool[] = [
         corporation: corp.name,
         your_lp: balance,
         sales_tax: `${r1(tax * 100, 2)}% (Accounting ${accounting})`,
-        note: 'isk_per_lp_sell: listing by sell order at the lowest Jita sell (no broker fee counted); isk_per_lp_instant: selling at once to the best buy order. Required items bought at Jita sell.',
+        broker_fee: `${r1(broker, 2)}% (Broker Relations ${brokerRelations}, no standings)`,
+        note: "isk_per_lp_sell: listing by sell order at the lowest Jita sell but no more than what the item really traded at in The Forge (30 days, else 90; items that didn't trade, or whose hand-ins have no price, are left out), sales tax and broker fee paid; isk_per_lp_instant: selling at once to the best buy order, sales tax only. Required items bought at Jita sell.",
         offers: rows.map((r, i) => ({
           item: `${r.o.quantity}x ${en(r.o.type_id)}`,
           lp: r.o.lp_cost,
@@ -410,7 +424,7 @@ const TOOLS: Tool[] = [
           required_items: r.o.required_items.length ? r.o.required_items.map((x) => `${x.quantity}x ${en(x.type_id)}`).join(', ') : undefined,
           required_cost: r.required ? Math.round(r.required) : undefined,
           isk_per_lp_sell: Math.round(r.perLpSell),
-          isk_per_lp_instant: Math.round(r.perLpBuy),
+          isk_per_lp_instant: r.perLpBuy !== undefined ? Math.round(r.perLpBuy) : undefined,
           jita_units_per_day: history[i] !== undefined ? Math.round(history[i]!) : undefined
         }))
       }
@@ -808,12 +822,16 @@ const TOOLS: Tool[] = [
       const fee = (t: string) => -j.filter((e) => e.ref_type === t).reduce((s, e) => s + (e.amount ?? 0), 0)
       await names(items.map((i) => i.type))
       const gross = items.reduce((s, i) => s + i.profit, 0)
+      // The same net as the Trades page: the fees in the share the matched sales are of all sales.
+      const allSold = per.flatMap((p) => p.txs).filter((t) => !t.is_buy && Date.parse(t.date) >= since).reduce((s, t) => s + t.quantity * t.unit_price, 0)
+      const matchedSold = items.filter((i) => i.matched).reduce((s, i) => s + i.soldIsk, 0)
+      const { net } = netTradeProfit(gross, fee('transaction_tax'), fee('brokers_fee'), allSold, matchedSold)
       return {
         days: a.days ?? 30,
         gross_profit: Math.round(gross),
         sales_tax: Math.round(fee('transaction_tax')),
         broker_fees: Math.round(fee('brokers_fee')),
-        net_profit: Math.round(gross - fee('transaction_tax') - fee('brokers_fee')),
+        net_profit: Math.round(net),
         turnover: Math.round(items.reduce((s, i) => s + i.soldIsk, 0)),
         best: [...items].sort((x, y) => y.profit - x.profit).slice(0, 10).map((i) => ({ item: en(i.type), sold: i.sold, profit: Math.round(i.profit) })),
         worst: [...items].filter((i) => i.profit < 0).sort((x, y) => x.profit - y.profit).slice(0, 5).map((i) => ({ item: en(i.type), profit: Math.round(i.profit) })),

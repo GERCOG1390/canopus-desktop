@@ -1,8 +1,6 @@
 // Invention: pick a T2 item, see the chance from the pilot's skills, and every decryptor compared by what a
 // blueprint comes to once the failed attempts are paid for, with the most profitable one marked.
 
-import { ACCOUNTING_ID, BROKER_RELATIONS_ID } from '../lib/skillIds'
-import { brokerPct, salesTaxPct } from '../../../shared/industryRules'
 import { useEffect, useMemo, useState } from 'react'
 import { useApp, useLang } from '../AppContext'
 import { useCharacter } from '../CharacterContext'
@@ -10,7 +8,9 @@ import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, SearchBox, Stat } from '../components/ui'
 import { esi } from '../lib/esi'
 import { fixed, fmtIsk, fmtNum } from '../lib/format'
-import { jitaPrices } from '../lib/market'
+import { jitaPrices, saleOf, withSales } from '../lib/market'
+import { SaleNote } from '../components/SaleNote'
+import { useFeeDefaults, useTradeFees } from '../lib/tradeFees'
 import { searchSystemsSde, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 import { inventionRun, type InventionInput } from '../../../shared/invention'
@@ -34,13 +34,11 @@ export default function Invention() {
   const [copyCost, setCopyCost] = useState(0)
   const [structureBonus, setStructureBonus] = useState(1)
   const [facilityTax, setFacilityTax] = useState(0.25)
+  /** The structure's cut of the system cost index, percent (Raitaru 3, Azbel 4, Sotiyo 5) */
+  const [costCut, setCostCut] = useState(0)
   const [salesTax, setSalesTax] = useState(3.37)
   const [broker, setBroker] = useState(1.5)
-  useEffect(() => {
-    if (!char.skills) return
-    setSalesTax(Number(salesTaxPct(char.skills.get(ACCOUNTING_ID)?.active ?? 0).toFixed(2)))
-    setBroker(Number(brokerPct(char.skills.get(BROKER_RELATIONS_ID)?.active ?? 0).toFixed(2)))
-  }, [char.skills])
+  useFeeDefaults(useTradeFees(), setSalesTax, setBroker)
   const [system, setSystem] = useState<{ id: number; name: string }>({ id: 30000142, name: 'Jita' })
 
   const inventable = useAsync(() => window.api.sde.inventableTypes(), [sde.state, sde.build])
@@ -58,7 +56,8 @@ export default function Invention() {
     if (!d || !source) return null
     const ids = [d.product, source.source, ...d.materials.map(([id]) => id), ...source.materials.map(([id]) => id), ...d.decryptors.map((x) => x.id)]
     const [prices, adjusted, indices, basics] = await Promise.all([
-      jitaPrices(ids),
+      // The product is sold: its price checked against what it trades at.
+      jitaPrices(ids).then((p) => withSales(p, undefined, [d.product])),
       esi<{ type_id: number; adjusted_price?: number }[]>('/markets/prices/'),
       esi<{ solar_system_id: number; cost_indices: { activity: string; cost_index: number }[] }[]>('/industry/systems/'),
       window.api.sde.basics([source.source])
@@ -91,9 +90,13 @@ export default function Invention() {
           {market.data?.relic !== null && market.data?.relic !== undefined ? `Реликт за попытку (0 — по Jita: ${fmtIsk(market.data.relic, true)})` : 'Копия T1, ISK за попытку'}
           <input type="number" min={0} value={copyCost} onChange={(e) => setCopyCost(Math.max(0, Number(e.target.value) || 0))} />
         </label>
-        <label>
-          Бонус структуры, %
+        <label title="Корпус и риг вместе: 1 − (1 − корпус) × (1 − риг). Sotiyo с ME-ригом T2 в нулях: 1 − 0,99 × (1 − 0,0504) ≈ 5,99%">
+          Экономия материалов структуры, %
           <input type="number" min={0} step={0.1} value={structureBonus} onChange={(e) => setStructureBonus(Math.max(0, Number(e.target.value) || 0))} />
+        </label>
+        <label title="Raitaru 3, Azbel 4, Sotiyo 5 — доля индекса системы, которую структура снимает со стоимости работы">
+          Скидка структуры на работу, %
+          <input type="number" min={0} max={50} step={1} value={costCut} onChange={(e) => setCostCut(Math.max(0, Number(e.target.value) || 0))} />
         </label>
         <label>
           Налог сооружения, %
@@ -135,7 +138,7 @@ export default function Invention() {
       enc: level(source.encryption),
       inventionMaterialCost: datacores,
       copyCost: market.data.relic !== null && copyCost === 0 ? market.data.relic : copyCost,
-      inventionJobCost: eivPerRun * INVENTION_JOB_SHARE * (invention + tax),
+      inventionJobCost: eivPerRun * INVENTION_JOB_SHARE * (invention * (1 - costCut / 100) + tax),
       baseRuns: source.baseRuns,
       unitsPerRun: d.unitsPerRun,
       materials: d.materials.map(([id, quantity]) => ({ quantity, price: sell(id) })),
@@ -143,7 +146,8 @@ export default function Invention() {
       costIndex: manufacturing,
       taxRate: tax,
       structureBonus,
-      productPrice: sell(d.product),
+      costCut,
+      productPrice: saleOf(prices.get(d.product)),
       salesTax: (salesTax + broker) / 100
     }
     const rows = [
@@ -158,7 +162,7 @@ export default function Invention() {
         <div className="stats-row">
           <Stat label="Шанс" value={pct(rows[0].run.chance)} sub={`база ${pct(source.baseChance)}`} />
           <Stat label="Датакоры на попытку" value={fmtIsk(datacores, true)} />
-          <Stat label="Цена продажи" value={fmtIsk(sell(d.product), true)} sub={`${d.unitsPerRun} шт за прогон`} />
+          <Stat label="Цена продажи" value={fmtIsk(saleOf(prices.get(d.product)), true)} sub={<SaleNote p={prices.get(d.product)} fallback={`${d.unitsPerRun} шт за прогон`} />} />
           <Stat label="Лучший выбор" value={<span className={best.run.profit >= 0 ? 'good' : 'bad'}>{fmtIsk(best.run.profit, true)}</span>} sub={best.id ? <TypeLink id={best.id} size={16} /> : 'Без декриптора'} />
         </div>
         <Card title="Сравнение декрипторов">

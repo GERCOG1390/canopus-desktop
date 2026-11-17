@@ -60,7 +60,7 @@ export interface DogmaEffect {
 }
 
 /** Bumped whenever the DB layout changes, forcing a rebuild from the SDE zip. */
-export const SDE_FORMAT = 10
+export const SDE_FORMAT = 11
 
 export interface CampaignDef {
   t: L10n
@@ -85,6 +85,26 @@ export interface CampaignObjectiveDef {
   interval?: number
   /** Corporation paying LP / ISK */
   corp?: number
+}
+
+/**
+ * A warfare buff (dbuff collection): what a command burst, an abyssal weather or another system effect changes.
+ * Several sources of the same buff don't add up: the strongest value applies (the largest for 'max', the most
+ * negative for 'min'). `op` is the dogma operation (6 = post-percent).
+ */
+export interface DbuffDef {
+  /** Name shown in the game */
+  n?: L10n
+  agg: 'max' | 'min'
+  op: number
+  /** Attributes of the ship itself */
+  item?: number[]
+  /** Attributes of everything fitted on the ship */
+  loc?: number[]
+  /** [group, attribute] of fitted items of a group */
+  locGroup?: [number, number][]
+  /** [skill, attribute] of fitted items requiring a skill */
+  locSkill?: [number, number][]
 }
 
 export interface SdeDb {
@@ -136,6 +156,7 @@ export interface SdeDb {
   agents: SdeAgent[]
   /** Mutaplasmids: a: [attribute, min, max] multipliers; m: [modules it applies to, the abyssal module it makes] */
   mutaplasmids: Record<number, { a: [number, number, number][]; m: [number[], number][] }>
+  dbuffs: Record<number, DbuffDef>
 }
 
 /** n: name, c: corporation, d: division, l: level, s: system; loc: finds players; st: in a station (otherwise in space) */

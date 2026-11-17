@@ -127,3 +127,12 @@ export function resolveListLines(parsed: { name: string; qty: number }[], isKnow
   }
   return { lines, unknown }
 }
+
+/**
+ * Ore valued by what it reprocesses into: whole batches of `portion` units, each mineral × the yield × its price.
+ * Moon ore often has no honest Jita buy price of its own; corporations pay out by the minerals.
+ */
+export function refinedValue(qty: number, portion: number, yields: [number, number][], yieldShare: number, price: (mineral: number) => number): number {
+  const batches = Math.floor(qty / Math.max(1, portion))
+  return batches * yields.reduce((s, [mineral, q]) => s + Math.floor(q * yieldShare) * price(mineral), 0)
+}

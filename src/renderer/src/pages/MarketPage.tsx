@@ -12,7 +12,7 @@ import { openMarketInGame, SCOPE } from '../lib/gameActions'
 import { Arbitrage, LpStore } from './MarketTools'
 import Trades from './Trades'
 import { fixed, fmtDate, fmtIsk, fmtNum } from '../lib/format'
-import { HUBS, hubPrices, jitaPrices, parseItemList, type Price } from '../lib/market'
+import { hubPrices, HUBS, jitaPrices, parseItemList, type Price, saleOf, withSales } from '../lib/market'
 import { getBasic, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 import PublicContracts from './PublicContracts'
@@ -137,7 +137,9 @@ function TypeMarket({ typeId }: { typeId: number }) {
   const maxBuy = Math.max(...buyPrices)
   const last30 = history.slice(-30)
   const avgVolume = last30.reduce((s, d) => s + d.volume, 0) / (last30.length || 1)
-  const avgPrice = last30.reduce((s, d) => s + d.average, 0) / (last30.length || 1)
+  // Weighted by what traded each day: a quiet day's odd price shouldn't count as much as a busy one's.
+  const tradedUnits = last30.reduce((s, d) => s + d.volume, 0)
+  const avgPrice = tradedUnits ? last30.reduce((s, d) => s + d.average * d.volume, 0) / tradedUnits : last30.reduce((s, d) => s + d.average, 0) / (last30.length || 1)
 
   return (
     <>
@@ -261,6 +263,8 @@ interface AppraisalRow {
   name: string
   qty: number
   sell: number
+  /** What selling them by order really fetches (shared/saleValue.ts) */
+  sale: number
   buy: number
   volume: number
 }
@@ -288,7 +292,8 @@ function Appraisal() {
       }
       const known = items.filter((i) => byName.has(i.name.toLowerCase()))
       setUnknown(items.filter((i) => !byName.has(i.name.toLowerCase())).map((i) => i.name))
-      const prices = await jitaPrices(known.map((i) => byName.get(i.name.toLowerCase())!.id))
+      // Plus what selling each really fetches (a slow item's lone listing isn't its worth).
+      const prices = await jitaPrices(known.map((i) => byName.get(i.name.toLowerCase())!.id)).then((p) => withSales(p))
       const basics = await window.api.sde.basics(known.map((i) => byName.get(i.name.toLowerCase())!.id)).catch(() => ({}) as Record<number, { v?: number }>)
       setRows(
         known
@@ -300,6 +305,7 @@ function Appraisal() {
               name: t.name,
               qty: i.qty,
               sell: (p?.sell.best ?? 0) * i.qty,
+              sale: saleOf(p) * i.qty,
               buy: (p?.buy.best ?? 0) * i.qty,
               volume: (basics[t.id]?.v ?? 0) * i.qty
             }
@@ -313,7 +319,7 @@ function Appraisal() {
     }
   }
 
-  const total = (rows ?? []).reduce((acc, r) => ({ sell: acc.sell + r.sell, buy: acc.buy + r.buy, volume: acc.volume + r.volume }), { sell: 0, buy: 0, volume: 0 })
+  const total = (rows ?? []).reduce((acc, r) => ({ sell: acc.sell + r.sell, sale: acc.sale + r.sale, buy: acc.buy + r.buy, volume: acc.volume + r.volume }), { sell: 0, sale: 0, buy: 0, volume: 0 })
 
   return (
     <>
@@ -341,6 +347,9 @@ function Appraisal() {
           <div className="stats-row">
             <Stat label="Jita sell" value={fmtIsk(total.sell, true)} sub={fmtIsk(total.sell)} />
             <Stat label="Jita buy" value={fmtIsk(total.buy, true)} sub={fmtIsk(total.buy)} />
+            {total.sale < total.sell - 1 && (
+              <Stat label="Реально ордером" value={fmtIsk(total.sale, true)} sub="неходовое — по сделкам за 30 дней, а не по ордеру" />
+            )}
             <Stat label="Объём" value={`${fmtNum(total.volume)} м³`} />
           </div>
           <Card>

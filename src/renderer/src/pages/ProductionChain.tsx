@@ -7,7 +7,8 @@ import { TypeLink } from '../components/TypeLink'
 import { Card, Empty, ErrorBox, Loading, SearchBox, Stat } from '../components/ui'
 import { esi, systemInfo } from '../lib/esi'
 import { fmtDuration, fmtIsk, fmtNum } from '../lib/format'
-import { jitaPrices } from '../lib/market'
+import { batchCost, jitaPrices } from '../lib/market'
+import { translate } from '../i18n'
 import { searchSystemsSde, searchTypesSde } from '../lib/sde'
 import { useAsync } from '../lib/useAsync'
 import { planChain, type Decision } from '../../../shared/prodChain'
@@ -22,6 +23,8 @@ export default function ProductionChain() {
   const [compMe, setCompMe] = useState(10)
   const [te, setTe] = useState(20)
   const [structure, setStructure] = useState(1)
+  /** The structure's cut of the system cost index, percent (Raitaru 3, Azbel 4, Sotiyo 5) */
+  const [costCut, setCostCut] = useState(0)
   const [tax, setTax] = useState(0.25)
   const [system, setSystem] = useState<{ id: number; name: string }>({ id: 30000142, name: 'Jita' })
   const [overrides, setOverrides] = useState<Map<number, Decision>>(new Map())
@@ -61,7 +64,7 @@ export default function ProductionChain() {
   const plan = useMemo(() => {
     if (!item || !data.data?.prices || !indices.data) return null
     const { recipes, prices, adjusted } = data.data
-    const rate = (index: number): number => index + tax / 100 + SCC_SURCHARGE
+    const rate = (index: number): number => index * (1 - costCut / 100) + tax / 100 + SCC_SURCHARGE
     return planChain({
       root: item.id,
       runs,
@@ -71,7 +74,7 @@ export default function ProductionChain() {
       options: { rootMe, compMe, structure, te, rate: { manufacturing: rate(indices.data.manufacturing), reaction: rate(indices.data.reaction) } },
       overrides
     })
-  }, [item, data.data, indices.data, runs, rootMe, compMe, te, structure, tax, overrides])
+  }, [item, data.data, indices.data, runs, rootMe, compMe, te, structure, tax, overrides, costCut])
 
   const set = (id: number, d: Decision) => setOverrides((m) => new Map(m).set(id, d))
   const num = (fn: (n: number) => void, min: number, max: number) => (e: ChangeEvent<HTMLInputElement>) => fn(Math.max(min, Math.min(max, Number(e.target.value) || 0)))
@@ -84,7 +87,19 @@ export default function ProductionChain() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const saving = plan ? plan.marketCost - plan.total : 0
+  // The buy list and the finished product bought in bulk run up Jita's sell orders: their real cost.
+  const book = useAsync(async () => {
+    if (!plan || !item) return null
+    const items = [...plan.buys.map((b) => ({ typeId: b.id, qty: b.qty })), { typeId: item.id, qty: plan.made }]
+    const m = await batchCost(items)
+    const materials = plan.buys.reduce((s, b) => s + b.qty * Math.max(m.get(b.id)?.avg || 0, b.unit), 0)
+    const finished = m.get(item.id)
+    return { materials, market: finished && finished.avg > 0 && !finished.short ? Math.max(finished.avg, plan.marketCost / Math.max(1, plan.made)) * plan.made : plan.marketCost, short: plan.buys.filter((b) => (m.get(b.id)?.short ?? 0) > 0).length }
+  }, [plan, item?.id])
+  const materialCost = book.data?.materials ?? plan?.materialCost ?? 0
+  const total = plan ? materialCost + plan.jobCost : 0
+  const marketCost = book.data?.market ?? plan?.marketCost ?? 0
+  const saving = plan ? marketCost - total : 0
   return (
     <>
       <Card>
@@ -109,9 +124,13 @@ export default function ProductionChain() {
             TE, %
             <input type="number" min={0} max={20} value={te} onChange={num(setTe, 0, 20)} />
           </label>
-          <label>
-            Бонус сооружения, %
+          <label title="Корпус и риг вместе: 1 − (1 − корпус) × (1 − риг). Sotiyo с ME-ригом T2 в нулях: 1 − 0,99 × (1 − 0,0504) ≈ 5,99%">
+            Экономия материалов структуры, %
             <input type="number" min={0} max={10} step={0.1} value={structure} onChange={num(setStructure, 0, 10)} />
+          </label>
+          <label title="Raitaru 3, Azbel 4, Sotiyo 5 — доля индекса системы, которую структура снимает со стоимости работы">
+            Скидка структуры на работу, %
+            <input type="number" min={0} max={50} step={1} value={costCut} onChange={num(setCostCut, 0, 50)} />
           </label>
           <label>
             Налог сооружения, %
@@ -153,9 +172,13 @@ export default function ProductionChain() {
       ) : (
         <>
           <div className="stats-row">
-            <Stat label="Себестоимость" value={fmtIsk(plan.total, true)} sub={`материалы ${fmtIsk(plan.materialCost, true)} · работы ${fmtIsk(plan.jobCost, true)}`} />
-            <Stat label="Готовое в Jita" value={plan.marketCost > 0 ? fmtIsk(plan.marketCost, true) : '—'} sub={`${fmtNum(plan.made)} шт.`} />
-            {plan.marketCost > 0 && <Stat label="Выгода цепочки" value={<span className={saving >= 0 ? 'good' : 'bad'}>{fmtIsk(saving, true)}</span>} />}
+            <Stat
+              label="Себестоимость"
+              value={fmtIsk(total, true)}
+              sub={`материалы ${fmtIsk(materialCost, true)} · работы ${fmtIsk(plan.jobCost, true)}${book.data ? ` · ${translate('по стакану Jita')}` : ''}${book.data?.short ? ` · ${translate('в Jita не хватает позиций:')} ${book.data.short}` : ''}`}
+            />
+            <Stat label="Готовое в Jita" value={marketCost > 0 ? fmtIsk(marketCost, true) : '—'} sub={`${fmtNum(plan.made)} шт.`} />
+            {marketCost > 0 && <Stat label="Выгода цепочки" value={<span className={saving >= 0 ? 'good' : 'bad'}>{fmtIsk(saving, true)}</span>} />}
             {plan.surplusValue > 0 && <Stat label="Лишнее из партий" value={fmtIsk(plan.surplusValue, true)} sub="в Jita, в выгоду не входит" />}
             <Stat label="Время подряд" value={fmtDuration(plan.time * 1000)} sub={`работ: ${plan.jobs.length}`} />
           </div>

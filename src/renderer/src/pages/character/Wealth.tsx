@@ -6,14 +6,16 @@ import { TypeLink } from '../../components/TypeLink'
 import { Card, ErrorBox, Loading } from '../../components/ui'
 import { esi } from '../../lib/esi'
 import { fmtIsk, fmtNum } from '../../lib/format'
-import { jitaPrices } from '../../lib/market'
+import { jitaPrices, saleOf, withSales, type Price } from '../../lib/market'
 import { useAsync } from '../../lib/useAsync'
+import { useTradeFees } from '../../lib/tradeFees'
 import { computeWealth, type WealthInput } from '../../../../shared/wealth'
 
 const COLORS = { wallet: 'var(--accent)', assets: 'var(--dmg-em)', sell: 'var(--warn)', escrow: 'var(--dmg-ex)', head: 'var(--bad)', clones: 'var(--dmg-ki)' }
 
 export default function Wealth({ id }: { id: number }) {
   const char = useCharacter()
+  const fees = useTradeFees()
   const { data, error, loading, reload } = useAsync(async () => {
     const auth = { characterId: id }
     const [wallet, assets, orders, clones] = await Promise.all([
@@ -24,17 +26,18 @@ export default function Wealth({ id }: { id: number }) {
     ])
     const implants = char.implants ?? null
     const cloneImplants = clones ? clones.jump_clones.flatMap((c) => c.implants) : null
-    const ids = [...new Set([...(assets ?? []).map((a) => a.type_id), ...(implants ?? []), ...(cloneImplants ?? [])])]
-    const market = ids.length ? await jitaPrices(ids) : new Map()
-    const prices = new Map(ids.map((t) => [t, market.get(t)?.sell.best ?? 0]))
+    const ids = [...new Set([...(assets ?? []).map((a) => a.type_id), ...(orders ?? []).map((o) => o.type_id).filter((x): x is number => !!x), ...(implants ?? []), ...(cloneImplants ?? [])])]
+    // Held items are worth what selling them really fetches: a lone 4-billion listing of a SKIN isn't net worth.
+    const market: Map<number, Price> = ids.length ? await jitaPrices(ids).then((p) => withSales(p)) : new Map()
+    const prices = new Map(ids.map((t) => [t, saleOf(market.get(t))]))
     return {
-      wealth: computeWealth({ wallet, assets, orders, implants, cloneImplants, prices }),
+      wealth: computeWealth({ wallet, assets, orders, implants, cloneImplants, prices, salesTax: fees.tax / 100 }),
       stacks: assets?.length,
       sellCount: orders?.filter((o) => !o.is_buy_order).length,
       buyCount: orders?.filter((o) => o.is_buy_order).length,
       cloneCount: clones?.jump_clones.length
     }
-  }, [id, char.implants?.join(',')])
+  }, [id, char.implants?.join(','), fees.tax])
 
   if (loading && !data) return <Loading />
   if (!data) return <ErrorBox error={error} />

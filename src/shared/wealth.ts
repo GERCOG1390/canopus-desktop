@@ -1,15 +1,18 @@
-// What a character is worth: assets and implants at Jita sell (blueprint copies count as nothing), sell
-// orders at their own price, buy orders by the ISK held in escrow. A part ESI refused stays null and out of
+// What a character is worth: assets and implants at what selling them fetches (blueprint copies count as nothing),
+// sell orders at their own price but no more than that (a listing far above the market doesn't sell) and less the
+// sales tax, buy orders by the ISK held in escrow. A part ESI refused stays null and out of
 // the total, so a missing permission never reads as zero.
 
 export interface WealthInput {
   wallet: number | null
   assets: { type_id: number; quantity: number; is_blueprint_copy?: boolean }[] | null
-  orders: { is_buy_order?: boolean; price: number; volume_remain: number; escrow?: number; is_corporation?: boolean }[] | null
+  orders: { type_id?: number; is_buy_order?: boolean; price: number; volume_remain: number; escrow?: number; is_corporation?: boolean }[] | null
   implants: number[] | null
   cloneImplants: number[] | null
-  /** Jita sell per type */
+  /** What selling each type fetches (lib/market saleOf) */
   prices: Map<number, number>
+  /** Sales tax a sell order pays when it fills, a fraction */
+  salesTax?: number
 }
 
 export interface Wealth {
@@ -42,7 +45,11 @@ export function computeWealth(w: WealthInput, topCount = 15): Wealth {
   const parts = {
     wallet: w.wallet,
     assets: w.assets ? [...byType.values()].reduce((s, v) => s + v, 0) : null,
-    sell: orders ? orders.filter((o) => !o.is_buy_order).reduce((s, o) => s + o.price * o.volume_remain, 0) : null,
+    sell: orders
+      ? orders
+          .filter((o) => !o.is_buy_order)
+          .reduce((s, o) => s + Math.min(o.price, o.type_id !== undefined && w.prices.get(o.type_id) ? w.prices.get(o.type_id)! : o.price) * o.volume_remain, 0) * (1 - (w.salesTax ?? 0))
+      : null,
     escrow: orders ? orders.filter((o) => o.is_buy_order).reduce((s, o) => s + (o.escrow ?? 0), 0) : null,
     head: sumImplants(w.implants),
     clones: sumImplants(w.cloneImplants)

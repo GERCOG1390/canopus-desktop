@@ -7,6 +7,7 @@ import type { NpcClassResult, NpcFaction, NpcReport } from '../../shared/npc'
 import { sdeForDogma } from '../sde'
 import { application } from '../../shared/combatTimeline'
 import { calculateFit } from './index'
+import { npcDps } from '../../shared/damageProfile.ts'
 
 /** Mission NPC groups: pirates fly the "Deadspace" groups, empires and others the "Mission" groups. */
 const FACTION_GROUP: Record<NpcFaction, string> = {
@@ -163,4 +164,27 @@ export function npcDamage(spec: FitSpec, skills: SkillSource, faction: NpcFactio
     weaponReach: reach,
     note: 'Sustained DPS without reload pauses, travel between targets or missile flight time. Each NPC orbits at its cruise speed at its orbit distance, or closer when the fit\'s weapons reach less far (the pilot flies in: "approach" marks classes that orbit beyond the weapons). NPC self-repairs are counted. For comparing fits, not a stopwatch.'
   }
+}
+
+/**
+ * What a faction's mission NPCs shoot, as shares of EM, thermal, kinetic, explosive: each NPC's turret damage
+ * (damage × multiplier per rate of fire) and missile damage (its missile type × multiplier per launch duration),
+ * added up over all its ships. Read from the SDE, so it follows the game's own numbers.
+ */
+export function npcDamageProfile(faction: NpcFaction): [number, number, number, number] | null {
+  const d = sdeForDogma()
+  const prefix = FACTION_GROUP[faction].toLowerCase()
+  const groups = new Set(
+    Object.entries(d.groups)
+      .filter(([, g]) => NPC_CLASSES.some((cls) => g.n[0].toLowerCase() === `${prefix} ${cls}`))
+      .map(([id]) => Number(id))
+  )
+  const sum = [0, 0, 0, 0]
+  for (const t of Object.values(d.types)) {
+    if (!groups.has(t.g)) continue
+    const a = d.dogma[t.id]?.a ?? {}
+    npcDps(a, a[507] ? d.dogma[a[507]]?.a : undefined).forEach((x, i) => (sum[i] += x))
+  }
+  const total = sum.reduce((x, y) => x + y, 0)
+  return total > 0 ? (sum.map((x) => x / total) as [number, number, number, number]) : null
 }

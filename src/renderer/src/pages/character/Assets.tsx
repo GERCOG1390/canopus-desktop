@@ -4,7 +4,7 @@ import { TypeLink } from '../../components/TypeLink'
 import { Card, ErrorBox, Loading, Stat } from '../../components/ui'
 import { esi, resolveLocations } from '../../lib/esi'
 import { fmtIsk, fmtNum } from '../../lib/format'
-import { jitaPrices } from '../../lib/market'
+import { jitaPrices, saleOf, withSales } from '../../lib/market'
 import { getBasic, useTypeBasics } from '../../lib/sde'
 import { useAsync } from '../../lib/useAsync'
 
@@ -39,12 +39,13 @@ export default function Assets({ id }: { id: number }) {
       for (let guard = 0; guard < 10 && byItem.has(cur.location_id); guard++) cur = byItem.get(cur.location_id)!
       return cur.location_id
     }
-    const prices = await jitaPrices(assets.map((a) => a.type_id))
+    // Valued at what selling really fetches (a slow item's lone listing isn't its worth).
+    const prices = await jitaPrices(assets.map((a) => a.type_id)).then((p) => withSales(p))
     const groups = new Map<number, LocationGroup>()
     for (const a of assets) {
       const root = rootOf(a)
       const g = groups.get(root) ?? { id: root, name: '', items: new Map(), value: 0, count: 0 }
-      const unit = a.is_blueprint_copy ? 0 : prices.get(a.type_id)?.sell.best ?? 0
+      const unit = a.is_blueprint_copy ? 0 : saleOf(prices.get(a.type_id))
       const it = g.items.get(a.type_id) ?? { typeId: a.type_id, qty: 0, value: 0 }
       it.qty += a.quantity
       it.value += unit * a.quantity

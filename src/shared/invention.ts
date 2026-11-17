@@ -28,6 +28,8 @@ export interface InventionInput {
   taxRate: number
   /** Material bonus of the structure, percent */
   structureBonus: number
+  /** The structure's cut of the system cost index, percent (Raitaru 3, Azbel 4, Sotiyo 5) */
+  costCut?: number
   productPrice: number
   /** Sales tax and fees, as a fraction */
   salesTax: number
@@ -66,7 +68,7 @@ export function inventionRun(i: InventionInput, d: DecryptorEffect | null): Inve
     const qty = Math.max(runs, Math.ceil(Number((m.quantity * runs * (1 - me / 100) * (1 - i.structureBonus / 100)).toFixed(2))))
     return s + qty * m.price
   }, 0)
-  const jobCost = i.eivPerRun * runs * (i.costIndex + i.taxRate)
+  const jobCost = i.eivPerRun * runs * (i.costIndex * (1 - (i.costCut ?? 0) / 100) + i.taxRate)
   const units = runs * i.unitsPerRun
   const total = inventionCost + materialCost + jobCost
   const revenue = units * i.productPrice * (1 - i.salesTax)

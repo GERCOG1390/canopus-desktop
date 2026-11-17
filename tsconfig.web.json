@@ -10,6 +10,7 @@
     "strict": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "paths": { "@/*": ["./src/renderer/src/*"], "@i18n/*": ["./src/renderer/src/i18n/*"] }
   },
   "include": ["src/renderer/src/**/*", "src/preload/*.d.ts", "src/shared/**/*"]

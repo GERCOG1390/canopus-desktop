@@ -8,6 +8,8 @@ export interface FitModule {
   slot: Slot
   state: ModuleState
   chargeTypeId?: number
+  /** A mutated (abyssal) module: its rolled attribute values (id → value) over the base module's, and the mutaplasmid */
+  mutated?: { attrs: Record<number, number>; mutaplasmid?: number }
 }
 
 export interface FitDrone {
@@ -20,6 +22,25 @@ export interface FitDrone {
 export interface FitBooster {
   typeId: number
   side?: number[]
+}
+
+/** A fleet booster: its ship, the burst charges it runs and its implants (a mindlink); skills all at V. */
+export interface FleetBoost {
+  shipTypeId: number
+  bursts: number[]
+  implants?: number[]
+}
+
+export type ProjectedKind = 'web' | 'paint' | 'shieldRep' | 'armorRep' | 'neut' | 'damp' | 'td' | 'gd' | 'ecm'
+
+/** A module another ship runs on this fit, and how many of them */
+export interface FitProjected {
+  typeId: number
+  count: number
+  /** The hull carrying it, for its bonuses (none: a capsule) */
+  shipTypeId?: number
+  /** Its script (dampeners, disruptors): what it works on */
+  chargeTypeId?: number
 }
 
 export interface FitSpec {
@@ -35,13 +56,22 @@ export interface FitSpec {
   mode?: number
   /** Abyssal weather celestial (type id) the fit flies in; undefined = normal space */
   environment?: number
+  /** Command bursts from a fleet booster */
+  fleet?: FleetBoost
+  /** Webs, painters, remote repairs and neuts other ships put on this fit */
+  projected?: FitProjected[]
+  /** Whole fits (logistics, recons) working on this one, and how many of each */
+  projectedFits?: { fit: FitSpec; count: number }[]
+  /** Booster fits: the command bursts they run */
+  boosterFits?: FitSpec[]
 }
 
 /**
- * Skill levels to fit with: a map of skill → level, or every skill at V. `overrides` (trial levels in the
- * fitting) sets some skills to another level on top of "all V".
+ * Skill levels to fit with: a map of skill → level, or every skill at one level (V unless `level` says otherwise:
+ * "all IV" for a theorycraft pilot, as Pyfa's built-in characters). `overrides` (trial levels in the fitting) sets
+ * some skills to another level on top of it.
  */
-export type SkillSource = { mode: 'all5'; overrides?: Record<number, number> } | { mode: 'char'; levels: Record<number, number> }
+export type SkillSource = { mode: 'all5'; level?: number; overrides?: Record<number, number> } | { mode: 'char'; levels: Record<number, number> }
 
 export interface ResourceUse {
   used: number
@@ -193,6 +223,24 @@ export interface FitStats {
     droneControlRange: number
   }
   modules: ModuleResult[]
+  /** What the projected modules do, after the hull's resistances to them */
+  projected?: {
+    /** Speed and signature multipliers (webs, painters) */
+    speedMult: number
+    sigMult: number
+    /** Incoming repairs, HP/s */
+    shieldRep: number
+    armorRep: number
+    /** Capacitor drained, GJ/s */
+    neut: number
+    /** Lock range and scan resolution multipliers (dampeners) */
+    lockMult: number
+    scanMult: number
+    /** Turret and missile disruptors on the fit */
+    disruptors: number
+    /** Chance per cycle that the ECM on the fit breaks its locks, 0–1 */
+    ecmChance: number
+  }
   problems: string[]
   /** Final values of any requested ship attributes */
   shipAttrs: Record<number, number>

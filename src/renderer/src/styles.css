@@ -5449,3 +5449,265 @@ tr:hover button.row-action:disabled {
 .combat-boosters {
   margin-top: 8px;
 }
+
+/* ---------- fitting: damage over distance ---------- */
+.graph-target {
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.graph-target > label:not(.check) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.graph-target input[type='number'] {
+  width: 96px;
+}
+.graph-target input[type='range'] {
+  width: 160px;
+  accent-color: var(--accent);
+}
+.graph-presets {
+  flex-wrap: wrap;
+}
+.dps-graph svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  cursor: crosshair;
+}
+.dps-graph text {
+  fill: var(--muted);
+  font-size: var(--fs-xs);
+}
+.dps-graph .grid {
+  stroke: var(--border);
+}
+.dps-graph .series {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.dps-graph .kind-line {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+}
+.dps-graph .hover {
+  stroke: var(--line-strong);
+}
+.dps-graph .dot {
+  stroke: var(--card);
+  stroke-width: 2;
+}
+.graph-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-bottom: 6px;
+}
+.graph-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.graph-legend-item > i,
+.graph-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+.graph-swatch {
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.graph-table {
+  margin-top: 8px;
+}
+
+/* ---------- fitting: incoming damage profile ---------- */
+.damage-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.damage-picker > label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin: 0;
+}
+.damage-picker select {
+  flex: 1;
+  min-width: 0;
+}
+.damage-shares {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: var(--fs-sm);
+}
+.damage-shares .dmg {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.damage-shares input {
+  width: 56px;
+}
+
+/* ---------- fitting: fleet boosts ---------- */
+.fleet-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 4px 0;
+}
+.fleet-panel .row select {
+  flex: 1;
+  min-width: 0;
+}
+.fleet-charges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.fleet-buffs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: var(--text-2);
+}
+.fleet-buffs b {
+  color: var(--good);
+}
+
+/* ---------- fitting: open a fits file (a label styled as a ghost button) ---------- */
+label.file-button {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  cursor: pointer;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: var(--btn-y) 14px;
+  line-height: 1.4;
+  font-size: inherit;
+  color: var(--text);
+}
+label.file-button:hover {
+  background: var(--panel-2);
+  border-color: var(--faint);
+}
+.fit-start .row {
+  flex-wrap: wrap;
+}
+.fit-start .row button,
+.fit-start .row .file-button {
+  white-space: nowrap;
+}
+
+/* ---------- fitting: effects from other ships ---------- */
+.projected-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+}
+.projected-sum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+  color: var(--text-2);
+}
+.projected-sum span {
+  color: var(--muted);
+}
+.projected-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.projected-row .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.projected-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dps-graph .axis-name {
+  font-weight: 600;
+}
+
+.fleet-family {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ---------- fitting: ammo table ---------- */
+.ammo-group h4 {
+  margin: 12px 0 4px;
+}
+.ammo-dmg {
+  display: inline-flex;
+  width: 64px;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  gap: 1px;
+  vertical-align: middle;
+}
+.ammo-dmg .dmg-seg {
+  height: 100%;
+}
+.ammo-table tr.ammo-current td {
+  background: var(--accent-soft);
+}
+.ammo-distance input {
+  width: 72px;
+}
+
+.graph-axis label.row {
+  margin-top: 0;
+}
+.graph-axis input[type='number'] {
+  width: 72px;
+}
+
+.damage-save {
+  margin-top: 0;
+}
+.damage-save input {
+  flex: 1;
+  min-width: 0;
+}
+
+.mutated-badge {
+  color: var(--star);
+  border: 1px solid color-mix(in srgb, var(--star) 40%, transparent);
+  border-radius: 4px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.rig-pick {
+  margin-top: 0;
+  gap: 4px;
+}
+.yield-input {
+  width: 72px;
+}

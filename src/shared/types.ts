@@ -11,7 +11,7 @@ import type { AssistantAccount, AssistantAuth, AssistantSettings, AssistantTurn,
 
 /** A fit for the snapshot window, with the name of the character whose skills it uses */
 export type FitShotData = CombatPilot & { pilotName?: string }
-import type { FitMetrics, FitSpec, FitStats, FitVariant, FittableType, SavedFit, SkillSource } from './fit'
+import type { FitMetrics, FitSpec, FitStats, FitVariant, FittableType, FleetBoost, ProjectedKind, SavedFit, SkillSource } from './fit'
 import type { NotifyEvent, NotifySettings } from './notify'
 import type { CombatLogEvent } from './ratting'
 import type { UpdateStatus } from './update'
@@ -130,6 +130,8 @@ export interface CanopusApi {
     /** Planetary industry schematics by id. */
     piSchematics(): Promise<Record<number, PiSchematic>>
     compressedOres(): Promise<CompressedOre[]>
+    /** What each type reprocesses into, per batch of its portion size */
+    reprocessYields(typeIds: number[]): Promise<Record<number, { portion: number; yields: [number, number][] }>>
     /** Volume as hauled and what a type holds. */
     haulVolumes(ids: number[]): Promise<Record<number, { vol: number; cap: number }>>
     /** Regions that have markets and contracts. */
@@ -160,6 +162,9 @@ export interface CanopusApi {
     requiredSkills(typeIds: number[]): Promise<Record<number, SkillReq>>
     /** Skill levels needed for the goals, prerequisites first, one step per level. */
     skillPlan(goals: { typeId: number; level?: number }[]): Promise<{ skill: number; level: number; rank: number; primary: number; secondary: number }[]>
+    /** Dogma attribute ids by name, and names by id (mutated modules in EFT) */
+    attributeIds(names: string[]): Promise<Record<string, number>>
+    attributeNames(ids: number[]): Promise<Record<number, string>>
     dogmaAttrs(ids: number[], attrIds: number[]): Promise<Record<number, Record<number, number>>>
     blueprintForProduct(productId: number): Promise<InfoBundle['producedBy'] | null>
   }
@@ -287,6 +292,16 @@ export interface CanopusApi {
     /** Tactical destroyer modes of a hull, Defense first (empty for other ships) */
     modes(shipTypeId: number): Promise<{ id: number; name: string }[]>
     /** Applied damage and time to kill against a faction's mission NPCs, per ship class */
+    /** What each mission NPC faction shoots: shares of EM, thermal, kinetic, explosive */
+    /** Command burst choices: booster hulls, combat burst charges, mindlinks */
+    /** Modules other ships can put on the fit (Tech II), with their strength at all skills V */
+    projectedOptions(): Promise<{ typeId: number; kind: ProjectedKind; amount: number; cycle: number }[]>
+    /** Hulls whose bonuses strengthen a projected module, with the strength on each */
+    projectedHulls(typeId: number): Promise<{ shipTypeId: number; amount: number }[]>
+    fleetOptions(): Promise<{ ships: number[]; charges: number[]; mindlinks: number[]; family: Record<number, [string, string]>; highSlots: Record<number, number> }>
+    /** What each of a booster's bursts gives (all skills V) */
+    fleetDetails(boost: FleetBoost): Promise<{ charge: number; buffs: { id: number; value: number; n?: [string, string] }[] }[]>
+    npcProfiles(): Promise<Partial<Record<NpcFaction, [number, number, number, number]>>>
     npcDamage(spec: FitSpec, skills: SkillSource, faction: NpcFaction, distance?: number): Promise<NpcReport>
     /** The fit in an abyssal weather (penalty strength 30/50/70) against the abyssal NPCs, per faction */
     abyss(spec: FitSpec, skills: SkillSource, weather: AbyssWeather, strength: number, faction?: AbyssFaction): Promise<AbyssReport>

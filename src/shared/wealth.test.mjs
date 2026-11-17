@@ -37,3 +37,24 @@ test('a part ESI refused stays unknown and out of the total', () => {
   assert.equal(w.head, null)
   assert.equal(w.total, 100)
 })
+
+// Audit 2026-11-16: a sell order counted at its own price — a SKIN listed at 4 billion that last sold at
+// 160 million added 4 billion to the net worth, and the sales tax it would pay wasn't taken off.
+test('a sell order is worth no more than the item really sells for, less the sales tax', () => {
+  const w = computeWealth({
+    wallet: 0,
+    assets: [],
+    orders: [
+      { type_id: 7, is_buy_order: false, price: 4_119_000_000, volume_remain: 1 },
+      { type_id: 8, is_buy_order: false, price: 100, volume_remain: 10 }
+    ],
+    implants: [],
+    cloneImplants: [],
+    prices: new Map([
+      [7, 160_000_000],
+      [8, 120]
+    ]),
+    salesTax: 0.0337
+  })
+  assert.equal(Math.round(w.sell), Math.round((160_000_000 + 100 * 10) * (1 - 0.0337)))
+})
