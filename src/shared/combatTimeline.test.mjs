@@ -688,3 +688,35 @@ test('a capacitor booster runs out of charges, reloads, and is not fired into a 
   assert.ok(reload && reload.side === 'a', JSON.stringify(r.events.slice(0, 5)))
   assert.ok(reload.t > 5, 'not spent on a full capacitor at the start')
 })
+
+// 2026-11-21, the pilot: overheating and burnout in the simulator.
+const heatSpec = (hp = 40) => ({
+  generation: 1,
+  racks: { hi: { dissipation: 0.01, attenuation: 0.5 }, med: { dissipation: 0.01, attenuation: 0.5 }, lo: { dissipation: 0.01, attenuation: 0.5 } },
+  slots: 1,
+  modules: [{ index: 0, rack: 'hi', pos: 0, hp, absorb: 0.02, damage: 5 }],
+  hot: { weapons: { 0: gun({ dps: 11.5, volley: 11.5, damage: [11.5, 0, 0, 0] }) }, repairers: {}, modules: {}, tactical: {} }
+})
+
+test('an overheated gun hits harder until it burns out, then stops', () => {
+  const target = ship({ hull: layer(1e6) })
+  const cold = run(ship({ weapons: [gun()], heat: heatSpec() }), target, { heat: 'off' })
+  const hot = run(ship({ weapons: [gun()], heat: heatSpec() }), target, { heat: 'burn' })
+  const burn = hot.events.find((e) => e.kind === 'burnout')
+  assert.ok(burn && burn.side === 'a' && burn.index === 0, 'the gun burns out')
+  // Until then it outdamages the cold gun; afterwards it is silent.
+  const before = (tl) => tl.series.filter((p) => p.t <= burn.t).reduce((s, p) => s + p.a.dealt, 0)
+  assert.ok(before(hot) > before(cold) * 1.1, `${before(hot)} > ${before(cold)}`)
+  assert.equal(hot.series.filter((p) => p.t > burn.t + 1).reduce((s, p) => s + p.a.dealt, 0), 0)
+  assert.equal(hot.a.heat.modules[0].burnt, burn.t)
+  assert.equal(cold.a.heat, undefined)
+})
+
+test('safe heat stops overheating before the gun burns and keeps shooting', () => {
+  const target = ship({ hull: layer(1e6) })
+  const tl = run(ship({ weapons: [gun()], heat: heatSpec() }), target, { heat: 'safe' })
+  assert.equal(tl.events.filter((e) => e.kind === 'burnout').length, 0)
+  assert.ok(tl.events.some((e) => e.kind === 'heatOff'))
+  assert.ok(tl.a.heat.modules[0].damage < 40)
+  assert.ok(tl.series.at(-1).a.dealt > 0)
+})

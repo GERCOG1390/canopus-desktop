@@ -135,6 +135,21 @@ export interface ModuleResult {
   falloff?: number
   /** What the module does to a target or to its own ship's movement, for the combat simulator */
   tactical?: TacticalModule
+  /**
+   * Heat (overheating): the module's structure hit points, and for a module that can be overheated the rack heat
+   * it adds per second while overheated (heatAbsorbtionRateModifier) and the damage one overheated cycle deals
+   * (heatDamage, after Thermodynamics and hull bonuses).
+   */
+  heat?: { hp: number; absorb?: number; damage?: number }
+}
+
+/** A hull's heat figures, per rack: the game's attributes (EVE University, Overheating). */
+export interface HeatHull {
+  /** heatGenerationMultiplier: how fast the hull's racks heat up */
+  generation: number
+  racks: Record<'hi' | 'med' | 'lo', { dissipation: number; attenuation: number }>
+  /** High, mid, low and rig slots together: the heat damage chance is scaled by online modules over this */
+  slots: number
 }
 
 /** Webs, painters, scrams, points and propulsion, with their strength (skills applied) and reach. */
@@ -145,6 +160,8 @@ export type TacticalModule =
   | { kind: 'mwd' | 'ab' }
 
 export interface FitStats {
+  /** Heat figures of the hull, for the combat simulator's overheating */
+  heat?: HeatHull
   ship: {
     slots: Record<Slot, number>
     turrets: ResourceUse

@@ -133,7 +133,7 @@ export default function Trades() {
   // Stock left is valued at what selling it really fetches.
   const prices = useAsync(async () => (stockTypes.length ? jitaPrices(stockTypes).then((p) => withSales(p)) : new Map<number, Price>()), [stockTypes.join(',')])
 
-  if (!active) return <RequireLogin what="сделки" />
+  if (!active) return <RequireLogin what="свои сделки" />
   if (!ids.length) return <Empty>Нужен доступ к кошельку — войдите персонажем заново в «Настройках».</Empty>
   if (data.loading && !data.data) return <Loading />
   if (data.error) return <ErrorBox error={data.error} />

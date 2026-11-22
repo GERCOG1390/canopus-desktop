@@ -22,6 +22,7 @@ import * as intel from './intel'
 import { loadSettings, saveSettings } from './storage'
 import * as notifier from './notifier'
 import * as combatlog from './combatlog'
+import { runSmoke } from './smoke'
 import * as updater from './updater'
 import * as stream from './stream'
 import * as widgets from './widgets'
@@ -528,6 +529,17 @@ app.whenReady().then(() => {
   createTray()
   notifier.initNotifier(showMain)
   combatlog.initCombatLog(sendToMain)
+  // The smoke run of `npm run check` (tools/check): only with CANOPUS_SMOKE set, on a test profile.
+  if (process.env.CANOPUS_SMOKE) {
+    void runSmoke(process.env.CANOPUS_SMOKE, {
+      main: () => mainWindow,
+      combat: (attacker) => {
+        combatAttacker = attacker
+        openCombatWindow()
+        return combatWindow
+      }
+    })
+  }
   updater.initUpdater((status) => sendToMain('update:status', status))
   stream.initStream((s) => sendToMain('stream:status', s))
   startRadar()

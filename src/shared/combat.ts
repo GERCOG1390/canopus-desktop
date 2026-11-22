@@ -2,6 +2,7 @@
 
 import type { Behavior, Timeline } from './combatTimeline'
 import type { FitSpec, SkillSource } from './fit'
+import type { HeatPolicy } from './heat.ts'
 
 export interface CombatPilot {
   fit: FitSpec
@@ -37,6 +38,9 @@ export interface CombatScenario {
   /** Orbit or keep-at-range distance, m; undefined = the starting distance */
   rangeA?: number
   rangeB?: number
+  /** Overheating: off, until modules burn out, or racks taken off in time; undefined = as the fit is set */
+  heatA?: HeatPolicy
+  heatB?: HeatPolicy
 }
 
 /** Something one side's modules do to the other at the current distance. */
@@ -100,6 +104,9 @@ export interface CombatSideInfo {
   prop?: { kind: 'mwd' | 'ab'; typeId: number; on: boolean; blocked: boolean }
   /** This side has webs / painters / scramblers to use on the other */
   hasEwar: boolean
+  /** Modules that can run overheated, and whether the fit came with some set to overheat */
+  heatable: number
+  fittedHot: boolean
   /** What the opponent's modules do to this side */
   effects: CombatEffect[]
   ehp: number

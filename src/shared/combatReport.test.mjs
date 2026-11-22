@@ -161,3 +161,39 @@ test('findings: outdamaged, one attacker doing most, tackle', () => {
     { code: 'tackled', lines: 1 }
   ])
 })
+
+// Found 2026-11-21 by the smoke run: a Russian client's remote repairs were left as unrecognised lines, so the
+// report lost all logistics. Real lines from the pilot's own logs.
+test("a Russian client's remote repairs: given and received", () => {
+  const given = parseCombatLine('[ 2026.11.10 05:20:07 ] (combat) <color=0xffccff66><b>356</b><color=0x77ffffff><font size=10> единиц запаса прочности щитов накачано </font><b><color=0xffffffff><font size=12><color=0xFFFFFFFF><b><localized hint="Loki">Loki*</b></color></font> <font size=11>[Alexandr Gercog] -</font></b><color=0x77ffffff><font size=10> - <localized hint="Medium S95a Scoped Remote Shield Booster">Medium S95a Scoped Remote Shield Booster*</font>')
+  assert.equal(given.kind, 'repOut')
+  assert.equal(given.amount, 356)
+  assert.equal(given.who, 'Alexandr Gercog')
+  assert.equal(given.ship, 'Loki')
+  assert.equal(given.weapon, 'Medium S95a Scoped Remote Shield Booster')
+  const shield = parseCombatLine('[ 2026.11.10 02:43:13 ] (combat) <color=0xffccff66><b>137</b><color=0x77ffffff><font size=10> единиц запаса прочности щитов получено накачкой от </font><b><color=0xffffffff><localized hint="Balin Ferrus">Балин Феррус*</b><color=0x77ffffff><font size=10> - <localized hint="Balin Ferrus">Балин Феррус*</font>')
+  assert.equal(shield.kind, 'repIn')
+  assert.equal(shield.amount, 137)
+  assert.equal(shield.who, 'Balin Ferrus')
+  const armor = parseCombatLine('[ 2026.11.10 02:43:15 ] (combat) <color=0xffccff66><b>188</b><color=0x77ffffff><font size=10> единиц запаса прочности брони получено дистанционным ремонтом от </font><b><color=0xffffffff><localized hint="Balin Ferrus">Балин Феррус*</b><color=0x77ffffff><font size=10> - <localized hint="Balin Ferrus">Балин Феррус*</font>')
+  assert.equal(armor.kind, 'repIn')
+  assert.equal(armor.amount, 188)
+})
+
+// The same run: a Russian client's misses and scram attempts were unrecognised too (137 of 544 lines in the pilot's
+// logs), so hit rates were wrong. A translated name ends with "*" and has no closing tag: the words after it count.
+test("a Russian client's misses and warp scramble attempts", () => {
+  const missIn = parseCombatLine('[ 2026.11.10 02:47:11 ] (combat) Hostile Frigate*: промах мимо вашего корабля')
+  assert.equal(missIn.kind, 'missIn')
+  assert.equal(missIn.who, 'Hostile Frigate')
+  const gun = parseCombatLine('[ 2026.11.10 02:46:58 ] (combat) Ваше орудие <localized hint="Civilian Gatling Pulse Laser">Civilian Gatling Pulse Laser* промахнулось мимо <localized hint="Hostile Frigate">Hostile Frigate* - <localized hint="Civilian Gatling Pulse Laser">Civilian Gatling Pulse Laser*</localized>')
+  assert.equal(gun.kind, 'missOut')
+  assert.equal(gun.who, 'Hostile Frigate')
+  assert.equal(gun.weapon, 'Civilian Gatling Pulse Laser')
+  const group = parseCombatLine('[ 2026.11.08 07:01:52 ] (combat) Ваша группа <localized hint="425mm AutoCannon II">425mm AutoCannon II* промахнулась мимо <localized hint="Pithi Arrogator">Pithi Arrogator* - <localized hint="425mm AutoCannon II">425mm AutoCannon II*</localized>')
+  assert.equal(group.kind, 'missOut')
+  assert.equal(group.who, 'Pithi Arrogator')
+  assert.equal(group.weapon, '425mm AutoCannon II')
+  const scram = parseCombatLine('[ 2026.11.10 05:25:14 ] (combat) <color=0xffffffff><b>Попытка варп-глушения:</b> <color=0x77ffffff><font size=10>источник</font> <color=0xffffffff><b><localized hint="Dire Pithi Imputor">Dire Pithi Imputor*,</b> <color=0x77ffffff><font size=10>цель <b><color=0xffffffff></font><font size=12><color=0xFFFFFFFF><b><localized hint="Loki">Loki*</b></color></font> <font size=11>[Alexandr Gercog] -</font>')
+  assert.equal(scram.kind, 'ewar')
+})

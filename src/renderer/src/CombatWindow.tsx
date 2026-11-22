@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CombatDirection, CombatEffect, CombatPilot, CombatResult, CombatScenario, CombatSideInfo } from '../../shared/combat'
 import type { Candidate, CombatAdvice, Problem, Rated } from '../../shared/combatAdvice'
 import { frameAt, type Behavior, type Timeline, type TimelineEvent, type TimelinePoint } from '../../shared/combatTimeline'
-import type { FitBooster, FitSpec, FittableType, SavedFit, SkillSource } from '../../shared/fit'
+import type { FitBooster, FitSpec, FittableType, FleetBoost, SavedFit, SkillSource } from '../../shared/fit'
+import type { HeatPolicy } from '../../shared/heat.ts'
+import { FleetPanel } from './components/FleetPanel'
 import { AppProvider, useApp, useLang } from './AppContext'
 import { ChargePicker } from './components/ChargePicker'
 import { AttrIcon } from './components/Icon'
@@ -70,18 +72,22 @@ function Simulator() {
   const attackerShip = attacker?.fit.shipTypeId
   /** Boosters taken here for the fight; undefined = those of the fit. They act from the first second. */
   const [boostA, setBoostA] = useState<FitBooster[] | undefined>()
+  /** Fleet boosts set here for the fight; undefined = those of the fit. */
+  const [fleetA, setFleetA] = useState<{ fleet?: FleetBoost; boosterFits?: FitSpec[] } | undefined>()
   // Another ship: its own ammo and boosters, not the ones picked here for the last one.
   useEffect(() => {
     setAmmoA({})
     setBoostA(undefined)
+    setFleetA(undefined)
   }, [attackerShip])
   const you = useMemo<CombatPilot | null>(() => {
     if (!attacker) return attacker
     let fit = attacker.fit
     if (Object.keys(ammoA).length) fit = { ...fit, modules: fit.modules.map((m) => (m.typeId in ammoA ? { ...m, chargeTypeId: ammoA[m.typeId] } : m)) }
     if (boostA) fit = { ...fit, boosters: boostA }
+    if (fleetA) fit = { ...fit, fleet: fleetA.fleet, boosterFits: fleetA.boosterFits }
     return fit === attacker.fit ? attacker : { ...attacker, fit }
-  }, [attacker, ammoA, boostA])
+  }, [attacker, ammoA, boostA, fleetA])
   const [sc, setSc] = useState<CombatScenario>({ distance: 10_000, speedA: 0, headingA: 0, speedB: 0, headingB: 90, behaviorA: 'orbit', behaviorB: 'orbit' })
   const [maxSpeed, setMaxSpeed] = useState({ a: 1000, b: 1000 })
   const [result, setResult] = useState<CombatResult | null>(null)
@@ -98,7 +104,9 @@ function Simulator() {
   // New ships: start from their top speeds (keeping the headings and distance).
   // Boosters too: one that changes top speed changes where the ships start from.
   const boostKey = (f?: FitSpec) => (f?.boosters ?? []).map((b) => `${b.typeId}:${(b.side ?? []).join('.')}`).join(',')
-  const shipsKey = `${attacker?.fit.shipTypeId}|${defender?.fit.shipTypeId}|${attacker?.fit.modules.length}|${defender?.fit.modules.length}|${boostKey(you?.fit)}|${boostKey(defender?.fit)}`
+  // Fleet boosts too (a skirmish burst changes top speed).
+  const fleetKey = (f?: FitSpec) => JSON.stringify([f?.fleet ?? null, (f?.boosterFits ?? []).map((b) => b.shipTypeId)])
+  const shipsKey = `${attacker?.fit.shipTypeId}|${defender?.fit.shipTypeId}|${attacker?.fit.modules.length}|${defender?.fit.modules.length}|${boostKey(you?.fit)}|${boostKey(defender?.fit)}|${fleetKey(you?.fit)}|${fleetKey(defender?.fit)}`
   useEffect(() => {
     if (!attacker || !defender) return
     void window.api.combat.defaults(you ?? attacker, defender).then((d) => {
@@ -225,10 +233,19 @@ function Simulator() {
               onReset={boostA ? () => setBoostA(undefined) : undefined}
             />
           )}
+          {you && !pickingYou && (
+            <FleetBoosts
+              fit={you.fit}
+              onChange={(f) => setFleetA({ fleet: f.fleet, boosterFits: f.boosterFits })}
+              note={fleetA ? 'Флотские бонусы изменены только в симуляторе' : undefined}
+              onReset={fleetA ? () => setFleetA(undefined) : undefined}
+            />
+          )}
           {result && !pickingYou && <SideStats info={result.a} />}
           {result && attacker && defender && !pickingYou && (
             <Tactics info={result.a} ewar={sc.ewarA !== false} onProp={(on) => setProp('a', on)} onEwar={(on) => set({ ewarA: on })} own="Ваши" />
           )}
+          {result && attacker && defender && !pickingYou && <HeatPicker info={result.a} value={sc.heatA} onChange={(heatA) => set({ heatA })} outcome={result.timeline.a.heat} fit={you?.fit} />}
         </Card>
         <div className="combat-vs">VS</div>
         <Card className="combat-side-card side-b">
@@ -268,10 +285,12 @@ function Simulator() {
             />
           )}
           {defender && !picking && <Boosters fit={defender.fit} skills={defender.skills} onChange={(f) => setDefender((d) => d && { ...d, fit: { ...d.fit, boosters: f.boosters } })} />}
+          {defender && !picking && <FleetBoosts fit={defender.fit} onChange={(f) => setDefender((d) => d && { ...d, fit: { ...d.fit, fleet: f.fleet, boosterFits: f.boosterFits } })} />}
           {defender && result && !picking && <SideStats info={result.b} />}
           {defender && result && attacker && !picking && (
             <Tactics info={result.b} ewar={sc.ewarB !== false} onProp={(on) => setProp('b', on)} onEwar={(on) => set({ ewarB: on })} own="Его" />
           )}
+          {defender && result && attacker && !picking && <HeatPicker info={result.b} value={sc.heatB} onChange={(heatB) => set({ heatB })} outcome={result.timeline.b.heat} fit={defender.fit} />}
           {(!defender || picking) && (
             <OpponentPicker
               attacker={attacker}
@@ -343,7 +362,7 @@ function Simulator() {
               />
             </div>
           </div>
-          <FightCard r={result} cursor={replay} onSeek={setReplay} />
+          <FightCard r={result} cursor={replay} onSeek={setReplay} fits={{ a: (you ?? attacker).fit, b: defender.fit }} />
           <div className="combat-sides">
             <DirectionCard title="Вы → противник" d={result.ab} />
             <DirectionCard title="Противник → вы" d={result.ba} />
@@ -1209,6 +1228,94 @@ function Boosters({ fit, skills, onChange, note, onReset }: { fit: FitSpec; skil
   )
 }
 
+/** A module of a fit by its index: its name. */
+function ModuleName({ fit, index }: { fit?: FitSpec; index: number }) {
+  const lang = useLang()
+  const t = useTypeBasic(fit?.modules[index]?.typeId ?? 0)
+  return t ? <span translate="no">{`: ${tn(t.n, lang)}`}</span> : null
+}
+
+const HEAT_LABEL: Record<HeatPolicy, string> = {
+  off: 'Без перегрева',
+  safe: 'Перегрев, снимать вовремя',
+  burn: 'Перегрев до выгорания'
+}
+
+/**
+ * How a side overheats: not at all, until a module of the rack is worn to 60% and then off (how pilots pulse heat),
+ * or until things burn out. With what the fight did to its modules.
+ */
+function HeatPicker({ info, value, onChange, outcome, fit }: { info: CombatSideInfo; value?: HeatPolicy; onChange: (v: HeatPolicy) => void; outcome?: CombatResult['timeline']['a']['heat']; fit?: FitSpec }) {
+  if (!info.heatable) return null
+  const v = value ?? (info.fittedHot ? 'burn' : 'off')
+  const burnt = outcome?.modules.filter((m) => m.burnt !== null) ?? []
+  const worn = outcome?.modules.filter((m) => m.burnt === null && m.damage >= m.hp * 0.25) ?? []
+  return (
+    <div className="combat-heat">
+      <label className="small" style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start' }}>
+        <Glyph name="flame" size={13} />
+        <span className="muted">Перегрев модулей</span>
+        <select value={v} onChange={(e) => onChange(e.target.value as HeatPolicy)} style={{ width: 'auto' }}>
+          {(['off', 'safe', 'burn'] as const).map((k) => (
+            <option key={k} value={k}>
+              {HEAT_LABEL[k]}
+            </option>
+          ))}
+        </select>
+      </label>
+      {outcome && (
+        <p className="muted small">
+          {`Нагрев стоек до ${Math.round(outcome.peak * 100)}%`}
+          {burnt.length > 0 && <span className="bad">{` · сгорело: ${burnt.length}`}</span>}
+          {worn.length > 0 && ` · повреждено: ${worn.length}`}
+        </p>
+      )}
+      {burnt.length > 0 && (
+        <ul className="combat-effects">
+          {burnt.map((m) => (
+            <li key={m.index} className="small">
+              <span className="bad">{`${duration(m.burnt ?? 0)}`}</span>
+              <ModuleName fit={fit} index={m.index} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+/** Command bursts on a side for the fight: a booster's hull and bursts, or saved booster fits. */
+function FleetBoosts({ fit, onChange, note, onReset }: { fit: FitSpec; onChange: (fit: FitSpec) => void; note?: string; onReset?: () => void }) {
+  const count = (fit.fleet?.bursts.length ?? 0) + (fit.boosterFits?.length ?? 0)
+  const [open, setOpen] = useState(count > 0)
+  useEffect(() => {
+    if (count > 0) setOpen(true)
+  }, [count])
+  return (
+    <div className="combat-boosters">
+      <button className="ghost small combat-boosters-toggle" onClick={() => setOpen((x) => !x)}>
+        <Glyph name="fleet" size={13} /> Флотские бонусы{count ? ` · ${count}` : ''}
+      </button>
+      {open && (
+        <>
+          <p className="muted small">Командные пачки бустера флота: действуют весь бой.</p>
+          <FleetPanel fit={fit} onChange={onChange} />
+          {note && (
+            <p className="muted small">
+              {note}{' '}
+              {onReset && (
+                <button className="ghost small" onClick={onReset}>
+                  Вернуть как в фите
+                </button>
+              )}
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 const EVENT_TEXT: Record<TimelineEvent['kind'], string> = {
   shieldDown: 'Щит пробит',
   armorDown: 'Броня пробита',
@@ -1222,7 +1329,9 @@ const EVENT_TEXT: Record<TimelineEvent['kind'], string> = {
   adcOn: 'Включён Assault Damage Control',
   locked: 'Цель захвачена',
   lockLost: 'Цель вне дальности захвата',
-  capBoosterReload: 'Бустер накопителя ушёл на перезарядку'
+  capBoosterReload: 'Бустер накопителя ушёл на перезарядку',
+  burnout: 'Модуль сгорел от перегрева',
+  heatOff: 'Перегрев снят: модули стойки на пределе'
 }
 
 /** The whole body as a share of the ship: shield, armor and hull weighed by their hit points. */
@@ -1378,7 +1487,7 @@ function AdviceCard({ you, defender, sc, onApply }: { you: CombatPilot; defender
   )
 }
 
-function FightCard({ r, cursor, onSeek }: { r: CombatResult; cursor: number | null; onSeek: (t: number) => void }) {
+function FightCard({ r, cursor, onSeek, fits }: { r: CombatResult; cursor: number | null; onSeek: (t: number) => void; fits: { a: FitSpec; b: FitSpec } }) {
   const tl = r.timeline
   const [hover, setHover] = useState<number | null>(null)
   const pts = tl.series
@@ -1387,7 +1496,11 @@ function FightCard({ r, cursor, onSeek }: { r: CombatResult; cursor: number | nu
     () => [
       { title: 'Прочность, %', a: pts.map((p) => toughness(r.a, p.a)), b: pts.map((p) => toughness(r.b, p.b)), max: 100, fmt: (v: number) => `${Math.round(v)}%` },
       { title: 'Накопитель, %', a: pts.map((p) => p.a.c * 100), b: pts.map((p) => p.b.c * 100), max: 100, fmt: (v: number) => `${Math.round(v)}%` },
-      { title: 'Дистанция, км', a: pts.map((p) => p.distance / 1000), b: null, max: Math.max(1, ...pts.map((p) => p.distance / 1000)), fmt: (v: number) => n1(v) }
+      { title: 'Дистанция, км', a: pts.map((p) => p.distance / 1000), b: null, max: Math.max(1, ...pts.map((p) => p.distance / 1000)), fmt: (v: number) => n1(v) },
+      // Overheating: the hottest rack of each side that overheats.
+      ...(pts.some((p) => p.a.heat !== undefined || p.b.heat !== undefined)
+        ? [{ title: 'Нагрев стойки, %', a: pts.map((p) => (p.a.heat ?? 0) * 100), b: pts.map((p) => (p.b.heat ?? 0) * 100), max: 100, fmt: (v: number) => `${Math.round(v)}%` }]
+        : [])
     ],
     [pts, r.a, r.b]
   )
@@ -1416,7 +1529,10 @@ function FightCard({ r, cursor, onSeek }: { r: CombatResult; cursor: number | nu
               <tr key={i}>
                 <td className="muted small">{duration(e.t)}</td>
                 <td className={e.side === 'a' ? 'legend-a' : 'legend-b'}>{e.side === 'a' ? 'Вы' : 'Противник'}</td>
-                <td>{EVENT_TEXT[e.kind]}</td>
+                <td>
+                  {EVENT_TEXT[e.kind]}
+                  {e.kind === 'burnout' && e.index !== undefined && <ModuleName fit={e.side === 'a' ? fits.a : fits.b} index={e.index} />}
+                </td>
               </tr>
             ))}
           </tbody>

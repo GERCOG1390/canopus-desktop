@@ -1,0 +1,20 @@
+# On every push and pull request: types and unit tests (fast, no SDE needed). The golden figures and the smoke
+# run need a built SDE and a display: they run locally in `npm run check` before a release.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test

@@ -71,7 +71,7 @@ export default function FleetPage() {
 
 function FleetTab() {
   const { active } = useApp()
-  if (!active) return <RequireLogin what="флот" />
+  if (!active) return <RequireLogin what="свой флот" />
   if (!hasScope(active, SCOPE.readFleet)) return <NeedPermission>Чтобы видеть и вести флот, нажмите «Настройки → Разрешить действия в игре» и войдите заново.</NeedPermission>
   return <Fleet who={active} />
 }

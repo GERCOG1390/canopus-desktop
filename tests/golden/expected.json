@@ -1,0 +1,3542 @@
+{
+ "sde": 3698585,
+ "fits": {
+  "Golden AC tackle": {
+   "problems": 0,
+   "cpu": 177.75,
+   "power": 18.98,
+   "dps": 253.67,
+   "dpsReload": 241.99,
+   "volley": 262.64,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 84.56,
+     "optimal": 600,
+     "falloff": 6047,
+     "tracking": 390.9375,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 84.56,
+     "optimal": 600,
+     "falloff": 6047,
+     "tracking": 390.9375,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 84.56,
+     "optimal": 600,
+     "falloff": 6047,
+     "tracking": 390.9375,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 646.88,
+    "armor": 562.5,
+    "hull": 437.5
+   },
+   "resist": {
+    "shield": [
+     12.5,
+     30,
+     47.5,
+     56.25
+    ],
+    "armor": [
+     66,
+     44.75,
+     36.25,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 3088,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 3.45,
+   "cap": {
+    "capacity": 312.5,
+    "rechargeSec": 93.75,
+    "use": 2.53,
+    "stable": true,
+    "level": 0.841,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 1193.25,
+    "align": 4.69,
+    "sig": 36.75,
+    "warp": 5
+   },
+   "lock": {
+    "range": 28125,
+    "scan": 825,
+    "targets": 4,
+    "sensor": 9.6
+   },
+   "heat": [
+    3.75,
+    3.75,
+    7.2,
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "Golden blaster shield": {
+   "problems": 0,
+   "cpu": 216.5,
+   "power": 61.8,
+   "dps": 140.29,
+   "dpsReload": 136.51,
+   "volley": 316.41,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 46.76,
+     "optimal": 3150,
+     "falloff": 4375,
+     "tracking": 356.0625,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 46.76,
+     "optimal": 3150,
+     "falloff": 4375,
+     "tracking": 356.0625,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 46.76,
+     "optimal": 3150,
+     "falloff": 4375,
+     "tracking": 356.0625,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 3041.75,
+    "armor": 437.5,
+    "hull": 500
+   },
+   "resist": {
+    "shield": [
+     30,
+     44,
+     58,
+     65
+    ],
+    "armor": [
+     57.5,
+     53.25,
+     36.25,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 8000,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 16.22,
+   "cap": {
+    "capacity": 437.5,
+    "rechargeSec": 131.25,
+    "use": 3.95,
+    "stable": true,
+    "level": 0.744,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 1076.35,
+    "align": 5.04,
+    "sig": 51.84,
+    "warp": 5
+   },
+   "lock": {
+    "range": 62500,
+    "scan": 725,
+    "targets": 5,
+    "sensor": 13.2
+   },
+   "heat": [
+    7.2,
+    3.75,
+    3.75,
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "Golden rockets": {
+   "problems": 0,
+   "cpu": 237,
+   "power": 51.9,
+   "dps": 113.52,
+   "dpsReload": 105,
+   "volley": 279.81,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "missile",
+     "dps": 28.38,
+     "optimal": 15188,
+     "falloff": null,
+     "tracking": null,
+     "er": 15,
+     "ev": 225
+    },
+    {
+     "kind": "missile",
+     "dps": 28.38,
+     "optimal": 15188,
+     "falloff": null,
+     "tracking": null,
+     "er": 15,
+     "ev": 225
+    },
+    {
+     "kind": "missile",
+     "dps": 28.38,
+     "optimal": 15188,
+     "falloff": null,
+     "tracking": null,
+     "er": 15,
+     "ev": 225
+    },
+    {
+     "kind": "missile",
+     "dps": 28.38,
+     "optimal": 15188,
+     "falloff": null,
+     "tracking": null,
+     "er": 15,
+     "ev": 225
+    }
+   ],
+   "hp": {
+    "shield": 3041.75,
+    "armor": 437.5,
+    "hull": 500
+   },
+   "resist": {
+    "shield": [
+     12.5,
+     30,
+     47.5,
+     56.25
+    ],
+    "armor": [
+     57.5,
+     53.25,
+     36.25,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 6801,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 16.22,
+   "cap": {
+    "capacity": 412.5,
+    "rechargeSec": 123.75,
+    "use": 2.53,
+    "stable": true,
+    "level": 0.841,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 1043.77,
+    "align": 4.94,
+    "sig": 50.71,
+    "warp": 5
+   },
+   "lock": {
+    "range": 62500,
+    "scan": 775,
+    "targets": 5,
+    "sensor": 13.2
+   },
+   "heat": [
+    7.2,
+    3.75,
+    3.75,
+    0.6,
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "Golden drones armor": {
+   "problems": 0,
+   "cpu": 171,
+   "power": 34.55,
+   "dps": 211.65,
+   "dpsReload": 209.9,
+   "volley": 676.67,
+   "droneDps": 119.29,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 46.18,
+     "optimal": 1406,
+     "falloff": 1250,
+     "tracking": 519.75,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 46.18,
+     "optimal": 1406,
+     "falloff": 1250,
+     "tracking": 519.75,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "drone",
+     "dps": 119.29,
+     "optimal": 2625,
+     "falloff": 2000,
+     "tracking": 3.267,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 437.5,
+    "armor": 562.5,
+    "hull": 687.5
+   },
+   "resist": {
+    "shield": [
+     0,
+     20,
+     40,
+     50
+    ],
+    "armor": [
+     62.5,
+     51.25,
+     51.25,
+     32.5
+    ],
+    "hull": [
+     33,
+     33,
+     33,
+     33
+    ]
+   },
+   "ehp": 2741,
+   "shieldBoost": 0,
+   "armorRepair": 31.27,
+   "passiveRegen": 2.33,
+   "cap": {
+    "capacity": 437.5,
+    "rechargeSec": 131.25,
+    "use": 13.8,
+    "stable": false,
+    "level": null,
+    "lasts": 54
+   },
+   "nav": {
+    "speed": 1039.27,
+    "align": 4.97,
+    "sig": 41,
+    "warp": 5
+   },
+   "lock": {
+    "range": 50000,
+    "scan": 750,
+    "targets": 5,
+    "sensor": 10.8
+   },
+   "heat": [
+    4.05,
+    7.2,
+    3.75,
+    3.75,
+    0.6,
+    0.6
+   ]
+  },
+  "Golden laser armor": {
+   "problems": 0,
+   "cpu": 211,
+   "power": 66.6,
+   "dps": 197.68,
+   "dpsReload": 197.68,
+   "volley": 445.84,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 49.42,
+     "optimal": 3938,
+     "falloff": 3125,
+     "tracking": 215.4688,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 49.42,
+     "optimal": 3938,
+     "falloff": 3125,
+     "tracking": 215.4688,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 49.42,
+     "optimal": 3938,
+     "falloff": 3125,
+     "tracking": 215.4688,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 49.42,
+     "optimal": 3938,
+     "falloff": 3125,
+     "tracking": 215.4688,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 437.5,
+    "armor": 2091.2,
+    "hull": 562.5
+   },
+   "resist": {
+    "shield": [
+     12.5,
+     30,
+     47.5,
+     56.25
+    ],
+    "armor": [
+     74.5,
+     66.85,
+     61.75,
+     59.2
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 8164,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 2.33,
+   "cap": {
+    "capacity": 500,
+    "rechargeSec": 120,
+    "use": 5.32,
+    "stable": true,
+    "level": 0.722,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 1070.82,
+    "align": 5.48,
+    "sig": 37,
+    "warp": 5
+   },
+   "lock": {
+    "range": 31250,
+    "scan": 800,
+    "targets": 4,
+    "sensor": 12
+   },
+   "heat": [
+    7.2,
+    3.75,
+    0.6,
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "Golden destroyer blasters": {
+   "problems": 0,
+   "cpu": 236,
+   "power": 91.26,
+   "dps": 649.36,
+   "dpsReload": 629.02,
+   "volley": 1254.98,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 2911,
+     "falloff": 2344,
+     "tracking": 534.0938,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 2911,
+     "falloff": 2344,
+     "tracking": 534.0938,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 2911,
+     "falloff": 2344,
+     "tracking": 534.0938,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 2911,
+     "falloff": 2344,
+     "tracking": 534.0938,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 2911,
+     "falloff": 2344,
+     "tracking": 534.0938,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 2911,
+     "falloff": 2344,
+     "tracking": 534.0938,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 2911,
+     "falloff": 2344,
+     "tracking": 534.0938,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 2911,
+     "falloff": 2344,
+     "tracking": 534.0938,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 1587.5,
+    "armor": 1000,
+    "hull": 1125
+   },
+   "resist": {
+    "shield": [
+     12.5,
+     30,
+     47.5,
+     56.25
+    ],
+    "armor": [
+     57.5,
+     44.75,
+     44.75,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 7044,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 8.47,
+   "cap": {
+    "capacity": 812.5,
+    "rechargeSec": 262.5,
+    "use": 6.23,
+    "stable": true,
+    "level": 0.52,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 768.2,
+    "align": 5.29,
+    "sig": 70,
+    "warp": 4.5
+   },
+   "lock": {
+    "range": 41250,
+    "scan": 625,
+    "targets": 7,
+    "sensor": 13.2
+   },
+   "heat": [
+    7.2,
+    0.6,
+    0.6,
+    0.6,
+    0.6,
+    0.6,
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "Golden destroyer arty": {
+   "problems": 0,
+   "cpu": 220,
+   "power": 94.9,
+   "dps": 326.26,
+   "dpsReload": 300.83,
+   "volley": 1929.45,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 46.61,
+     "optimal": 12375,
+     "falloff": 14836,
+     "tracking": 131.4,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 46.61,
+     "optimal": 12375,
+     "falloff": 14836,
+     "tracking": 131.4,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 46.61,
+     "optimal": 12375,
+     "falloff": 14836,
+     "tracking": 131.4,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 46.61,
+     "optimal": 12375,
+     "falloff": 14836,
+     "tracking": 131.4,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 46.61,
+     "optimal": 12375,
+     "falloff": 14836,
+     "tracking": 131.4,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 46.61,
+     "optimal": 12375,
+     "falloff": 14836,
+     "tracking": 131.4,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 46.61,
+     "optimal": 12375,
+     "falloff": 14836,
+     "tracking": 131.4,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 2645,
+    "armor": 937.5,
+    "hull": 937.5
+   },
+   "resist": {
+    "shield": [
+     0,
+     20,
+     40,
+     50
+    ],
+    "armor": [
+     60,
+     35,
+     25,
+     10
+    ],
+    "hull": [
+     33,
+     33,
+     33,
+     33
+    ]
+   },
+   "ehp": 6436,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 14.11,
+   "cap": {
+    "capacity": 687.5,
+    "rechargeSec": 217.5,
+    "use": 0.73,
+    "stable": true,
+    "level": 0.953,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 744.31,
+    "align": 5.5,
+    "sig": 63,
+    "warp": 4.5
+   },
+   "lock": {
+    "range": 33750,
+    "scan": 687.5,
+    "targets": 6,
+    "sensor": 10.8
+   },
+   "heat": [
+    7.2,
+    1.95,
+    1.95,
+    1.95,
+    1.95,
+    1.95,
+    1.95,
+    1.95
+   ]
+  },
+  "Golden drone armor": {
+   "problems": 0,
+   "cpu": 344,
+   "power": 893.95,
+   "dps": 663.85,
+   "dpsReload": 658.54,
+   "volley": 2583.55,
+   "droneDps": 337.32,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 81.63,
+     "optimal": 3375,
+     "falloff": 3125,
+     "tracking": 36,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.63,
+     "optimal": 3375,
+     "falloff": 3125,
+     "tracking": 36,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.63,
+     "optimal": 3375,
+     "falloff": 3125,
+     "tracking": 36,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.63,
+     "optimal": 3375,
+     "falloff": 3125,
+     "tracking": 36,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "drone",
+     "dps": 337.32,
+     "optimal": 5250,
+     "falloff": 3000,
+     "tracking": 0.696,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 1375,
+    "armor": 2500,
+    "hull": 2500
+   },
+   "resist": {
+    "shield": [
+     12.5,
+     30,
+     47.5,
+     56.25
+    ],
+    "armor": [
+     68.13,
+     58.56,
+     58.56,
+     42.63
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 14196,
+   "shieldBoost": 0,
+   "armorRepair": 62.53,
+   "passiveRegen": 3.67,
+   "cap": {
+    "capacity": 1812.5,
+    "rechargeSec": 361.88,
+    "use": 29.93,
+    "stable": false,
+    "level": null,
+    "lasts": 84
+   },
+   "nav": {
+    "speed": 626.97,
+    "align": 8.44,
+    "sig": 145,
+    "warp": 4
+   },
+   "lock": {
+    "range": 65625,
+    "scan": 350,
+    "targets": 6,
+    "sensor": 19.2
+   },
+   "heat": [
+    3.97,
+    4.28,
+    3.75,
+    3.75,
+    0.6,
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "Golden RLML": {
+   "problems": 0,
+   "cpu": 484.25,
+   "power": 756.5,
+   "dps": 297.97,
+   "dpsReload": 178.66,
+   "volley": 780.88,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "missile",
+     "dps": 59.59,
+     "optimal": 42188,
+     "falloff": null,
+     "tracking": null,
+     "er": 30,
+     "ev": 255
+    },
+    {
+     "kind": "missile",
+     "dps": 59.59,
+     "optimal": 42188,
+     "falloff": null,
+     "tracking": null,
+     "er": 30,
+     "ev": 255
+    },
+    {
+     "kind": "missile",
+     "dps": 59.59,
+     "optimal": 42188,
+     "falloff": null,
+     "tracking": null,
+     "er": 30,
+     "ev": 255
+    },
+    {
+     "kind": "missile",
+     "dps": 59.59,
+     "optimal": 42188,
+     "falloff": null,
+     "tracking": null,
+     "er": 30,
+     "ev": 255
+    },
+    {
+     "kind": "missile",
+     "dps": 59.59,
+     "optimal": 42188,
+     "falloff": null,
+     "tracking": null,
+     "er": 30,
+     "ev": 255
+    }
+   ],
+   "hp": {
+    "shield": 13117.55,
+    "armor": 1500,
+    "hull": 1750
+   },
+   "resist": {
+    "shield": [
+     40.94,
+     52.75,
+     64.56,
+     70.47
+    ],
+    "armor": [
+     57.5,
+     53.25,
+     36.25,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 37602,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 34.98,
+   "cap": {
+    "capacity": 1250,
+    "rechargeSec": 333.75,
+    "use": 19.7,
+    "stable": false,
+    "level": null,
+    "lasts": 90
+   },
+   "nav": {
+    "speed": 1913.29,
+    "align": 7.44,
+    "sig": 1095.21,
+    "warp": 4
+   },
+   "lock": {
+    "range": 71875,
+    "scan": 337.5,
+    "targets": 6,
+    "sensor": 19.2
+   },
+   "heat": [
+    8.55,
+    2.55,
+    3.75,
+    1.05,
+    1.05,
+    1.05,
+    1.05,
+    1.05
+   ]
+  },
+  "Golden blaster armor": {
+   "problems": 0,
+   "cpu": 359.25,
+   "power": 1005,
+   "dps": 661.5,
+   "dpsReload": 652.75,
+   "volley": 1878.29,
+   "droneDps": 99,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 112.5,
+     "optimal": 2813,
+     "falloff": 2500,
+     "tracking": 54.45,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 112.5,
+     "optimal": 2813,
+     "falloff": 2500,
+     "tracking": 54.45,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 112.5,
+     "optimal": 2813,
+     "falloff": 2500,
+     "tracking": 54.45,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 112.5,
+     "optimal": 2813,
+     "falloff": 2500,
+     "tracking": 54.45,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 112.5,
+     "optimal": 2813,
+     "falloff": 2500,
+     "tracking": 54.45,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "drone",
+     "dps": 99,
+     "optimal": 2625,
+     "falloff": 2000,
+     "tracking": 2.178,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 1500,
+    "armor": 2000,
+    "hull": 2000
+   },
+   "resist": {
+    "shield": [
+     0,
+     20,
+     40,
+     50
+    ],
+    "armor": [
+     62.5,
+     51.25,
+     51.25,
+     32.5
+    ],
+    "hull": [
+     33,
+     33,
+     33,
+     33
+    ]
+   },
+   "ehp": 9005,
+   "shieldBoost": 0,
+   "armorRepair": 125.06,
+   "passiveRegen": 4,
+   "cap": {
+    "capacity": 1812.5,
+    "rechargeSec": 387.75,
+    "use": 52.44,
+    "stable": false,
+    "level": null,
+    "lasts": 38
+   },
+   "nav": {
+    "speed": 798.38,
+    "align": 7.46,
+    "sig": 120,
+    "warp": 4
+   },
+   "lock": {
+    "range": 65625,
+    "scan": 350,
+    "targets": 6,
+    "sensor": 18
+   },
+   "heat": [
+    3.97,
+    3.97,
+    4.28,
+    3.75,
+    3.75,
+    0.52,
+    0.52,
+    0.52,
+    0.52,
+    0.52
+   ]
+  },
+  "Golden armor AC": {
+   "problems": 0,
+   "cpu": 290,
+   "power": 844.4,
+   "dps": 382.87,
+   "dpsReload": 376.3,
+   "volley": 1394.06,
+   "droneDps": 99,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 70.97,
+     "optimal": 1500,
+     "falloff": 13545,
+     "tracking": 58.08,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 70.97,
+     "optimal": 1500,
+     "falloff": 13545,
+     "tracking": 58.08,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 70.97,
+     "optimal": 1500,
+     "falloff": 13545,
+     "tracking": 58.08,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 70.97,
+     "optimal": 1500,
+     "falloff": 13545,
+     "tracking": 58.08,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "drone",
+     "dps": 99,
+     "optimal": 2625,
+     "falloff": 2000,
+     "tracking": 2.178,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 1875,
+    "armor": 7984.59,
+    "hull": 1875
+   },
+   "resist": {
+    "shield": [
+     12.5,
+     30,
+     47.5,
+     56.25
+    ],
+    "armor": [
+     74.5,
+     58.56,
+     52.19,
+     42.63
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 26175,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 5,
+   "cap": {
+    "capacity": 1593.75,
+    "rechargeSec": 318.75,
+    "use": 4.8,
+    "stable": true,
+    "level": 0.796,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 628.01,
+    "align": 9.58,
+    "sig": 125,
+    "warp": 4
+   },
+   "lock": {
+    "range": 62500,
+    "scan": 362.5,
+    "targets": 6,
+    "sensor": 18
+   },
+   "heat": [
+    4.28,
+    3.75,
+    3.75,
+    0.6,
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "Golden pulse lasers": {
+   "problems": 0,
+   "cpu": 355.75,
+   "power": 1282.5,
+   "dps": 280.59,
+   "dpsReload": 280.59,
+   "volley": 499.1,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 56.12,
+     "optimal": 19845,
+     "falloff": 5000,
+     "tracking": 27,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 56.12,
+     "optimal": 19845,
+     "falloff": 5000,
+     "tracking": 27,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 56.12,
+     "optimal": 19845,
+     "falloff": 5000,
+     "tracking": 27,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 56.12,
+     "optimal": 19845,
+     "falloff": 5000,
+     "tracking": 27,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 56.12,
+     "optimal": 19845,
+     "falloff": 5000,
+     "tracking": 27,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 1500,
+    "armor": 12357.11,
+    "hull": 1875
+   },
+   "resist": {
+    "shield": [
+     12.5,
+     30,
+     47.5,
+     56.25
+    ],
+    "armor": [
+     68.13,
+     58.56,
+     52.19,
+     49
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 35745,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 4,
+   "cap": {
+    "capacity": 1600,
+    "rechargeSec": 423.75,
+    "use": 21.33,
+    "stable": false,
+    "level": null,
+    "lasts": 109
+   },
+   "nav": {
+    "speed": 1838.7,
+    "align": 9.31,
+    "sig": 661.25,
+    "warp": 4
+   },
+   "lock": {
+    "range": 68750,
+    "scan": 375,
+    "targets": 6,
+    "sensor": 18
+   },
+   "heat": [
+    8.55,
+    3.75,
+    0.45,
+    0.45,
+    0.45,
+    0.45,
+    0.45
+   ]
+  },
+  "Golden drone shield": {
+   "problems": 0,
+   "cpu": 330.75,
+   "power": 212.6,
+   "dps": 597.19,
+   "dpsReload": 570.79,
+   "volley": 2415.79,
+   "droneDps": 505.98,
+   "weapons": [
+    {
+     "kind": "missile",
+     "dps": 45.61,
+     "optimal": 42188,
+     "falloff": null,
+     "tracking": null,
+     "er": 30,
+     "ev": 255
+    },
+    {
+     "kind": "missile",
+     "dps": 45.61,
+     "optimal": 42188,
+     "falloff": null,
+     "tracking": null,
+     "er": 30,
+     "ev": 255
+    },
+    {
+     "kind": "drone",
+     "dps": 505.98,
+     "optimal": 6000,
+     "falloff": 3000,
+     "tracking": 0.78,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 4000,
+    "armor": 2750,
+    "hull": 3112.5
+   },
+   "resist": {
+    "shield": [
+     66.1,
+     72.88,
+     79.66,
+     83.05
+    ],
+    "armor": [
+     57.5,
+     53.25,
+     36.25,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 28809,
+   "shieldBoost": 34.67,
+   "armorRepair": 0,
+   "passiveRegen": 16.67,
+   "cap": {
+    "capacity": 1750,
+    "rechargeSec": 249.9,
+    "use": 27.4,
+    "stable": false,
+    "level": null,
+    "lasts": 120
+   },
+   "nav": {
+    "speed": 666.35,
+    "align": 9.02,
+    "sig": 158.87,
+    "warp": 4
+   },
+   "lock": {
+    "range": 72500,
+    "scan": 356.25,
+    "targets": 7,
+    "sensor": 26.4
+   },
+   "heat": [
+    4.28,
+    0.75,
+    2.55,
+    2.55,
+    1.05,
+    1.05
+   ]
+  },
+  "Golden sentries": {
+   "problems": 0,
+   "cpu": 398,
+   "power": 412,
+   "dps": 507.08,
+   "dpsReload": 507.08,
+   "volley": 2028.31,
+   "droneDps": 507.08,
+   "weapons": [
+    {
+     "kind": "drone",
+     "dps": 431.72,
+     "optimal": 30234,
+     "falloff": 34500,
+     "tracking": 0.0483,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "drone",
+     "dps": 75.36,
+     "optimal": 5644,
+     "falloff": 3450,
+     "tracking": 0.8004,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 10910.63,
+    "armor": 2000,
+    "hull": 2875
+   },
+   "resist": {
+    "shield": [
+     40.94,
+     76.38,
+     91.14,
+     70.47
+    ],
+    "armor": [
+     57.5,
+     72.38,
+     86.19,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 48183,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 29.09,
+   "cap": {
+    "capacity": 1400,
+    "rechargeSec": 198.75,
+    "use": 15.33,
+    "stable": true,
+    "level": 0.462,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 1559.65,
+    "align": 8.25,
+    "sig": 706.32,
+    "warp": 4
+   },
+   "lock": {
+    "range": 75000,
+    "scan": 367.5,
+    "targets": 7,
+    "sensor": 27.6
+   },
+   "heat": [
+    8.55,
+    2.55,
+    7.43
+   ]
+  },
+  "Golden HAMs": {
+   "problems": 0,
+   "cpu": 516.5,
+   "power": 918.5,
+   "dps": 439.6,
+   "dpsReload": 416.14,
+   "volley": 1181.59,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "missile",
+     "dps": 87.92,
+     "optimal": 49900,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    },
+    {
+     "kind": "missile",
+     "dps": 87.92,
+     "optimal": 49900,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    },
+    {
+     "kind": "missile",
+     "dps": 87.92,
+     "optimal": 49900,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    },
+    {
+     "kind": "missile",
+     "dps": 87.92,
+     "optimal": 49900,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    },
+    {
+     "kind": "missile",
+     "dps": 87.92,
+     "optimal": 49900,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    }
+   ],
+   "hp": {
+    "shield": 11902.5,
+    "armor": 1500,
+    "hull": 1750
+   },
+   "resist": {
+    "shield": [
+     40.94,
+     88.19,
+     82.28,
+     70.47
+    ],
+    "armor": [
+     57.5,
+     88.31,
+     68.13,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 48349,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 31.74,
+   "cap": {
+    "capacity": 1200,
+    "rechargeSec": 176.25,
+    "use": 15.9,
+    "stable": true,
+    "level": 0.395,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 1759.02,
+    "align": 7.68,
+    "sig": 670.09,
+    "warp": 4
+   },
+   "lock": {
+    "range": 75000,
+    "scan": 352.5,
+    "targets": 6,
+    "sensor": 28.8
+   },
+   "heat": [
+    8.55,
+    2.55,
+    2.47,
+    0.75,
+    0.75,
+    0.75,
+    0.75,
+    0.75
+   ]
+  },
+  "Golden arty": {
+   "problems": 0,
+   "cpu": 409,
+   "power": 1526,
+   "dps": 236.83,
+   "dpsReload": 226.11,
+   "volley": 2496.77,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 47.37,
+     "optimal": 16500,
+     "falloff": 26250,
+     "tracking": 9.1542,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 47.37,
+     "optimal": 16500,
+     "falloff": 26250,
+     "tracking": 9.1542,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 47.37,
+     "optimal": 16500,
+     "falloff": 26250,
+     "tracking": 9.1542,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 47.37,
+     "optimal": 16500,
+     "falloff": 26250,
+     "tracking": 9.1542,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 47.37,
+     "optimal": 16500,
+     "falloff": 26250,
+     "tracking": 9.1542,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 11208.19,
+    "armor": 2875,
+    "hull": 1750
+   },
+   "resist": {
+    "shield": [
+     87.45,
+     79.92,
+     69.88,
+     74.9
+    ],
+    "armor": [
+     92.77,
+     76.52,
+     45.81,
+     34.98
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 63054,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 29.89,
+   "cap": {
+    "capacity": 1300,
+    "rechargeSec": 191.25,
+    "use": 15.2,
+    "stable": true,
+    "level": 0.439,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 2049.37,
+    "align": 8.55,
+    "sig": 633.87,
+    "warp": 4
+   },
+   "lock": {
+    "range": 68750,
+    "scan": 367.5,
+    "targets": 6,
+    "sensor": 25.2
+   },
+   "heat": [
+    8.55,
+    2.55,
+    1.8,
+    1.8,
+    1.8,
+    1.8,
+    1.8
+   ]
+  },
+  "Golden HML shield": {
+   "problems": 0,
+   "cpu": 646,
+   "power": 978,
+   "dps": 475.51,
+   "dpsReload": 462.01,
+   "volley": 2926.05,
+   "droneDps": 99,
+   "weapons": [
+    {
+     "kind": "missile",
+     "dps": 62.75,
+     "optimal": 78609,
+     "falloff": null,
+     "tracking": null,
+     "er": 105,
+     "ev": 127.5
+    },
+    {
+     "kind": "missile",
+     "dps": 62.75,
+     "optimal": 78609,
+     "falloff": null,
+     "tracking": null,
+     "er": 105,
+     "ev": 127.5
+    },
+    {
+     "kind": "missile",
+     "dps": 62.75,
+     "optimal": 78609,
+     "falloff": null,
+     "tracking": null,
+     "er": 105,
+     "ev": 127.5
+    },
+    {
+     "kind": "missile",
+     "dps": 62.75,
+     "optimal": 78609,
+     "falloff": null,
+     "tracking": null,
+     "er": 105,
+     "ev": 127.5
+    },
+    {
+     "kind": "missile",
+     "dps": 62.75,
+     "optimal": 78609,
+     "falloff": null,
+     "tracking": null,
+     "er": 105,
+     "ev": 127.5
+    },
+    {
+     "kind": "missile",
+     "dps": 62.75,
+     "optimal": 78609,
+     "falloff": null,
+     "tracking": null,
+     "er": 105,
+     "ev": 127.5
+    },
+    {
+     "kind": "drone",
+     "dps": 99,
+     "optimal": 2625,
+     "falloff": 2000,
+     "tracking": 2.178,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 21358.79,
+    "armor": 4062.5,
+    "hull": 4687.5
+   },
+   "resist": {
+    "shield": [
+     77.4,
+     62.2,
+     71.65,
+     76.38
+    ],
+    "armor": [
+     57.5,
+     53.25,
+     36.25,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 94766,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 55.58,
+   "cap": {
+    "capacity": 2625,
+    "rechargeSec": 428.91,
+    "use": 21.7,
+    "stable": false,
+    "level": null,
+    "lasts": 260
+   },
+   "nav": {
+    "speed": 1156.67,
+    "align": 11.25,
+    "sig": 2159.13,
+    "warp": 3.5
+   },
+   "lock": {
+    "range": 81250,
+    "scan": 243.75,
+    "targets": 8,
+    "sensor": 22.8
+   },
+   "heat": [
+    8.55,
+    2.55,
+    2.55,
+    3.75,
+    1.35,
+    1.35,
+    1.35,
+    1.35,
+    1.35,
+    1.35
+   ]
+  },
+  "Golden AC shield": {
+   "problems": 0,
+   "cpu": 472.5,
+   "power": 1442.6,
+   "dps": 735.3,
+   "dpsReload": 712.6,
+   "volley": 1829.38,
+   "droneDps": 99,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 106.05,
+     "optimal": 1875,
+     "falloff": 16931,
+     "tracking": 42.24,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 106.05,
+     "optimal": 1875,
+     "falloff": 16931,
+     "tracking": 42.24,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 106.05,
+     "optimal": 1875,
+     "falloff": 16931,
+     "tracking": 42.24,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 106.05,
+     "optimal": 1875,
+     "falloff": 16931,
+     "tracking": 42.24,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 106.05,
+     "optimal": 1875,
+     "falloff": 16931,
+     "tracking": 42.24,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 106.05,
+     "optimal": 1875,
+     "falloff": 16931,
+     "tracking": 42.24,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "drone",
+     "dps": 99,
+     "optimal": 2625,
+     "falloff": 2000,
+     "tracking": 2.178,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 18440.61,
+    "armor": 5625,
+    "hull": 4375
+   },
+   "resist": {
+    "shield": [
+     40.94,
+     52.75,
+     64.56,
+     70.47
+    ],
+    "armor": [
+     66,
+     44.75,
+     36.25,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 63752,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 43.91,
+   "cap": {
+    "capacity": 2300,
+    "rechargeSec": 431.25,
+    "use": 25.47,
+    "stable": false,
+    "level": null,
+    "lasts": 140
+   },
+   "nav": {
+    "speed": 1433.74,
+    "align": 11.16,
+    "sig": 1877.5,
+    "warp": 3.5
+   },
+   "lock": {
+    "range": 75000,
+    "scan": 275,
+    "targets": 6,
+    "sensor": 19.2
+   },
+   "heat": [
+    8.55,
+    2.55,
+    3.75,
+    0.6,
+    0.6,
+    0.6,
+    0.6,
+    0.6,
+    0.6,
+    2.4
+   ]
+  },
+  "Golden armor blasters": {
+   "problems": 0,
+   "cpu": 509,
+   "power": 3536.4,
+   "dps": 1150.41,
+   "dpsReload": 1131.48,
+   "volley": 3880.15,
+   "droneDps": 158.4,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 128,
+     "optimal": 6750,
+     "falloff": 6250,
+     "tracking": 4.8712,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 144,
+     "optimal": 4219,
+     "falloff": 3906,
+     "tracking": 36,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 144,
+     "optimal": 4219,
+     "falloff": 3906,
+     "tracking": 36,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 144,
+     "optimal": 4219,
+     "falloff": 3906,
+     "tracking": 36,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 144,
+     "optimal": 4219,
+     "falloff": 3906,
+     "tracking": 36,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 144,
+     "optimal": 4219,
+     "falloff": 3906,
+     "tracking": 36,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 144,
+     "optimal": 4219,
+     "falloff": 3906,
+     "tracking": 36,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "drone",
+     "dps": 158.4,
+     "optimal": 5250,
+     "falloff": 3000,
+     "tracking": 0.696,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 4375,
+    "armor": 5625,
+    "hull": 6250
+   },
+   "resist": {
+    "shield": [
+     0,
+     20,
+     40,
+     50
+    ],
+    "armor": [
+     68.13,
+     58.56,
+     58.56,
+     42.63
+    ],
+    "hull": [
+     33,
+     33,
+     33,
+     33
+    ]
+   },
+   "ehp": 28435,
+   "shieldBoost": 0,
+   "armorRepair": 171.96,
+   "passiveRegen": 10.42,
+   "cap": {
+    "capacity": 3100,
+    "rechargeSec": 581.25,
+    "use": 31.73,
+    "stable": false,
+    "level": null,
+    "lasts": 110
+   },
+   "nav": {
+    "speed": 1338.39,
+    "align": 10.69,
+    "sig": 1753.75,
+    "warp": 3.5
+   },
+   "lock": {
+    "range": 75000,
+    "scan": 250,
+    "targets": 7,
+    "sensor": 21.6
+   },
+   "heat": [
+    3.97,
+    3.97,
+    4.95,
+    8.55,
+    3.75,
+    3.75,
+    3,
+    0.68,
+    0.6,
+    0.6,
+    0.6,
+    0.6,
+    0.6,
+    0.6
+   ]
+  },
+  "Golden cruise PvE": {
+   "problems": 0,
+   "cpu": 711.35,
+   "power": 8344.2,
+   "dps": 707.62,
+   "dpsReload": 669.64,
+   "volley": 4620.99,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "missile",
+     "dps": 117.94,
+     "optimal": 222075,
+     "falloff": null,
+     "tracking": null,
+     "er": 247.5,
+     "ev": 103.5
+    },
+    {
+     "kind": "missile",
+     "dps": 117.94,
+     "optimal": 222075,
+     "falloff": null,
+     "tracking": null,
+     "er": 247.5,
+     "ev": 103.5
+    },
+    {
+     "kind": "missile",
+     "dps": 117.94,
+     "optimal": 222075,
+     "falloff": null,
+     "tracking": null,
+     "er": 247.5,
+     "ev": 103.5
+    },
+    {
+     "kind": "missile",
+     "dps": 117.94,
+     "optimal": 222075,
+     "falloff": null,
+     "tracking": null,
+     "er": 247.5,
+     "ev": 103.5
+    },
+    {
+     "kind": "missile",
+     "dps": 117.94,
+     "optimal": 222075,
+     "falloff": null,
+     "tracking": null,
+     "er": 247.5,
+     "ev": 103.5
+    },
+    {
+     "kind": "missile",
+     "dps": 117.94,
+     "optimal": 222075,
+     "falloff": null,
+     "tracking": null,
+     "er": 247.5,
+     "ev": 103.5
+    }
+   ],
+   "hp": {
+    "shield": 9625,
+    "armor": 7975,
+    "hull": 8800
+   },
+   "resist": {
+    "shield": [
+     57.62,
+     66.1,
+     74.57,
+     78.81
+    ],
+    "armor": [
+     57.5,
+     53.25,
+     36.25,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 67116,
+   "shieldBoost": 69,
+   "armorRepair": 0,
+   "passiveRegen": 16.04,
+   "cap": {
+    "capacity": 6875,
+    "rechargeSec": 469.2,
+    "use": 44.2,
+    "stable": false,
+    "level": null,
+    "lasts": 470
+   },
+   "nav": {
+    "speed": 141.25,
+    "align": 11.15,
+    "sig": 430.5,
+    "warp": 3
+   },
+   "lock": {
+    "range": 112500,
+    "scan": 138.75,
+    "targets": 7,
+    "sensor": 26.4
+   },
+   "heat": [
+    0.98,
+    2.55,
+    2.55,
+    1.27,
+    1.42,
+    1.42,
+    1.42,
+    1.42,
+    1.42,
+    1.42
+   ]
+  },
+  "Golden sentries armor": {
+   "problems": 0,
+   "cpu": 511.25,
+   "power": 6727.57,
+   "dps": 579.77,
+   "dpsReload": 579.77,
+   "volley": 2319.07,
+   "droneDps": 579.77,
+   "weapons": [
+    {
+     "kind": "drone",
+     "dps": 579.77,
+     "optimal": 35426,
+     "falloff": 38998,
+     "tracking": 0.0601,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 9900,
+    "armor": 11000,
+    "hull": 11687.5
+   },
+   "resist": {
+    "shield": [
+     12.5,
+     30,
+     47.5,
+     56.25
+    ],
+    "armor": [
+     75.05,
+     67.57,
+     67.57,
+     55.09
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 77338,
+   "shieldBoost": 0,
+   "armorRepair": 250.13,
+   "passiveRegen": 13.2,
+   "cap": {
+    "capacity": 7500,
+    "rechargeSec": 660,
+    "use": 25.39,
+    "stable": true,
+    "level": 0.44,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 136.25,
+    "align": 11.76,
+    "sig": 465,
+    "warp": 3
+   },
+   "lock": {
+    "range": 105000,
+    "scan": 146.25,
+    "targets": 7,
+    "sensor": 26.4
+   },
+   "heat": [
+    4.05,
+    4.05,
+    2.4,
+    7.43,
+    7.43
+   ]
+  },
+  "Golden mega pulse": {
+   "problems": 0,
+   "cpu": 744,
+   "power": 24207,
+   "dps": 649.38,
+   "dpsReload": 649.38,
+   "volley": 2994.63,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 76073,
+     "falloff": 16250,
+     "tracking": 3.1641,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 76073,
+     "falloff": 16250,
+     "tracking": 3.1641,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 76073,
+     "falloff": 16250,
+     "tracking": 3.1641,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 76073,
+     "falloff": 16250,
+     "tracking": 3.1641,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 76073,
+     "falloff": 16250,
+     "tracking": 3.1641,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 76073,
+     "falloff": 16250,
+     "tracking": 3.1641,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 76073,
+     "falloff": 16250,
+     "tracking": 3.1641,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 81.17,
+     "optimal": 76073,
+     "falloff": 16250,
+     "tracking": 3.1641,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 8250,
+    "armor": 42014.17,
+    "hull": 9625
+   },
+   "resist": {
+    "shield": [
+     12.5,
+     30,
+     47.5,
+     56.25
+    ],
+    "armor": [
+     75.05,
+     67.57,
+     62.58,
+     60.08
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 161688,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 11,
+   "cap": {
+    "capacity": 7000,
+    "rechargeSec": 750,
+    "use": -7.87,
+    "stable": true,
+    "level": 1,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 1028.92,
+    "align": 19.09,
+    "sig": 2185,
+    "warp": 3
+   },
+   "lock": {
+    "range": 109500,
+    "scan": 155,
+    "targets": 7,
+    "sensor": 24
+   },
+   "heat": [
+    6.15,
+    3.75,
+    2.4,
+    2.47,
+    0.68,
+    0.68,
+    0.68,
+    0.68,
+    0.68,
+    0.68,
+    0.68,
+    0.68
+   ]
+  },
+  "Golden arty alpha": {
+   "problems": 0,
+   "cpu": 714,
+   "power": 28650,
+   "dps": 789.09,
+   "dpsReload": 771.15,
+   "volley": 16953.3,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 98.64,
+     "optimal": 33000,
+     "falloff": 52500,
+     "tracking": 1.2319,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 98.64,
+     "optimal": 33000,
+     "falloff": 52500,
+     "tracking": 1.2319,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 98.64,
+     "optimal": 33000,
+     "falloff": 52500,
+     "tracking": 1.2319,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 98.64,
+     "optimal": 33000,
+     "falloff": 52500,
+     "tracking": 1.2319,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 98.64,
+     "optimal": 33000,
+     "falloff": 52500,
+     "tracking": 1.2319,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 98.64,
+     "optimal": 33000,
+     "falloff": 52500,
+     "tracking": 1.2319,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 98.64,
+     "optimal": 33000,
+     "falloff": 52500,
+     "tracking": 1.2319,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 98.64,
+     "optimal": 33000,
+     "falloff": 52500,
+     "tracking": 1.2319,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 31740,
+    "armor": 10312.5,
+    "hull": 9625
+   },
+   "resist": {
+    "shield": [
+     57.62,
+     66.1,
+     74.57,
+     78.81
+    ],
+    "armor": [
+     66,
+     44.75,
+     36.25,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 145220,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 42.32,
+   "cap": {
+    "capacity": 6000,
+    "rechargeSec": 937.5,
+    "use": 32.65,
+    "stable": false,
+    "level": null,
+    "lasts": 280
+   },
+   "nav": {
+    "speed": 1083.84,
+    "align": 15.95,
+    "sig": 2776.97,
+    "warp": 3
+   },
+   "lock": {
+    "range": 112500,
+    "scan": 156.25,
+    "targets": 7,
+    "sensor": 25.2
+   },
+   "heat": [
+    6.15,
+    2.55,
+    2.55,
+    3.75,
+    1.95,
+    1.95,
+    1.95,
+    1.95,
+    1.95,
+    1.95,
+    1.95,
+    1.95
+   ]
+  },
+  "Golden T3 HAM": {
+   "problems": 0,
+   "cpu": 550.75,
+   "power": 868.65,
+   "dps": 633.03,
+   "dpsReload": 592.92,
+   "volley": 1417.91,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "missile",
+     "dps": 105.5,
+     "optimal": 30375,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    },
+    {
+     "kind": "missile",
+     "dps": 105.5,
+     "optimal": 30375,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    },
+    {
+     "kind": "missile",
+     "dps": 105.5,
+     "optimal": 30375,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    },
+    {
+     "kind": "missile",
+     "dps": 105.5,
+     "optimal": 30375,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    },
+    {
+     "kind": "missile",
+     "dps": 105.5,
+     "optimal": 30375,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    },
+    {
+     "kind": "missile",
+     "dps": 105.5,
+     "optimal": 30375,
+     "falloff": null,
+     "tracking": null,
+     "er": 93.75,
+     "ev": 151.5
+    }
+   ],
+   "hp": {
+    "shield": 20912.03,
+    "armor": 2625,
+    "hull": 2125
+   },
+   "resist": {
+    "shield": [
+     71.75,
+     76.38,
+     73.42,
+     70.47
+    ],
+    "armor": [
+     57.5,
+     76.63,
+     52.19,
+     23.5
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 88268,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 49.79,
+   "cap": {
+    "capacity": 1812.5,
+    "rechargeSec": 262.5,
+    "use": 21.7,
+    "stable": false,
+    "level": null,
+    "lasts": 220
+   },
+   "nav": {
+    "speed": 1259.94,
+    "align": 11.26,
+    "sig": 1627.17,
+    "warp": 6
+   },
+   "lock": {
+    "range": 68750,
+    "scan": 262.5,
+    "targets": 6,
+    "sensor": 24
+   },
+   "heat": [
+    6.41,
+    1.91,
+    1.91,
+    2.81,
+    0.56,
+    0.56,
+    0.56,
+    0.56,
+    0.56,
+    0.56
+   ]
+  },
+  "Golden T3D AC": {
+   "problems": 0,
+   "cpu": 220.75,
+   "power": 37.5,
+   "dps": 376.41,
+   "dpsReload": 362.65,
+   "volley": 826.6,
+   "droneDps": 0,
+   "weapons": [
+    {
+     "kind": "turret",
+     "dps": 75.28,
+     "optimal": 1125,
+     "falloff": 6450,
+     "tracking": 393.75,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 75.28,
+     "optimal": 1125,
+     "falloff": 6450,
+     "tracking": 393.75,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 75.28,
+     "optimal": 1125,
+     "falloff": 6450,
+     "tracking": 393.75,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 75.28,
+     "optimal": 1125,
+     "falloff": 6450,
+     "tracking": 393.75,
+     "er": null,
+     "ev": null
+    },
+    {
+     "kind": "turret",
+     "dps": 75.28,
+     "optimal": 1125,
+     "falloff": 6450,
+     "tracking": 393.75,
+     "er": null,
+     "ev": null
+    }
+   ],
+   "hp": {
+    "shield": 3041.75,
+    "armor": 875,
+    "hull": 687.5
+   },
+   "resist": {
+    "shield": [
+     70.83,
+     65,
+     65,
+     70.83
+    ],
+    "armor": [
+     88.67,
+     72.38,
+     57.5,
+     49
+    ],
+    "hull": [
+     59.8,
+     59.8,
+     59.8,
+     59.8
+    ]
+   },
+   "ehp": 13833,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 12.67,
+   "cap": {
+    "capacity": 750,
+    "rechargeSec": 180,
+    "use": 1.63,
+    "stable": true,
+    "level": 0.92,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 699.67,
+    "align": 6.76,
+    "sig": 70.12,
+    "warp": 4.5
+   },
+   "lock": {
+    "range": 50000,
+    "scan": 662.5,
+    "targets": 7,
+    "sensor": 13.2
+   },
+   "heat": [
+    5.4,
+    2.81,
+    0.56,
+    0.56,
+    0.56,
+    0.56,
+    0.56
+   ]
+  },
+  "Golden empty capital": {
+   "problems": 0,
+   "cpu": 0,
+   "power": 0,
+   "dps": 0,
+   "dpsReload": 0,
+   "volley": 0,
+   "droneDps": 0,
+   "weapons": [],
+   "hp": {
+    "shield": 112500,
+    "armor": 75000,
+    "hull": 375000
+   },
+   "resist": {
+    "shield": [
+     0,
+     20,
+     40,
+     50
+    ],
+    "armor": [
+     50,
+     35,
+     35,
+     10
+    ],
+    "hull": [
+     33,
+     33,
+     33,
+     33
+    ]
+   },
+   "ehp": 825985,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 26.04,
+   "cap": {
+    "capacity": 84375,
+    "rechargeSec": 3375,
+    "use": 0,
+    "stable": true,
+    "level": 1,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 75,
+    "align": 29.48,
+    "sig": 11500,
+    "warp": 1.5
+   },
+   "lock": {
+    "range": 250000,
+    "scan": 93.75,
+    "targets": 7,
+    "sensor": 138
+   },
+   "heat": []
+  },
+  "Golden empty supercarrier": {
+   "problems": 0,
+   "cpu": 0,
+   "power": 0,
+   "dps": 0,
+   "dpsReload": 0,
+   "volley": 0,
+   "droneDps": 0,
+   "weapons": [],
+   "hp": {
+    "shield": 612500,
+    "armor": 375000,
+    "hull": 275000
+   },
+   "resist": {
+    "shield": [
+     0,
+     20,
+     40,
+     50
+    ],
+    "armor": [
+     60,
+     35,
+     25,
+     10
+    ],
+    "hull": [
+     33,
+     33,
+     33,
+     33
+    ]
+   },
+   "ehp": 1810831,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 102.08,
+   "cap": {
+    "capacity": 97500,
+    "rechargeSec": 3660,
+    "use": 0,
+    "stable": true,
+    "level": 1,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 106.25,
+    "align": 30.4,
+    "sig": 18640,
+    "warp": 1.5
+   },
+   "lock": {
+    "range": 5937500,
+    "scan": 87.5,
+    "targets": 12,
+    "sensor": 175.2
+   },
+   "heat": []
+  },
+  "Golden empty dread": {
+   "problems": 0,
+   "cpu": 0,
+   "power": 0,
+   "dps": 0,
+   "dpsReload": 0,
+   "volley": 0,
+   "droneDps": 0,
+   "weapons": [],
+   "hp": {
+    "shield": 119375,
+    "armor": 119375,
+    "hull": 119375
+   },
+   "resist": {
+    "shield": [
+     0,
+     20,
+     40,
+     50
+    ],
+    "armor": [
+     60,
+     35,
+     25,
+     10
+    ],
+    "hull": [
+     33,
+     33,
+     33,
+     33
+    ]
+   },
+   "ehp": 519679,
+   "shieldBoost": 0,
+   "armorRepair": 0,
+   "passiveRegen": 26.53,
+   "cap": {
+    "capacity": 62500,
+    "rechargeSec": 2745,
+    "use": 0,
+    "stable": true,
+    "level": 1,
+    "lasts": null
+   },
+   "nav": {
+    "speed": 100,
+    "align": 29.84,
+    "sig": 11000,
+    "warp": 1.5
+   },
+   "lock": {
+    "range": 115625,
+    "scan": 106.25,
+    "targets": 7,
+    "sensor": 46.8
+   },
+   "heat": []
+  }
+ },
+ "fights": {
+  "Rifter mirror at 1.5 km orbit": {
+   "winner": "both",
+   "end": 15.4,
+   "a": {
+    "shieldDown": 8,
+    "armorDown": 11.2,
+    "dead": 15.4,
+    "dealt": 1660,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.905
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": 8,
+    "armorDown": 11.2,
+    "dead": 15.4,
+    "dealt": 1660,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.905
+    },
+    "burnt": 0
+   },
+   "events": [
+    "2.8 a locked",
+    "2.8 b locked",
+    "8.0 b shieldDown",
+    "8.0 a shieldDown",
+    "11.2 b armorDown",
+    "11.2 a armorDown",
+    "15.4 a dead",
+    "15.4 b dead"
+   ]
+  },
+  "Rifter mirror, you overheat until burnt": {
+   "winner": "a",
+   "end": 14.2,
+   "a": {
+    "shieldDown": 8,
+    "armorDown": 11.2,
+    "dead": null,
+    "dealt": 1658,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0.34,
+     "c": 0.917
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": 7,
+    "armorDown": 10.2,
+    "dead": 14.2,
+    "dealt": 1512,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.917
+    },
+    "burnt": 0
+   },
+   "events": [
+    "2.8 a locked",
+    "2.8 b locked",
+    "7.0 b shieldDown",
+    "8.0 a shieldDown",
+    "10.2 b armorDown",
+    "11.2 a armorDown",
+    "14.2 b dead"
+   ]
+  },
+  "Merlin vs Kestrel, Kestrel kites at 15 km": {
+   "winner": "b",
+   "end": 135.8,
+   "a": {
+    "shieldDown": 103.6,
+    "armorDown": 111,
+    "dead": 135.8,
+    "dealt": 329,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.86
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": null,
+    "armorDown": null,
+    "dead": null,
+    "dealt": 5245,
+    "left": {
+     "s": 0.941,
+     "a": 1,
+     "h": 1,
+     "c": 0.951
+    },
+    "burnt": 0
+   },
+   "events": [
+    "2.4 b locked",
+    "2.6 a locked",
+    "103.6 a shieldDown",
+    "111.0 a armorDown",
+    "123.2 b reload",
+    "135.8 a dead"
+   ]
+  },
+  "Tristan vs Punisher brawl": {
+   "winner": "a",
+   "end": 51.8,
+   "a": {
+    "shieldDown": 5,
+    "armorDown": null,
+    "dead": null,
+    "dealt": 3103,
+    "left": {
+     "s": 0,
+     "a": 0.972,
+     "h": 1,
+     "c": 0.274
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": 7.4,
+    "armorDown": 43.8,
+    "dead": 51.8,
+    "dealt": 778,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.779
+    },
+    "burnt": 0
+   },
+   "events": [
+    "2.6 b locked",
+    "3.0 a locked",
+    "5.0 a shieldDown",
+    "7.4 b shieldDown",
+    "43.8 b armorDown",
+    "51.8 b dead"
+   ]
+  },
+  "Thorax vs Rupture brawl, both heat safely": {
+   "winner": "a",
+   "end": 43.4,
+   "a": {
+    "shieldDown": 7.4,
+    "armorDown": null,
+    "dead": null,
+    "dealt": 11751,
+    "left": {
+     "s": 0,
+     "a": 0.451,
+     "h": 1,
+     "c": 0.043
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": 6.6,
+    "armorDown": 36.8,
+    "dead": 43.4,
+    "dealt": 7672,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.908
+    },
+    "burnt": 0
+   },
+   "events": [
+    "3.8 a locked",
+    "3.8 b locked",
+    "6.6 b shieldDown",
+    "7.4 a shieldDown",
+    "36.8 b armorDown",
+    "37.6 a heatOff",
+    "38.8 b heatOff",
+    "40.6 a capEmpty",
+    "43.4 b dead"
+   ]
+  },
+  "Caracal kites Vexor at 25 km": {
+   "winner": "b",
+   "end": 128,
+   "a": {
+    "shieldDown": 104,
+    "armorDown": 116,
+    "dead": 128,
+    "dealt": 11602,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.165
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": 11.8,
+    "armorDown": 48.4,
+    "dead": null,
+    "dealt": 18684,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0.619,
+     "c": 0.074
+    },
+    "burnt": 0
+   },
+   "events": [
+    "2.0 b locked",
+    "3.8 a locked",
+    "11.8 b shieldDown",
+    "48.4 b armorDown",
+    "53.6 a reload",
+    "104.0 a shieldDown",
+    "116.0 a armorDown",
+    "128.0 a dead"
+   ]
+  },
+  "Drake vs Hurricane, neuts on": {
+   "winner": "b",
+   "end": 160,
+   "a": {
+    "shieldDown": 130.8,
+    "armorDown": 142,
+    "dead": 160,
+    "dealt": 31057,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.005
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": 123.6,
+    "armorDown": 143.8,
+    "dead": null,
+    "dealt": 34672,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0.266,
+     "c": 0.01
+    },
+    "burnt": 0
+   },
+   "events": [
+    "2.2 b locked",
+    "2.6 a locked",
+    "100.0 a capEmpty",
+    "104.6 a propBlocked",
+    "123.6 b shieldDown",
+    "130.8 a shieldDown",
+    "142.0 a armorDown",
+    "143.8 b armorDown",
+    "146.2 b capEmpty",
+    "149.8 a propBlocked",
+    "160.0 a dead"
+   ]
+  },
+  "Brutix (RAH, cap booster) vs Omen": {
+   "winner": "a",
+   "end": 45.6,
+   "a": {
+    "shieldDown": 18.8,
+    "armorDown": null,
+    "dead": null,
+    "dealt": 15748,
+    "left": {
+     "s": 0,
+     "a": 0.975,
+     "h": 1,
+     "c": 0.654
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": 8.8,
+    "armorDown": 39.6,
+    "dead": 45.6,
+    "dealt": 6807,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.75
+    },
+    "burnt": 0
+   },
+   "events": [
+    "0.0 a propBlocked",
+    "0.0 b propBlocked",
+    "2.6 b locked",
+    "2.8 a propBlocked",
+    "5.6 a locked",
+    "5.8 b propBlocked",
+    "8.8 b shieldDown",
+    "18.8 a shieldDown",
+    "27.0 a capBoosterReload",
+    "39.6 b armorDown",
+    "45.6 b dead"
+   ]
+  },
+  "Gila vs Ishtar, drones": {
+   "winner": "a",
+   "end": 409.2,
+   "a": {
+    "shieldDown": 367.2,
+    "armorDown": null,
+    "dead": null,
+    "dealt": 23734,
+    "left": {
+     "s": 0,
+     "a": 0.49,
+     "h": 1,
+     "c": 0.017
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": 373.2,
+    "armorDown": 397.2,
+    "dead": 409.2,
+    "dealt": 11715,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.509
+    },
+    "burnt": 0
+   },
+   "events": [
+    "2.2 a locked",
+    "3.4 b locked",
+    "84.0 a reload",
+    "180.0 a capEmpty",
+    "367.2 a shieldDown",
+    "373.2 b shieldDown",
+    "397.2 b armorDown",
+    "409.2 b dead"
+   ]
+  },
+  "Apocalypse vs Maelstrom at 30 km": {
+   "winner": "b",
+   "end": 197.2,
+   "a": {
+    "shieldDown": 3.8,
+    "armorDown": 175.8,
+    "dead": 197.2,
+    "dealt": 51243,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.919
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": 132.8,
+    "armorDown": 174.4,
+    "dead": null,
+    "dealt": 60119,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0.447,
+     "c": 0.386
+    },
+    "burnt": 0
+   },
+   "events": [
+    "3.6 a locked",
+    "3.8 b locked",
+    "3.8 a shieldDown",
+    "109.8 a capBoosterReload",
+    "132.8 b shieldDown",
+    "174.4 b armorDown",
+    "175.8 a armorDown",
+    "197.2 a dead"
+   ]
+  },
+  "Tengu vs Cerberus": {
+   "winner": "a",
+   "end": 225.8,
+   "a": {
+    "shieldDown": null,
+    "armorDown": null,
+    "dead": null,
+    "dealt": 19958,
+    "left": {
+     "s": 0.173,
+     "a": 1,
+     "h": 1,
+     "c": 0.005
+    },
+    "burnt": 0
+   },
+   "b": {
+    "shieldDown": 205.8,
+    "armorDown": 214.6,
+    "dead": 225.8,
+    "dealt": 25350,
+    "left": {
+     "s": 0,
+     "a": 0,
+     "h": 0,
+     "c": 0.426
+    },
+    "burnt": 0
+   },
+   "events": [
+    "1.8 b locked",
+    "3.0 a locked",
+    "148.6 a reload",
+    "176.6 b reload",
+    "205.8 b shieldDown",
+    "214.6 b armorDown",
+    "220.0 a capEmpty",
+    "225.8 b dead"
+   ]
+  }
+ }
+}

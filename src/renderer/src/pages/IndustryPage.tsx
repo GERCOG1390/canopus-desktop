@@ -574,7 +574,7 @@ function Planets() {
     return { list, total }
   }, [active?.id])
 
-  if (!active) return <RequireLogin what="колонии" />
+  if (!active) return <RequireLogin what="свои колонии" />
   if (loading) return <Loading />
   if (!data) return <ErrorBox error={error} />
   const sorted = [...data.list].sort((a, b) => (a.expiry ?? Infinity) - (b.expiry ?? Infinity))

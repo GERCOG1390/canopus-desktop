@@ -9,6 +9,15 @@ import { capacitorStability } from '../../shared/fitRules'
 const A = {
   mass: 4,
   hp: 9,
+  heatDissipationRateHi: 1179,
+  heatAbsorbtionRateModifier: 1180,
+  heatDissipationRateMed: 1196,
+  heatDissipationRateLow: 1198,
+  heatDamage: 1211,
+  heatGenerationMultiplier: 1224,
+  heatAttenuationHi: 1259,
+  heatAttenuationMed: 1261,
+  heatAttenuationLow: 1262,
   powerOutput: 11,
   lowSlots: 12,
   medSlots: 13,
@@ -218,6 +227,13 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   if (bandwidthUsed > res.droneBandwidth.total + 1e-6) problems.push('Не хватает пропускной способности для дронов')
   if (activeDrones > maxActiveDrones) problems.push(`Можно запустить не больше ${maxActiveDrones} дронов`)
 
+  // ---------- Heat ----------
+  const heatOf = (m: Item): ModuleResult['heat'] => {
+    const absorb = a(m, A.heatAbsorbtionRateModifier)
+    const damage = a(m, A.heatDamage)
+    return { hp: a(m, A.hp), ...(absorb > 0 && damage > 0 ? { absorb, damage } : {}) }
+  }
+
   // ---------- Per-module checks ----------
   const shipType = db.types[spec.shipTypeId]
   const moduleResults: ModuleResult[] = dogma.modules.map((m) => {
@@ -246,7 +262,8 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
       problems: p,
       optimal: a(m, A.maxRange) || undefined,
       falloff: a(m, A.falloff) || undefined,
-      tactical: tacticalOf(dogma, m)
+      tactical: tacticalOf(dogma, m),
+      heat: m.slot === 'hi' || m.slot === 'med' || m.slot === 'lo' ? heatOf(m) : undefined
     }
   })
   moduleResults.forEach((r) => r.problems.forEach((p) => problems.push(`${db.types[spec.modules[r.index].typeId]?.n[0]}: ${p}`)))
@@ -503,6 +520,15 @@ export function calculate(db: SdeDb, spec: FitSpec, skills: SkillSource, extraSh
   for (const id of extraShipAttrs) shipAttrs[id] = a(ship, id)
 
   return {
+    heat: {
+      generation: a(ship, A.heatGenerationMultiplier),
+      racks: {
+        hi: { dissipation: a(ship, A.heatDissipationRateHi), attenuation: a(ship, A.heatAttenuationHi) },
+        med: { dissipation: a(ship, A.heatDissipationRateMed), attenuation: a(ship, A.heatAttenuationMed) },
+        lo: { dissipation: a(ship, A.heatDissipationRateLow), attenuation: a(ship, A.heatAttenuationLow) }
+      },
+      slots: slots.hi + slots.med + slots.lo + slots.rig
+    },
     ship: { slots, ...res, maxActiveDrones, cargo: a(ship, A.capacity) },
     boosters: dogma.implants
       .filter((i) => i.off)

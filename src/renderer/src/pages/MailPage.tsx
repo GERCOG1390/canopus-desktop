@@ -49,7 +49,7 @@ const escapeHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;')
 
 export default function MailPage() {
   const { active } = useApp()
-  if (!active) return <RequireLogin what="почту" />
+  if (!active) return <RequireLogin what="свою почту" />
   if (!hasScope(active, SCOPE.readMail))
     return (
       <div className="page">

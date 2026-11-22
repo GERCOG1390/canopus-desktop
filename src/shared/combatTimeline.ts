@@ -2,10 +2,14 @@
 // and recharges, repairers burn charges and neuts bite, all stepped through time. Values are averages (no
 // random misses), so the same setup always gives the same fight.
 //
-// Not modelled: heat, ECM and sensor or weapon disruption, command bursts, missile flight time, the tracking of
-// mobile drones (those that keep up land in full).
+// Overheating (heat.ts): racks heat up and cool down, overheated cycles deal heat damage to their rack, and a module
+// that burns out stops. Command bursts come in through the fits' own stats.
+//
+// Not modelled: ECM and sensor or weapon disruption, missile flight time, the tracking of mobile drones (those that
+// keep up land in full), and what a burnt-out passive module (a damage control, a heat sink) took with it.
 
 import type { LayerStats, TacticalModule, WeaponStats } from './fit'
+import { HeatState, type HeatPolicy, type HeatSpec } from './heat.ts'
 
 // ---------- One shot at one moment: the game's formulas ----------
 
@@ -122,6 +126,8 @@ export interface Orders {
   useEwar: boolean
   /** Signature set by hand */
   sig?: number
+  /** Overheating: off, until modules burn out, or racks taken off before they do */
+  heat?: HeatPolicy
 }
 
 /**
@@ -229,12 +235,28 @@ export interface Combatant {
   off: Motion
   /** With the propulsion running */
   on?: Motion & { index: number; kind: 'mwd' | 'ab'; need: number; cycle: number }
+  /**
+   * Heat: the racks and modules, and what the overheatable modules do overheated (by module index; the propulsion
+   * as its motion). `resist`: each layer's resonance multiplier with every overheatable hardener overheated.
+   */
+  heat?: HeatSpec & {
+    hot: {
+      weapons: Record<number, Combatant['weapons'][number]>
+      repairers: Record<number, Repairer>
+      modules: Record<number, CapModule>
+      tactical: Record<number, Tactical>
+      on?: Motion & { need: number; cycle: number }
+      resist?: { indexes: number[]; mult: { shield: number[]; armor: number[]; hull: number[] } }
+    }
+  }
 }
 
 export type TimelineEvent = {
   t: number
   side: 'a' | 'b'
-  kind: 'shieldDown' | 'armorDown' | 'dead' | 'capEmpty' | 'reload' | 'repReload' | 'propBlocked' | 'lostRange' | 'backInRange' | 'adcOn' | 'locked' | 'lockLost' | 'capBoosterReload'
+  kind: 'shieldDown' | 'armorDown' | 'dead' | 'capEmpty' | 'reload' | 'repReload' | 'propBlocked' | 'lostRange' | 'backInRange' | 'adcOn' | 'locked' | 'lockLost' | 'capBoosterReload' | 'burnout' | 'heatOff'
+  /** The module (fit index) a burnout is about */
+  index?: number
 }
 
 export interface TimelinePoint {
@@ -244,8 +266,8 @@ export interface TimelinePoint {
   /** Where the ships are, for the replay; only the gap between them means anything */
   pos: { ax: number; ay: number; bx: number; by: number }
   /** Per side: shield, armor, hull and capacitor as a share 0–1, speed, and damage dealt in that second after resists */
-  a: { s: number; a: number; h: number; c: number; v: number; dealt: number }
-  b: { s: number; a: number; h: number; c: number; v: number; dealt: number }
+  a: { s: number; a: number; h: number; c: number; v: number; dealt: number; heat?: number }
+  b: { s: number; a: number; h: number; c: number; v: number; dealt: number; heat?: number }
 }
 
 export interface SideOutcome {
@@ -263,6 +285,8 @@ export interface SideOutcome {
   idle: number
   /** Damage dealt after resists, per second of the fight */
   averageDps: number
+  /** Overheating: the hottest a rack got (0–1), and the heat damage each module took */
+  heat?: { peak: number; modules: { index: number; damage: number; hp: number; burnt: number | null }[] }
 }
 
 export interface Timeline {
@@ -359,6 +383,11 @@ interface State {
   repReloadFlag: boolean
   inRange: boolean | null
   idleSum: number
+  heat?: HeatState
+  /** How it flies this step: propulsion on (overheated or not) or off */
+  motion?: Motion
+  heatPeak: number
+  burntAt: Map<number, number>
 }
 
 const empty = (): SideOutcome => ({ shieldDown: null, armorDown: null, dead: null, dealt: 0, left: { s: 1, a: 1, h: 1, c: 1 }, idle: 0, averageDps: 0 })
@@ -410,15 +439,26 @@ function start(key: 'a' | 'b', c: Combatant, o: Orders, pos: Vec, distance: numb
     reloadFlag: false,
     repReloadFlag: false,
     inRange: null,
-    idleSum: 0
+    idleSum: 0,
+    heat: c.heat && o.heat && o.heat !== 'off' ? new HeatState(c.heat, o.heat) : undefined,
+    heatPeak: 0,
+    burntAt: new Map()
   }
 }
+
+const hotOf = (s: State, index: number | undefined): boolean => index !== undefined && !!s.heat?.hot(index)
+const burnt = (s: State, index: number | undefined): boolean => index !== undefined && !!s.heat?.burnt.has(index)
+/** A weapon, repairer or module as it runs now: overheated or not. */
+const weaponNow = (s: State, w: Combatant['weapons'][number]) => (w.kind !== 'drone' && hotOf(s, w.moduleIndex) ? (s.c.heat?.hot.weapons[w.moduleIndex] ?? w) : w)
+const repNow = (s: State, r: Repairer) => (hotOf(s, r.index) ? (s.c.heat?.hot.repairers[r.index] ?? r) : r)
+const modNow = (s: State, m: CapModule) => (hotOf(s, m.index) ? (s.c.heat?.hot.modules[m.index] ?? m) : m)
+const tacticalNow = (s: State, t: Tactical & { index: number }): Tactical => (hotOf(s, t.index) ? (s.c.heat?.hot.tactical[t.index] ?? t) : t)
 
 /** The other ship's modules that are running and aimed at this one. */
 function incoming(them: State): Tactical[] {
   if (!them.o.useEwar) return []
-  // A module that draws on the capacitor works only while it's paid for; one that doesn't always works.
-  return them.c.tactical.filter((t) => them.mods.find((m) => m.index === t.index)?.on !== false)
+  // A module that draws on the capacitor works only while it's paid for; one that doesn't always works. Burnt out, it doesn't.
+  return them.c.tactical.filter((t) => them.mods.find((m) => m.index === t.index)?.on !== false && !burnt(them, t.index)).map((t) => tacticalNow(them, t))
 }
 
 const scrammed = (mods: Tactical[], d: number): boolean => mods.some((m) => m.t.kind === 'scram' && m.t.range >= d)
@@ -470,11 +510,16 @@ export const lockTime = (scanResolution: number, signature: number): number => (
 function layersNow(s: State, t: number): State['c'] {
   const adc = s.c.adc && t + 1e-9 < s.adc.until ? s.c.adc : undefined
   const h = s.c.hardeners
-  const off = h ? h.indexes.filter((i) => s.mods.find((m) => m.index === i)?.on === false).length / h.indexes.length : 0
-  if (!adc && !off) return s.c
+  const off = h ? h.indexes.filter((i) => s.mods.find((m) => m.index === i)?.on === false || burnt(s, i)).length / h.indexes.length : 0
+  // Overheated hardeners, as an even share of those that can be.
+  const hr = s.c.heat?.hot.resist
+  const hot = hr && s.heat ? hr.indexes.filter((i) => s.heat!.hot(i) && s.mods.find((m) => m.index === i)?.on !== false).length / hr.indexes.length : 0
+  if (!adc && !off && !hot) return s.c
   const layer = (name: 'shield' | 'armor' | 'hull'): LayerStats => ({
     ...s.c[name],
-    resist: s.c[name].resist.map((r, i) => 1 - Math.min(1, (1 - r) * (h ? 1 + (h.mult[name][i] - 1) * off : 1) * (adc ? adc.mult[name][i] : 1))) as LayerStats['resist']
+    resist: s.c[name].resist.map(
+      (r, i) => 1 - Math.min(1, (1 - r) * (h ? 1 + (h.mult[name][i] - 1) * off : 1) * (hr ? 1 + (hr.mult[name][i] - 1) * hot : 1) * (adc ? adc.mult[name][i] : 1))
+    ) as LayerStats['resist']
   })
   return { ...s.c, shield: layer('shield'), armor: layer('armor'), hull: layer('hull') }
 }
@@ -509,7 +554,17 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
   const B = start('b', b, orderB, { x: Math.max(distance, 1), y: 0 }, distance)
   const events: TimelineEvent[] = []
   const series: TimelinePoint[] = []
-  const log = (t: number, s: State, kind: TimelineEvent['kind']): void => void events.push({ t, side: s.key, kind })
+  const log = (t: number, s: State, kind: TimelineEvent['kind'], index?: number): void => void events.push({ t, side: s.key, kind, ...(index !== undefined ? { index } : {}) })
+  /** An overheated cycle ended: heat damage to the rack, and what burnt out. */
+  const cycledHot = (t: number, s: State, index: number | undefined): void => {
+    if (index === undefined || !s.heat?.hot(index)) return
+    const cooled = s.heat.cooled.size
+    for (const i of s.heat.cycled(index)) {
+      s.burntAt.set(i, t)
+      log(t, s, 'burnout', i)
+    }
+    if (s.heat.cooled.size > cooled) log(t, s, 'heatOff')
+  }
 
   const frac = (s: State) => ({
     s: s.c.shield.hp ? s.shield / s.c.shield.hp : 0,
@@ -555,10 +610,12 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
       const blocked = me.c.on?.kind === 'mwd' && scrammed(mods, d)
       if (blocked && me.o.wantProp && !me.blocked) log(t, me, 'propBlocked')
       me.blocked = !!blocked
-      const prop = me.c.on
+      const propHot = me.c.on && hotOf(me, me.c.on.index) && me.c.heat?.hot.on ? { ...me.c.on, ...me.c.heat.hot.on } : undefined
+      const prop = me.c.on && !burnt(me, me.c.on.index) ? (propHot ?? me.c.on) : undefined
       let on = false
       if (prop && me.o.wantProp && !blocked) {
         if (t + 1e-9 >= me.propNext) {
+          if (t > 0 && me.propOn) cycledHot(t, me, prop.index)
           me.propPaid = pay(me, prop.need)
           if (!me.propPaid) noCap(t, me)
           me.propNext = me.propPaid ? me.propNext + prop.cycle : t + DT
@@ -568,6 +625,7 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
       }
       me.propOn = on
       const motion = on && prop ? prop : me.c.off
+      me.motion = motion
       const top = motion.maxVelocity * Math.max(0, stackedMultiplier(mods, 'web', d))
       const speed = Math.min(me.o.speed, top)
       const want = desiredVelocity(me, them, d, speed)
@@ -594,7 +652,7 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
     ])
     for (const [me, them] of pairs) {
       const mods = incoming(me)
-      const motion = them.propOn && them.c.on ? them.c.on : them.c.off
+      const motion = them.motion ?? them.c.off
       const geo = {
         distance: dNow,
         transversal,
@@ -623,6 +681,13 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
       const paper = me.weapons.reduce((sum, ws) => sum + ws.w.dps, 0)
       for (const ws of me.weapons) {
         const drone = ws.w.kind === 'drone'
+        // Burnt out: it fires no more.
+        if (!drone && burnt(me, ws.w.moduleIndex)) {
+          ws.firing = false
+          if (paper > 0) me.idleSum += ws.w.dps / paper
+          continue
+        }
+        const w = weaponNow(me, ws.w)
         // Drones are ordered once, with a lock and inside control range; after that they keep at it by themselves.
         if (drone && !ws.sent && me.locked && inControl) {
           ws.sent = true
@@ -630,7 +695,7 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
         }
         const unreachable = drone ? !ws.sent && (!inLockRange || !inControl) : !inLockRange
         const waiting = drone ? !ws.sent && !unreachable : inLockRange && !me.locked
-        const factor = unreachable ? 0 : application(ws.w, geo).factor
+        const factor = unreachable ? 0 : application(w, geo).factor
         if (factor >= WORTH_FIRING) anyInReach = true
         else if (paper > 0) me.idleSum += ws.w.dps / paper
         if (waiting || t + 1e-9 < ws.next || t + 1e-9 < ws.arrival) continue
@@ -640,17 +705,19 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
           ws.firing = false
           continue
         }
-        if (ws.w.need && !pay(me, ws.w.need)) {
+        if (w.need && !pay(me, w.need)) {
           noCap(t, me)
           ws.firing = false
           continue
         }
+        // The cycle that ends now was overheated: its heat damage.
+        if (!drone && ws.firing) cycledHot(t, me, w.moduleIndex)
         const boost = 1 + ws.spool
-        ws.w.damage.forEach((v, i) => ((hits.get(them) as number[])[i] += v * boost * factor))
-        if (ws.w.spoolMax) ws.spool = Math.min(ws.w.spoolMax, ws.spool + (ws.w.spoolPerCycle ?? 0))
+        w.damage.forEach((v, i) => ((hits.get(them) as number[])[i] += v * boost * factor))
+        if (w.spoolMax) ws.spool = Math.min(w.spoolMax, ws.spool + (w.spoolPerCycle ?? 0))
         ws.firing = true
         // On time, the cycle keeps its pace between simulation steps; after waiting, it starts again from now.
-        ws.next = t - ws.next < DT + 1e-9 ? ws.next + ws.w.cycle : t + ws.w.cycle
+        ws.next = t - ws.next < DT + 1e-9 ? ws.next + w.cycle : t + w.cycle
         if (ws.w.shots) {
           ws.shots--
           if (ws.shots <= 0) {
@@ -675,7 +742,13 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
     for (const [me, them] of pairs) {
       for (const m of me.mods) {
         if (t + 1e-9 < m.next) continue
-        const tactical: TacticalModule | undefined = m.tactical?.t
+        if (burnt(me, m.index)) {
+          m.on = false
+          m.next = Infinity
+          continue
+        }
+        const now = modNow(me, m)
+        const tactical: TacticalModule | undefined = m.tactical ? tacticalNow(me, m.tactical).t : undefined
         const aimed = tactical && tactical.kind !== 'mwd' && tactical.kind !== 'ab'
         const reach = !aimed ? 1 : !me.o.useEwar || !me.locked ? 0 : 'falloff' in tactical ? ewarEfficiency(dNow, tactical.range, tactical.falloff) : (tactical as { range: number }).range >= dNow ? 1 : 0
         // Nobody runs a web or a neut at something it can't reach.
@@ -685,13 +758,14 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
           continue
         }
         // A capacitor booster is pressed when there is room for its charge, not into a full capacitor.
-        if (m.need < 0 && me.cap - m.need > me.c.capacity) {
+        if (now.need < 0 && me.cap - now.need > me.c.capacity) {
           m.next = t + DT
           continue
         }
         const rah = me.c.rah?.index === m.index ? me.c.rah : undefined
-        if (!pay(me, m.need)) {
-          if (m.need > 0) noCap(t, me)
+        if (m.on && t > 0) cycledHot(t, me, m.index)
+        if (!pay(me, now.need)) {
+          if (now.need > 0) noCap(t, me)
           m.on = false
           m.next = t + DT
           // Off, it gives nothing at all; turned on again it starts from the even split.
@@ -706,7 +780,7 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
           me.rah = { vector: me.rah.running ? (t > 0 ? adaptRah(me.rah.vector, me.rah.damage, rah.shift) : me.rah.vector) : rah.start, running: true, damage: [0, 0, 0, 0] }
           me.c.armor.resist = rahResist(rah, me.rah.vector) as LayerStats['resist']
         }
-        m.next = Math.max(m.next + m.cycle, t)
+        m.next = Math.max(m.next + now.cycle, t)
         if (m.shots && --m.left <= 0) {
           m.left = m.shots
           m.next += m.reloadSec ?? 0
@@ -743,13 +817,14 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
     // ----- Repairs: shield boosters heal when they start, armor and hull ones when they finish.
     for (const s of [A, B]) {
       for (const rs of s.reps) {
-        const r = rs.r
+        const r = repNow(s, rs.r)
         if (rs.pending && t + 1e-9 >= rs.pending.at) {
           s[r.layer] = Math.min(s.c[r.layer].hp, s[r.layer] + rs.pending.amount)
           rs.pending = null
         }
         // An emptied layer is still repaired, as in the game: the HP goes back onto it.
-        if (t + 1e-9 < rs.next || s[r.layer] >= s.c[r.layer].hp) continue
+        if (t + 1e-9 < rs.next || s[r.layer] >= s.c[r.layer].hp || burnt(s, r.index)) continue
+        if (rs.next > 0 && t - rs.next < DT + 1e-9) cycledHot(t, s, r.index)
         if (!pay(s, r.need)) {
           noCap(t, s)
           continue
@@ -769,6 +844,18 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
           }
         }
       }
+    }
+
+    // ----- Heat: racks with running overheated modules warm up, the others cool.
+    for (const s of [A, B]) {
+      if (!s.heat) continue
+      const running = (i: number): boolean =>
+        s.weapons.some((ws) => ws.w.moduleIndex === i && ws.firing) ||
+        s.mods.some((m) => m.index === i && m.on) ||
+        s.reps.some((rs) => rs.r.index === i && rs.next > t) ||
+        (s.c.on?.index === i && s.propOn)
+      s.heat.step(DT, running)
+      s.heatPeak = Math.max(s.heatPeak, s.heat.peak())
     }
 
     // ----- Natural recharge, then the damage of this instant.
@@ -815,8 +902,8 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
         distance: dNow,
         transversal,
         pos: { ax: A.pos.x, ay: A.pos.y, bx: B.pos.x, by: B.pos.y },
-        a: { ...fa, v: length(A.vel), dealt: A.dealtBucket },
-        b: { ...fb, v: length(B.vel), dealt: B.dealtBucket }
+        a: { ...fa, v: length(A.vel), dealt: A.dealtBucket, ...(A.heat ? { heat: A.heat.peak() } : {}) },
+        b: { ...fb, v: length(B.vel), dealt: B.dealtBucket, ...(B.heat ? { heat: B.heat.peak() } : {}) }
       })
       A.dealtBucket = 0
       B.dealtBucket = 0
@@ -835,6 +922,13 @@ export function runTimeline(a: Combatant, b: Combatant, orderA: Orders, orderB: 
     s.outcome.idle = s.idleSum / ticks
     s.outcome.averageDps = s.outcome.dealt / Math.max(end, 1)
   }
+  for (const s of [A, B]) {
+    if (!s.heat) continue
+    s.outcome.heat = {
+      peak: s.heatPeak,
+      modules: s.heat.spec.modules.map((m) => ({ index: m.index, damage: Math.min(m.hp, s.heat!.damage.get(m.index) ?? 0), hp: m.hp, burnt: s.burntAt.get(m.index) ?? null }))
+    }
+  }
   if (a.rah) A.outcome.armorResist = [...A.c.armor.resist]
   if (b.rah) B.outcome.armorResist = [...B.c.armor.resist]
   const winner = A.outcome.dead !== null && B.outcome.dead !== null ? 'both' : B.outcome.dead !== null ? 'a' : A.outcome.dead !== null ? 'b' : null
@@ -852,7 +946,15 @@ export function frameAt(series: TimelinePoint[], t: number): TimelinePoint {
   const q = series[hi]
   const k = (t - p.t) / (q.t - p.t)
   const mix = (a: number, b: number): number => a + (b - a) * k
-  const side = (x: TimelinePoint['a'], y: TimelinePoint['a']): TimelinePoint['a'] => ({ s: mix(x.s, y.s), a: mix(x.a, y.a), h: mix(x.h, y.h), c: mix(x.c, y.c), v: mix(x.v, y.v), dealt: y.dealt })
+  const side = (x: TimelinePoint['a'], y: TimelinePoint['a']): TimelinePoint['a'] => ({
+    s: mix(x.s, y.s),
+    a: mix(x.a, y.a),
+    h: mix(x.h, y.h),
+    c: mix(x.c, y.c),
+    v: mix(x.v, y.v),
+    dealt: y.dealt,
+    ...(x.heat !== undefined && y.heat !== undefined ? { heat: mix(x.heat, y.heat) } : {})
+  })
   return {
     t,
     distance: Math.hypot(mix(p.pos.bx, q.pos.bx) - mix(p.pos.ax, q.pos.ax), mix(p.pos.by, q.pos.by) - mix(p.pos.ay, q.pos.ay)),

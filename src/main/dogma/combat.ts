@@ -5,6 +5,7 @@ import type { AppliedWeapon, CombatDirection, CombatEffect, CombatPilot, CombatR
 import { fightProblems, rate, searchAdvice, type Candidate, type CombatAdvice, type Rated } from '../../shared/combatAdvice'
 import { application, dependsOnStayingAway, ewarEfficiency, isSentry, runTimeline, stackingPenalty, type Combatant, type Geometry, type Orders, type Tactical, type Timeline } from '../../shared/combatTimeline'
 import type { FitStats, TacticalModule } from '../../shared/fit'
+import type { HeatModule, HeatPolicy } from '../../shared/heat.ts'
 import { chargesFor } from '../sde'
 import { calculateFit } from './index'
 
@@ -56,6 +57,8 @@ function sideInfo(side: Side, st: SideState): CombatSideInfo {
     signature: st.signature,
     prop: side.prop && { kind: side.prop.kind, typeId: side.prop.typeId, on: st.propOn, blocked: st.blocked },
     hasEwar: side.ewar.some((m) => m.t.kind !== 'point'),
+    heatable: side.heatable().length,
+    fittedHot: side.fittedHot,
     effects: st.effects,
     ehp: d.ehp,
     hp: { shield: d.shield.hp, armor: d.armor.hp, hull: d.hull.hp },
@@ -174,9 +177,15 @@ class Side {
   /** The burst: resonance multipliers per layer while it runs */
   readonly adc?: NonNullable<Combatant['adc']>
   readonly hardeners?: Combatant['hardeners']
+  /** The fit had modules set to overheat: the side overheats unless told otherwise */
+  readonly fittedHot: boolean
   private cache = new Map<boolean, FitStats>()
+  private hotStats?: FitStats
 
   constructor(pilot: CombatPilot) {
+    // Overheating is the fight's to switch (Orders.heat): the fit's own overheated modules start as merely active.
+    this.fittedHot = pilot.fit.modules.some((m) => m.state === 'overload')
+    if (this.fittedHot) pilot = { ...pilot, fit: { ...pilot.fit, modules: pilot.fit.modules.map((m) => (m.state === 'overload' ? { ...m, state: 'active' as const } : m)) } }
     const fitted = calculateFit(pilot.fit, pilot.skills)
     const adc = fitted.defense.adc
     if (adc) {
@@ -215,6 +224,20 @@ class Side {
     const off = without(indexes)
     const mult = (l: 'shield' | 'armor' | 'hull') => d[l].resist.map((r, i) => (1 - r > 0 ? (1 - off.defense[l].resist[i]) / (1 - r) : 1))
     return { indexes, mult: { shield: mult('shield'), armor: mult('armor'), hull: mult('hull') } }
+  }
+
+  /** Modules that can run overheated: running ones with heat figures (a passive module can't). */
+  heatable(): number[] {
+    return this.base.modules.filter((r) => r.heat?.absorb && (this.pilot.fit.modules[r.index].state === 'active' || r.index === this.prop?.index)).map((r) => r.index)
+  }
+
+  /** The fit with every overheatable module overheated (the propulsion running). */
+  hot(): FitStats {
+    if (!this.hotStats) {
+      const set = new Set(this.heatable())
+      this.hotStats = calculateFit({ ...this.pilot.fit, modules: this.pilot.fit.modules.map((m, i) => (set.has(i) ? { ...m, state: 'overload' as const } : m)) }, this.pilot.skills)
+    }
+    return this.hotStats
   }
 
   stats(propOn: boolean): FitStats {
@@ -284,6 +307,7 @@ function combatant(side: Side, propWanted: boolean): Combatant {
     on = { ...motion(running), index: side.prop.index, kind: side.prop.kind, need: r ? r.capPerSecond * r.cycle : 0, cycle: r?.cycle || 10 }
   }
   return {
+    heat: heatOf(side, base),
     weapons,
     shield: d.shield,
     armor: d.armor,
@@ -303,6 +327,48 @@ function combatant(side: Side, propWanted: boolean): Combatant {
     off: motion(base),
     on
   }
+}
+
+/** The side's racks and modules for overheating, and what its overheatable modules do overheated. */
+function heatOf(side: Side, base: FitStats): Combatant['heat'] {
+  const indexes = side.heatable()
+  if (!indexes.length || !base.heat) return undefined
+  const hot = side.hot()
+  const pos: Record<string, number> = {}
+  const modules: HeatModule[] = []
+  side.pilot.fit.modules.forEach((m, i) => {
+    if (m.slot !== 'hi' && m.slot !== 'med' && m.slot !== 'lo') return
+    const r = base.modules.find((x) => x.index === i)
+    const place = pos[m.slot] ?? 0
+    pos[m.slot] = place + 1
+    // An offline module takes no heat damage and isn't counted among those online.
+    if (!r?.heat || m.state === 'offline') return
+    const can = indexes.includes(i)
+    modules.push({ index: i, rack: m.slot, pos: place, hp: r.heat.hp, ...(can ? { absorb: r.heat.absorb, damage: r.heat.damage } : {}) })
+  })
+  const row = (i: number) => hot.modules.find((m) => m.index === i)
+  const need = (i: number) => {
+    const r = row(i)
+    return r ? r.capPerSecond * r.cycle : 0
+  }
+  const weapons: NonNullable<Combatant['heat']>['hot']['weapons'] = {}
+  for (const w of hot.offense.weapons) if (w.kind !== 'drone' && indexes.includes(w.moduleIndex)) weapons[w.moduleIndex] = { ...w, need: need(w.moduleIndex) }
+  const repairers: NonNullable<Combatant['heat']>['hot']['repairers'] = {}
+  for (const r of hot.defense.repairers) if (indexes.includes(r.index)) repairers[r.index] = { ...r, need: need(r.index) }
+  const mods: NonNullable<Combatant['heat']>['hot']['modules'] = {}
+  const tactical: NonNullable<Combatant['heat']>['hot']['tactical'] = {}
+  for (const r of hot.modules) {
+    if (!indexes.includes(r.index)) continue
+    mods[r.index] = { index: r.index, need: r.capPerSecond * r.cycle, cycle: r.cycle, shots: r.shots, reloadSec: r.reloadSec }
+    if (r.tactical && r.tactical.kind !== 'mwd' && r.tactical.kind !== 'ab') tactical[r.index] = { typeId: side.pilot.fit.modules[r.index].typeId, t: r.tactical }
+  }
+  const p = side.prop && indexes.includes(side.prop.index) ? row(side.prop.index) : undefined
+  const on = p ? { maxVelocity: hot.navigation.maxVelocity, signature: hot.navigation.signatureRadius, alignSec: hot.navigation.alignSec, need: p.capPerSecond * p.cycle, cycle: p.cycle || 10 } : undefined
+  // Hardeners: the resonance with them overheated over the one with them merely running.
+  const hardened = (side.hardeners?.indexes ?? []).filter((i) => indexes.includes(i))
+  const mult = (l: 'shield' | 'armor' | 'hull') => base.defense[l].resist.map((r, i) => (1 - r > 0 ? (1 - hot.defense[l].resist[i]) / (1 - r) : 1))
+  const resist = hardened.length ? { indexes: hardened, mult: { shield: mult('shield'), armor: mult('armor'), hull: mult('hull') } } : undefined
+  return { ...base.heat, modules, hot: { weapons, repairers, modules: mods, tactical, ...(on ? { on } : {}), ...(resist ? { resist } : {}) } }
 }
 
 /** Layer times of the one being shot, from the fight. */
@@ -343,20 +409,23 @@ export function simulate(a: CombatPilot, b: CombatPilot, sc: CombatScenario): Co
 
   const wantA = sc.propA ?? A.prop?.fitOn ?? false
   const wantB = sc.propB ?? B.prop?.fitOn ?? false
-  const orders = (behavior: CombatScenario['behaviorA'], range: number | undefined, heading: number, speed: number, wantProp: boolean, useEwar: boolean, sig: number | undefined): Orders => ({
+  const heatA: HeatPolicy = sc.heatA ?? (A.fittedHot ? 'burn' : 'off')
+  const heatB: HeatPolicy = sc.heatB ?? (B.fittedHot ? 'burn' : 'off')
+  const orders = (behavior: CombatScenario['behaviorA'], range: number | undefined, heading: number, speed: number, wantProp: boolean, useEwar: boolean, sig: number | undefined, heat: HeatPolicy): Orders => ({
     behavior: behavior ?? 'free',
     range: range ?? sc.distance,
     heading,
     speed,
     wantProp,
     useEwar,
-    sig
+    sig,
+    heat
   })
   const timeline = runTimeline(
     combatant(A, wantA),
     combatant(B, wantB),
-    orders(sc.behaviorA, sc.rangeA, sc.headingA, sc.speedA, wantA, sc.ewarA !== false, sc.sigA),
-    orders(sc.behaviorB, sc.rangeB, sc.headingB, sc.speedB, wantB, sc.ewarB !== false, sc.sigB),
+    orders(sc.behaviorA, sc.rangeA, sc.headingA, sc.speedA, wantA, sc.ewarA !== false, sc.sigA, heatA),
+    orders(sc.behaviorB, sc.rangeB, sc.headingB, sc.speedB, wantB, sc.ewarB !== false, sc.sigB, heatB),
     sc.distance
   )
 
@@ -366,8 +435,8 @@ export function simulate(a: CombatPilot, b: CombatPilot, sc: CombatScenario): Co
     const tl = runTimeline(
       combatant(A, wantA),
       combatant(B, !!B.prop),
-      orders(sc.behaviorA, sc.rangeA, sc.headingA, sc.speedA, wantA, sc.ewarA !== false, sc.sigA),
-      { behavior: 'approach', range: 1000, heading: sc.headingB, speed: 1e6, wantProp: !!B.prop, useEwar: sc.ewarB !== false, sig: sc.sigB },
+      orders(sc.behaviorA, sc.rangeA, sc.headingA, sc.speedA, wantA, sc.ewarA !== false, sc.sigA, heatA),
+      { behavior: 'approach', range: 1000, heading: sc.headingB, speed: 1e6, wantProp: !!B.prop, useEwar: sc.ewarB !== false, sig: sc.sigB, heat: heatB },
       sc.distance
     )
     return tl.winner === timeline.winner ? undefined : { winner: tl.winner, end: tl.end }
@@ -434,8 +503,11 @@ export async function advise(a: CombatPilot, b: CombatPilot, sc: CombatScenario)
     }
     return side
   }
-  const mine = (c: Candidate): Orders => ({ behavior: c.behavior, range: c.range, heading: sc.headingA, speed: 1e6, wantProp: c.prop, useEwar: sc.ewarA !== false, sig: sc.sigA })
-  const theirs: Orders = { behavior: sc.behaviorB ?? 'free', range: sc.rangeB ?? sc.distance, heading: sc.headingB, speed: sc.speedB, wantProp: wantB, useEwar: sc.ewarB !== false, sig: sc.sigB }
+  // Overheating stays as set for both: the search picks ammo, range and flying, not how hard to push the modules.
+  const heatA: HeatPolicy = sc.heatA ?? (baseA.fittedHot ? 'burn' : 'off')
+  const heatB: HeatPolicy = sc.heatB ?? (B.fittedHot ? 'burn' : 'off')
+  const mine = (c: Candidate): Orders => ({ behavior: c.behavior, range: c.range, heading: sc.headingA, speed: 1e6, wantProp: c.prop, useEwar: sc.ewarA !== false, sig: sc.sigA, heat: heatA })
+  const theirs: Orders = { behavior: sc.behaviorB ?? 'free', range: sc.rangeB ?? sc.distance, heading: sc.headingB, speed: sc.speedB, wantProp: wantB, useEwar: sc.ewarB !== false, sig: sc.sigB, heat: heatB }
   const fightAgainst = (c: Candidate, opp: Orders): Timeline => runTimeline(combatant(sideFor(c.ammo), c.prop), enemy, mine(c), opp, sc.distance)
 
   const wantA = sc.propA ?? baseA.prop?.fitOn ?? false
@@ -460,7 +532,7 @@ export async function advise(a: CombatPilot, b: CombatPilot, sc: CombatScenario)
   let kiteRange = 0
   for (const w of B.base.offense.weapons) if (w.kind === 'turret' || w.kind === 'missile' || w.kind === 'vorton') kiteRange = Math.max(kiteRange, w.optimal ?? 0)
   kiteRange = kiteRange || sc.distance
-  const flat = { speed: 1e6, heading: sc.headingB, wantProp: !!B.prop, useEwar: sc.ewarB !== false, sig: sc.sigB }
+  const flat = { speed: 1e6, heading: sc.headingB, wantProp: !!B.prop, useEwar: sc.ewarB !== false, sig: sc.sigB, heat: heatB }
   const enemyFull = combatant(B, !!B.prop)
   const reaction = (o: Orders): Rated => rate(found.best.candidate, runTimeline(combatant(sideFor(found.best.candidate.ammo), found.best.candidate.prop), enemyFull, mine(found.best.candidate), o, sc.distance), hp)
   return {

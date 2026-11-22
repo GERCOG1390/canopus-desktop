@@ -12,7 +12,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "dist": "electron-vite build && electron-builder --win",
     "dist:mac": "electron-vite build && electron-builder --mac",
-    "dist:linux": "electron-vite build && electron-builder --linux"
+    "dist:linux": "electron-vite build && electron-builder --linux",
+    "golden": "node tools/check/golden.mjs",
+    "check": "node tools/check/check.mjs"
   },
   "build": {
     "appId": "app.canopus.eve",

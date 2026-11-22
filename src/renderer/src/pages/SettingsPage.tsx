@@ -7,7 +7,7 @@ import { IS_LINUX, IS_MAC, locale } from '../i18n'
 import { fmtDate } from '../lib/format'
 import { useAsync } from '../lib/useAsync'
 import { useUpdate } from '../lib/update'
-import { openDiscussions, openIdeas, reportBug } from '../lib/feedback'
+import { openDiscussions, openIdeas, reportBug, reportInaccuracy } from '../lib/feedback'
 import { THEMES } from '../lib/appearance'
 import type { NotifyEvent, NotifySettings } from '../../../shared/notify'
 
@@ -95,7 +95,9 @@ export default function SettingsPage() {
           <label>
             Язык названий и описаний
             <select value={settings?.lang ?? 'ru'} onChange={(e) => updateSettings({ lang: e.target.value as 'ru' | 'en' })}>
-              <option value="ru">Русский</option>
+              <option value="ru" translate="no">
+                Русский
+              </option>
               <option value="en">English</option>
             </select>
           </label>
@@ -217,6 +219,9 @@ function FeedbackCard() {
         </button>
         <button className="ghost" onClick={() => reportBug()}>
           Сообщить об ошибке
+        </button>
+        <button className="ghost" onClick={reportInaccuracy} title="Цифра в фитинге, симуляторе, рынке или производстве расходится с игрой">
+          Неточность в расчётах
         </button>
       </div>
     </Card>

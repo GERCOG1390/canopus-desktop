@@ -77,6 +77,18 @@ export const EXACT: Record<string, string> = {
   'ещё': 'more',
   'Действуют с первой секунды боя.': 'They act from the first second of the fight.',
   'Бустеры изменены только в симуляторе': 'Boosters changed in the simulator only',
+  'Неточность в расчётах': 'Report an inaccuracy',
+  'Цифра в фитинге, симуляторе, рынке или производстве расходится с игрой': 'A number in the fitting, simulator, market or industry differs from the game',
+  'Без перегрева': 'No overheating',
+  'Перегрев модулей': 'Overheating',
+  'Перегрев, снимать вовремя': 'Overheat, turn off in time',
+  'Перегрев до выгорания': 'Overheat until burnt out',
+  'Нагрев стойки, %': 'Rack heat, %',
+  'Модуль сгорел от перегрева': 'Module burnt out from overheating',
+  'Перегрев снят: модули стойки на пределе': "Overheat off: the rack's modules are worn",
+  'Флотские бонусы': 'Fleet boosts',
+  'Командные пачки бустера флота: действуют весь бой.': "The fleet booster's command bursts: they work for the whole fight.",
+  'Флотские бонусы изменены только в симуляторе': 'Fleet boosts changed in the simulator only',
   'Вернуть как в фите': 'Back to the fit',
   'Не хватает CPU': 'Not enough CPU',
   'Не хватает мощности реактора (PG)': 'Not enough powergrid (PG)',
@@ -496,6 +508,11 @@ export const EXACT: Record<string, string> = {
   // ---- login prompts
   'Войдите через EVE SSO в разделе «Настройки», чтобы видеть': 'Log in with EVE SSO in Settings to see',
   'данные персонажа': 'character data',
+  'свои колонии': "your colonies",
+  'лунную добычу корпорации': "the corporation's moon mining",
+  'свою почту': "your mail",
+  'свои сделки': "your trades",
+  'свой флот': "your fleet",
   'свои ордера': 'your orders',
   'производственные работы': 'industry jobs',
   колонии: 'colonies',
@@ -2422,6 +2439,11 @@ export const EXACT: Record<string, string> = {
 
 /** Dynamic strings: full-match patterns; $1… are translated recursively. */
 export const PATTERNS: [RegExp, string][] = [
+  [/^Войдите через EVE SSO в разделе «Настройки», чтобы видеть (.+)\.$/, 'Log in with EVE SSO in Settings to see $1.'],
+  [/^Нагрев стоек до (\d+)%$/, 'Racks heated up to $1%'],
+  [/^· сгорело: (\d+)$/, '· burnt out: $1'],
+  [/^· повреждено: (\d+)$/, '· damaged: $1'],
+  [/^Флотские бонусы · (\d+)$/, 'Fleet boosts · $1'],
   [/^минералы, выход (.+)%, Jita buy$/, 'minerals, yield $1%, Jita buy'],
   [/^(.+) · в Jita не хватает позиций: (\d+)$/, "$1 · items Jita is short of: $2"],
   [/^(.+) · по стакану Jita$/, "$1 · up Jita's order book"],
@@ -2801,6 +2823,8 @@ export const PATTERNS: [RegExp, string][] = [
 
 /** Units and short words translated anywhere after a number. */
 export const TOKENS: [RegExp, string][] = [
+  [/(\d) мин(?![а-яё])/g, '$1 min'],
+  [/(\d) ч(?![а-яё])/g, '$1 h'],
   [/ импланты\)/g, ' implants)'],
   [/(\d)д (?=\d)/g, '$1d '],
   [/(\d)ч(?![а-яё])/gi, '$1h'],

@@ -1,3 +1,4 @@
+import { translate } from '../i18n'
 import { useApp } from '../AppContext'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { imageUrl } from '../lib/esi'
@@ -243,7 +244,7 @@ export function SearchBox<T extends { id: number; name: string }>({
 export function RequireLogin({ children, what }: { children?: ReactNode; what: string }) {
   return (
     <Empty>
-      Войдите через EVE SSO в разделе «Настройки», чтобы видеть {what}.
+      {translate(`Войдите через EVE SSO в разделе «Настройки», чтобы видеть ${what}.`)}
       {children}
     </Empty>
   )

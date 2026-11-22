@@ -24,7 +24,7 @@ export interface CombatEvent {
 
 const LINE_RE = /^\[\s*(\d{4})\.(\d{2})\.(\d{2}) (\d{2}):(\d{2}):(\d{2})\s*\]\s*\(combat\)\s*(.*)$/
 // A translated name comes as <localized hint="English">Перевод* with no closing tag.
-const HINT_RE = /<localized hint="([^"]*)">[^<]*(?:<\/localized>)?/g
+const HINT_RE = /<localized hint="([^"]*)">[^<*]*\*?(?:<\/localized>)?/g
 const COLOR_OUT = 'ff00ffff'
 const COLOR_IN = 'ffcc0000'
 const COLOR_REP = 'ffccff66'
@@ -58,22 +58,40 @@ export function parseCombatLine(line: string): CombatEvent | null {
   }
   if (color === COLOR_REP) {
     // 772 remote shield boosted by Osprey [Drentu] - - Medium Ancillary Remote Shield Booster
-    const rep = /^(\d+) (.*?)\b(by|to)\b\s+(.*)$/.exec(text)
-    if (rep) {
+    // A Russian client: "356 единиц запаса прочности щитов накачано Loki [Pilot] - - Booster" (given),
+    // "137 единиц … получено накачкой от Pilot - Pilot" (received). The wording sits in the first small font.
+    const amount = /^(\d+)\s/.exec(text)
+    const desc = plain(/<font size=10>([^<]*)<\/font>/i.exec(body)?.[1] ?? '')
+    const at = desc ? text.indexOf(desc) : -1
+    if (amount && at > 0) {
+      const english = /\b(by|to)$/.exec(desc)
+      const incoming = english ? english[1] === 'by' : /(^|\s)(от|получено)(\s|$)/i.test(desc)
       // The separator comes doubled here: "Osprey [Drentu] - - Booster".
-      const parts = rep[4].split(' - ').map((p) => p.replace(/^-\s*/, '').trim())
-      const weapon = parts[parts.length - 1] || undefined
+      const parts = text
+        .slice(at + desc.length)
+        .trim()
+        .split(' - ')
+        .map((p) => p.replace(/^-\s*/, '').replace(/\s*-$/, '').trim())
       const name = /^(.*?)\s*\[(.+)\]$/.exec(parts[0])
+      const who = name ? name[2] : parts[0]
+      const last = parts.length > 1 ? parts[parts.length - 1] : undefined
       return {
         t,
-        kind: rep[3] === 'by' ? 'repIn' : 'repOut',
-        amount: Number(rep[1]),
-        who: name ? name[2] : parts[0],
+        kind: incoming ? 'repIn' : 'repOut',
+        amount: Number(amount[1]),
+        who,
         ship: name ? name[1] : undefined,
-        weapon
+        // Some lines name the pilot again where the module would be.
+        weapon: last && last !== who ? last : undefined
       }
     }
   }
+  // A Russian client: "Ваше орудие <gun> промахнулось мимо <target> - <gun>", "Ваша группа <guns> промахнулась мимо …",
+  // and "<attacker>: промах мимо вашего корабля".
+  const ruOut = /^Ваш[аеи]? (?:орудие|группа|дрон\S*|ракет\S*)\s+(.+?)\s+промахнул\S*\s+мимо\s+(.+?)(?: - (.*))?$/.exec(text)
+  if (ruOut) return { t, kind: 'missOut', amount: 0, ...party(ruOut[2].replace(/\*$/, '')), weapon: (ruOut[3] ?? ruOut[1]).replace(/\*$/, '').trim() }
+  const ruIn = /^(.+?):\s*промах мимо вашего корабля/.exec(text)
+  if (ruIn) return { t, kind: 'missIn', amount: 0, ...party(ruIn[1].replace(/\*$/, '')) }
   const miss = /^(.+?) misses (.+?) completely(?: - (.*))?$/.exec(text)
   if (miss) {
     const mine = /^Your\b/.test(miss[1])
@@ -83,7 +101,7 @@ export function parseCombatLine(line: string): CombatEvent | null {
   }
   const cap = /^(\d+)(?: GJ)?\b.*energy (?:neutrali[sz]ed|drained)/i.exec(text)
   if (cap) return { t, kind: 'cap', amount: Number(cap[1]), who: '', text }
-  if (/warp (?:scramble|disrupt)|webifi|jam/i.test(text)) return { t, kind: 'ewar', amount: 0, who: '', text }
+  if (/warp (?:scramble|disrupt)|webifi|jam|варп-|стазис|глушени/i.test(text)) return { t, kind: 'ewar', amount: 0, who: '', text }
   return { t, kind: 'unknown', amount: 0, who: '', text }
 }
 

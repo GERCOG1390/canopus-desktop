@@ -124,7 +124,7 @@ function FightView({ f }: { f: Fight }) {
         <Card title={`Не распознано строк: ${f.unknown.length}`}>
           <p className="warn-text small">Эти строки в суммы не вошли. Если их много, покажите их разработчику: формат лога мог отличаться.</p>
           {[...new Set(f.unknown)].slice(0, 15).map((t, i) => (
-            <p key={i} className="muted small">
+            <p key={i} className="muted small" translate="no">
               {t}
             </p>
           ))}
