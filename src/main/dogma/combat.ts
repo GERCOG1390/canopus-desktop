@@ -7,6 +7,8 @@ import { application, dependsOnStayingAway, ewarEfficiency, isSentry, runTimelin
 import type { FitStats, TacticalModule } from '../../shared/fit'
 import type { HeatModule, HeatPolicy } from '../../shared/heat.ts'
 import { chargesFor } from '../sde'
+import { summarize } from '../../shared/combatCompare.ts'
+import { outcomeKind, type CombatExplore, type DistancePoint, type Lever, type LeverResult } from '../../shared/combatExplore.ts'
 import { calculateFit } from './index'
 
 function direction(att: FitStats, def: FitStats, g: Geometry): CombatDirection {
@@ -543,5 +545,96 @@ export async function advise(a: CombatPilot, b: CombatPilot, sc: CombatScenario)
     ifOpponent: { rushes: reaction({ ...flat, behavior: 'approach', range: 500 }), kites: reaction({ ...flat, behavior: 'keep', range: kiteRange }), kiteRange },
     problems: fightProblems(now),
     tried: found.tried
+  }
+}
+
+/** Each explore call replaces the one before: a superseded run stops at its next pause. */
+let exploreRun = 0
+const SUPERSEDED = Symbol('superseded')
+
+/**
+ * The setup beyond the one fight: how it ends from every starting distance, and how each single change of your
+ * side (ammo, overheating, propulsion, the range you hold) moves the outcome. Everything else stays as set.
+ */
+export async function explore(a: CombatPilot, b: CombatPilot, sc: CombatScenario): Promise<CombatExplore | null> {
+  const run = ++exploreRun
+  const A = new Side(a)
+  const B = new Side(b)
+  const wantA = sc.propA ?? A.prop?.fitOn ?? false
+  const wantB = sc.propB ?? B.prop?.fitOn ?? false
+  const heatA: HeatPolicy = sc.heatA ?? (A.fittedHot ? 'burn' : 'off')
+  const heatB: HeatPolicy = sc.heatB ?? (B.fittedHot ? 'burn' : 'off')
+  const hpOf = (s: FitStats) => ({ shield: s.defense.shield.hp, armor: s.defense.armor.hp, hull: s.defense.hull.hp })
+  const hp = { a: hpOf(A.base), b: hpOf(B.base) }
+  const mine = (distance: number, o: Partial<Orders> = {}): Orders => ({
+    behavior: sc.behaviorA ?? 'free',
+    range: sc.rangeA ?? distance,
+    heading: sc.headingA,
+    speed: sc.speedA,
+    wantProp: wantA,
+    useEwar: sc.ewarA !== false,
+    sig: sc.sigA,
+    heat: heatA,
+    ...o
+  })
+  const theirs = (distance: number): Orders => ({ behavior: sc.behaviorB ?? 'free', range: sc.rangeB ?? distance, heading: sc.headingB, speed: sc.speedB, wantProp: wantB, useEwar: sc.ewarB !== false, sig: sc.sigB, heat: heatB })
+  const enemy = combatant(B, wantB)
+  const you = combatant(A, wantA)
+  const summaryOf = (tl: Timeline) => summarize({ a: { hp: hp.a }, b: { hp: hp.b }, timeline: tl })
+  const anyCandidate: Candidate = { behavior: 'keep', range: 0, ammo: {}, prop: false }
+  const score = (tl: Timeline) => rate(anyCandidate, tl, hp).score
+  let tried = 0
+  const fight = async (c: Combatant, o: Orders, distance: number): Promise<Timeline> => {
+    const tl = runTimeline(c, enemy, o, theirs(distance), distance)
+    if (++tried % 3 === 0) {
+      await new Promise((resolve) => setImmediate(resolve))
+      if (run !== exploreRun) throw SUPERSEDED
+    }
+    return tl
+  }
+
+  try {
+    // From every starting distance, up to where the farthest weapon of either side still reaches.
+    const maxD = chartRange([A.base, B.base], sc.distance)
+    const byDistance: DistancePoint[] = []
+    const N = 24
+    for (let i = 0; i < N; i++) {
+      const d = Math.round(500 + ((maxD - 500) * i) / (N - 1))
+      const tl = await fight(you, mine(d), d)
+      byDistance.push({ distance: d, kind: outcomeKind(tl.winner, tl.a.dealt, tl.b.dealt), end: tl.end })
+    }
+
+    const nowTl = await fight(you, mine(sc.distance), sc.distance)
+    const base = score(nowTl)
+    const levers: LeverResult[] = []
+    const lever = async (l: Lever, c: Combatant, o: Orders) => {
+      const tl = await fight(c, o, sc.distance)
+      levers.push({ lever: l, summary: summaryOf(tl), delta: score(tl) - base })
+    }
+
+    // Other ammo, one weapon group at a time.
+    for (const m of a.fit.modules) {
+      if (!m.chargeTypeId || !A.base.offense.weapons.some((w) => w.typeId === m.typeId)) continue
+      if (levers.some((l) => l.lever.kind === 'ammo' && l.lever.weapon === m.typeId)) continue
+      for (const charge of chargesFor(m.typeId).slice(0, 16)) {
+        if (charge === m.chargeTypeId) continue
+        const side = new Side({ ...a, fit: { ...a.fit, modules: a.fit.modules.map((x) => (x.typeId === m.typeId ? { ...x, chargeTypeId: charge } : x)) } })
+        await lever({ kind: 'ammo', weapon: m.typeId, from: m.chargeTypeId, charge }, combatant(side, wantA), mine(sc.distance))
+      }
+    }
+    // How hard to push the modules.
+    if (A.heatable().length) for (const policy of ['off', 'safe', 'burn'] as const) if (policy !== heatA) await lever({ kind: 'heat', policy }, you, mine(sc.distance, { heat: policy }))
+    // Propulsion on or off.
+    if (A.prop) await lever({ kind: 'prop', on: !wantA, typeId: A.prop.typeId }, combatant(A, !wantA), mine(sc.distance, { wantProp: !wantA }))
+    // The range you hold (an orbit stays an orbit).
+    const behavior = sc.behaviorA === 'orbit' ? 'orbit' : 'keep'
+    const held = sc.rangeA ?? sc.distance
+    for (const range of rangesFor(A.base, held).filter((r) => r !== held).slice(0, 10)) {
+      await lever({ kind: 'range', behavior, range }, you, mine(sc.distance, { behavior, range }))
+    }
+    return { byDistance, current: summaryOf(nowTl), levers, tried }
+  } catch (e) {
+    if (e === SUPERSEDED) return null
+    throw e
   }
 }

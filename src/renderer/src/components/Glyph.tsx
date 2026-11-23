@@ -35,6 +35,10 @@ const PATHS = {
   copy: 'M9 9h11v11H9zM5 15H4V4h11v1',
   play: 'M7 5l12 7-12 7z',
   pause: 'M8 5v14M16 5v14',
+  undo: 'M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3',
+  redo: 'M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3',
+  bookmark: 'M6 3h12v18l-6-4-6 4z',
+  lock: 'M6 11h12v9H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
   gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1'
 } as const
 

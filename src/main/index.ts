@@ -473,6 +473,7 @@ function registerIpc(): void {
   ipcMain.handle('combat:getAttacker', () => combatAttacker)
   ipcMain.handle('combat:simulate', (_e, a: CombatPilot, b: CombatPilot, scenario: CombatScenario) => combat.simulate(a, b, scenario))
   ipcMain.handle('combat:advise', (_e, a: CombatPilot, b: CombatPilot, scenario: CombatScenario) => combat.advise(a, b, scenario))
+  ipcMain.handle('combat:explore', (_e, a: CombatPilot, b: CombatPilot, scenario: CombatScenario) => combat.explore(a, b, scenario))
   ipcMain.handle('combat:defaults', (_e, a: CombatPilot, b: CombatPilot) => combat.defaults(a, b))
   ipcMain.handle('fit:catalog', () => sde.fittingCatalog())
   ipcMain.handle('fit:boosters', () => sde.boosterCatalog())

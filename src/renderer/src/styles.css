@@ -5711,3 +5711,725 @@ label.file-button:hover {
 .yield-input {
   width: 72px;
 }
+
+/* ---------- combat simulator: one screen (top bar, two sides around the stage, linked time line) ---------- */
+.combat-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: 0 -20px;
+  padding: 10px 20px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.combat-top p {
+  margin: 4px 0 0;
+}
+.combat-top-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.combat-top-verdict {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 600;
+  margin-right: 6px;
+}
+.combat-top-verdict.good {
+  color: var(--good);
+}
+.combat-top-verdict.bad {
+  color: var(--bad);
+}
+.combat-changes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.combat-change {
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: var(--fs-sm);
+  color: var(--muted);
+  white-space: nowrap;
+  animation: rise-in 0.3s var(--ease) backwards;
+}
+.combat-change.up {
+  color: var(--good);
+  border-color: color-mix(in srgb, var(--good) 40%, transparent);
+  background: color-mix(in srgb, var(--good) 10%, transparent);
+}
+.combat-change.down {
+  color: var(--bad);
+  border-color: color-mix(in srgb, var(--bad) 40%, transparent);
+  background: color-mix(in srgb, var(--bad) 10%, transparent);
+}
+.combat-baseline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--fs-sm);
+}
+.combat-top .icon-only {
+  padding-left: 7px;
+  padding-right: 7px;
+}
+.combat-stage {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
+  gap: 14px;
+  align-items: start;
+}
+.combat-stage.picking {
+  grid-template-columns: 1fr 1fr;
+}
+.combat-stage.picking .combat-center {
+  grid-column: 1 / -1;
+  order: 3;
+}
+.combat-center {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.combat-center:empty {
+  display: none;
+}
+@media (max-width: 1100px) {
+  .combat-stage {
+    grid-template-columns: 1fr 1fr;
+  }
+  .combat-stage .combat-center {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+}
+.combat-side-card {
+  min-width: 0;
+}
+.combat-keystats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.combat-keystats > span {
+  display: flex;
+  flex-direction: column;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: var(--fs-sm);
+  min-width: 0;
+}
+.combat-block {
+  margin-top: 10px;
+}
+.combat-block-title {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  margin-bottom: 6px;
+}
+.combat-block .combat-tactics {
+  margin-bottom: 4px;
+}
+.combat-block .calc-form {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+.combat-block .combat-boosters + .combat-boosters,
+.combat-block > * + * {
+  margin-top: 6px;
+}
+.combat-heat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 3px 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+}
+.combat-heat-row select {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+}
+.combat-heat-row.hot {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+}
+.combat-heat p {
+  margin: 4px 0 0;
+}
+.combat-timeline {
+  margin-top: 8px;
+}
+.combat-lane {
+  position: relative;
+  margin: 8px 0 4px;
+  border-radius: 6px;
+  background: var(--panel);
+}
+.combat-lane-row {
+  position: relative;
+  height: 24px;
+}
+.combat-lane-row + .combat-lane-row {
+  border-top: 1px solid var(--border);
+}
+.combat-lane-label {
+  position: absolute;
+  left: 8px;
+  top: 4px;
+  font-size: var(--fs-xs);
+  color: var(--faint);
+}
+.combat-lane-row.side-a .combat-lane-label {
+  color: var(--accent-text);
+}
+.combat-lane-row.side-b .combat-lane-label {
+  color: var(--side-b);
+}
+.combat-lane-mark {
+  position: absolute;
+  top: 3px;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  border: 1px solid var(--line-strong);
+  background: var(--card);
+  color: var(--text);
+  cursor: pointer;
+}
+.combat-lane-row.side-a .combat-lane-mark {
+  border-color: var(--accent-line);
+}
+.combat-lane-row.side-b .combat-lane-mark {
+  border-color: color-mix(in srgb, var(--side-b) 50%, transparent);
+}
+.combat-lane-mark.dead {
+  background: var(--bad-fill);
+  color: #fff;
+}
+.combat-lane-mark.burnout,
+.combat-lane-mark.heatOff {
+  color: var(--warn);
+}
+.combat-lane-mark:hover {
+  transform: scale(1.15);
+}
+.combat-lane-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  border-left: 1.5px dashed var(--warn);
+  pointer-events: none;
+}
+.combat-chart .line-b.same {
+  stroke-dasharray: 6 5;
+}
+.combat-chart .line-base {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 3 4;
+  opacity: 0.55;
+}
+.combat-chart .line-base-a {
+  stroke: var(--accent);
+}
+.combat-chart .line-base-b {
+  stroke: var(--side-b);
+}
+.combat-chart .marker.hover {
+  stroke: var(--muted);
+}
+.legend-base::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-top: 2px dashed var(--muted);
+}
+.combat-chart p {
+  margin: 2px 0 0;
+}
+.combat-log {
+  margin-top: 8px;
+}
+.combat-log summary {
+  cursor: pointer;
+}
+.combat-log tr {
+  cursor: pointer;
+}
+.combat-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+}
+.combat-keys kbd {
+  display: inline-block;
+  min-width: 18px;
+  margin-right: 3px;
+  padding: 0 5px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-align: center;
+  color: var(--text-2, var(--muted));
+}
+.combat-analysis {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+/* Narrow side cards: the weapon on its own line, the ammo under it; checkbox text beside the box. */
+.combat-side-card .ammo-row {
+  flex-wrap: wrap;
+}
+.combat-side-card .ammo-weapon {
+  flex: 1 1 calc(100% - 40px);
+}
+.combat-side-card .ammo-row .charge-picker {
+  flex: 1 1 100%;
+}
+.combat-side-card .combat-tactics .check {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+.combat-side-card .combat-tactics .check input {
+  margin-top: 3px;
+  flex: none;
+}
+.combat-keystats > span {
+  border: 1px solid var(--border);
+}
+.combat-lane-label {
+  left: 4px;
+  font-size: 10px;
+}
+/* What-if: outcome by distance, and the levers */
+.combat-explore {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  transition: opacity 0.2s;
+}
+.combat-explore.busy {
+  opacity: 0.6;
+}
+.combat-strip {
+  position: relative;
+  height: 28px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--panel);
+  cursor: pointer;
+}
+.combat-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: #0b0c0d;
+  border-right: 2px solid var(--card);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.combat-band.win {
+  background: var(--good);
+}
+.combat-band.lose {
+  background: var(--bad);
+}
+.combat-band.both {
+  background: var(--warn);
+}
+.combat-band.draw {
+  background: #7d8aa0;
+}
+.combat-band.idle {
+  background: var(--line-strong);
+  color: var(--muted);
+}
+.combat-strip-now {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 0;
+  border-left: 2px solid var(--text);
+  box-shadow: 0 0 0 1px #000a;
+}
+.combat-strip-axis {
+  position: relative;
+  height: 18px;
+  margin: 4px 6px 0;
+}
+.combat-strip-axis span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.combat-strip-axis span:first-child {
+  transform: none;
+}
+.combat-strip-axis span:last-child {
+  transform: translateX(-100%);
+}
+.combat-levers {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.combat-lever {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 10px;
+  align-items: center;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.combat-lever:hover {
+  border-color: var(--border);
+  background: var(--hover);
+}
+.combat-lever-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.combat-lever-bar {
+  height: 10px;
+  border-radius: 3px;
+  background: var(--panel);
+  overflow: hidden;
+}
+.combat-lever-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+.combat-lever.up .combat-lever-bar span {
+  background: var(--good);
+}
+.combat-lever.down .combat-lever-bar span {
+  background: var(--bad);
+}
+.combat-lever.up .combat-lever-effect {
+  color: var(--good);
+}
+.combat-lever.down .combat-lever-effect {
+  color: var(--bad);
+}
+@media (max-width: 1100px) {
+  .combat-explore {
+    grid-template-columns: 1fr;
+  }
+}
+/* Scenarios */
+.combat-scenarios {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  z-index: 30;
+  width: min(460px, calc(100vw - 48px));
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: 0 10px 30px #0008;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.combat-scenarios-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.combat-scenarios-save,
+.combat-scenarios-paste {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+.combat-scenarios-save input,
+.combat-scenarios-paste textarea {
+  flex: 1;
+  min-width: 0;
+}
+.combat-scenarios-paste textarea {
+  resize: vertical;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.combat-scenarios-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 240px;
+  overflow: auto;
+}
+.combat-scenarios-list li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.combat-scenario-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.combat-scenario-open:hover {
+  background: var(--hover);
+  border-color: var(--border);
+}
+.combat-scenarios p {
+  margin: 0;
+}
+/* UI pass 2026-11-22: key stats as label/value rows (tiles wrapped into five lines in a narrow side card) */
+.combat-keystats {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel);
+  padding: 2px 10px;
+}
+.combat-keystats > span {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: baseline;
+  padding: 4px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.combat-keystats > span + span {
+  border-top: 1px solid var(--border);
+}
+.combat-keystats > span > b {
+  text-align: right;
+}
+.combat-keystat-sub {
+  grid-column: 1 / -1;
+  text-align: right;
+}
+/* UI pass: the analysis under the stage — distance views left, what changes the outcome right */
+.combat-explore-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.combat-explore-col > .card,
+.combat-explore > .card {
+  margin: 0;
+}
+.combat-lever-name {
+  white-space: normal;
+  overflow: visible;
+  line-height: 1.3;
+}
+.combat-lever.combat-lever-head {
+  cursor: default;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+.combat-lever.combat-lever-head:hover {
+  background: transparent;
+  border-color: transparent;
+}
+.combat-advice {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.combat-advice p {
+  margin: 0;
+}
+.combat-advice-title {
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+}
+.combat-strip-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 6px;
+}
+.combat-strip-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.combat-band-key {
+  display: inline-block;
+  width: 12px;
+  height: 10px;
+  border-radius: 2px;
+}
+.combat-band-key.win {
+  background: var(--good);
+}
+.combat-band-key.lose {
+  background: var(--bad);
+}
+.combat-band-key.both {
+  background: var(--warn);
+}
+.combat-band-key.draw {
+  background: #7d8aa0;
+}
+.combat-band-key.idle {
+  background: var(--line-strong);
+}
+.combat-strip-now-key::before {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 12px;
+  margin-right: 6px;
+  vertical-align: -2px;
+  background: var(--text);
+}
+.combat-lane-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  padding: 6px 0 2px;
+  border-top: 1px solid var(--border);
+}
+.combat-lane-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.combat-lane-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+}
+.combat-lane-key.dead {
+  background: var(--bad-fill);
+  border-color: var(--bad-fill);
+  color: #fff;
+}
+.combat-lane-key.burnout,
+.combat-lane-key.heatOff {
+  color: var(--warn);
+}
+.combat-lane-label {
+  font-size: var(--fs-xs);
+}
+.combat-help {
+  margin-top: 4px;
+}
+.combat-help summary {
+  cursor: pointer;
+}
+.combat-help ul {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+.combat-help .combat-keys {
+  margin-top: 4px;
+}
+.combat-direction.side-a {
+  border-top: 3px solid var(--accent);
+}
+.combat-direction.side-b {
+  border-top: 3px solid var(--side-b);
+}
+.combat-whatif-link {
+  color: var(--good);
+  border-color: color-mix(in srgb, var(--good) 45%, transparent);
+}
+.combat-scenarios-paste input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+.combat-scenarios .combat-block-title {
+  margin-top: 4px;
+}
+.combat-flat {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 16px;
+}
+.combat-top .combat-whatif-link {
+  color: var(--good);
+  border: 1px solid color-mix(in srgb, var(--good) 45%, transparent);
+}
+.combat-top .combat-whatif-link:hover {
+  background: color-mix(in srgb, var(--good) 12%, transparent);
+}
+.combat-card-sub {
+  margin: -4px 0 8px;
+}
+.combat-lane-label {
+  max-width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

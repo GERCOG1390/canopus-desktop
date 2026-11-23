@@ -128,8 +128,60 @@ export async function runSmoke(dir: string, hooks: { main: () => BrowserWindow |
       await wait(800)
       await combat.webContents.executeJavaScript(`[...document.querySelectorAll('.combat-picker button')].find((b) => !b.classList.contains('chip-btn'))?.click()`)
       await shot(combat, 'Combat simulator')
-      await combat.webContents.executeJavaScript(`[...document.querySelectorAll('*')].find((e) => e.children.length === 0 && e.textContent.trim() === 'The fight')?.scrollIntoView({ block: 'start' })`)
-      await shot(combat, 'Combat simulator - the fight')
+      const verdict = () => combat.webContents.executeJavaScript(`document.querySelector('.combat-top-verdict')?.textContent ?? ''`) as Promise<string>
+      const before = await verdict()
+      // Pin the fight as the baseline, change the setup: the top bar shows what changed.
+      await combat.webContents.executeJavaScript(`document.querySelector('.combat-pin')?.click()`)
+      await wait(300)
+      await combat.webContents.executeJavaScript(`[...document.querySelectorAll('.combat-presets button')].at(-1)?.click()`)
+      await wait(1500)
+      const changed = await verdict()
+      const chips = (await combat.webContents.executeJavaScript(`document.querySelectorAll('.combat-change').length`)) as number
+      if (changed === before) crashes.push(`simulator: a new setup did not change the fight ("${before}")`)
+      else if (!chips) crashes.push('simulator: the fight changed but the top bar shows no change against the baseline')
+      await shot(combat, 'Combat simulator - against the baseline')
+      // Undo takes the setup back: the fight is the one before.
+      await combat.webContents.executeJavaScript(`document.querySelector('.combat-top button[aria-label="Undo"]')?.click()`)
+      await wait(1500)
+      const undone = await verdict()
+      if (undone !== before) crashes.push(`simulator: undo did not bring the fight back ("${before}" → "${undone}")`)
+      await combat.webContents.executeJavaScript(`document.querySelector('.combat-top button[aria-label="Redo"]')?.click()`)
+      await wait(1500)
+      if ((await verdict()) !== changed) crashes.push(`simulator: redo did not bring the change back ("${changed}" → "${await verdict()}")`)
+      // A scenario saved, the setup taken elsewhere (back to the baseline), the scenario opened: the same fight again.
+      await combat.webContents.executeJavaScript(`document.querySelector('.combat-scenarios-btn')?.click()`)
+      await wait(300)
+      await combat.webContents.executeJavaScript(`(() => {
+        const input = document.querySelector('.combat-scenarios-save input')
+        if (!input) return
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'Smoke scenario')
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      })()`)
+      await wait(200)
+      await combat.webContents.executeJavaScript(`document.querySelector('.combat-scenarios-save button[type=submit]')?.click()`)
+      await wait(300)
+      await shot(combat, 'Combat simulator - scenarios')
+      await combat.webContents.executeJavaScript(`[...document.querySelectorAll('.combat-baseline button')].find((b) => b.textContent.trim() === 'Restore')?.click()`)
+      await wait(1500)
+      if ((await verdict()) !== before) crashes.push(`simulator: Restore did not bring the baseline back ("${before}" → "${await verdict()}")`)
+      await combat.webContents.executeJavaScript(`document.querySelector('.combat-scenarios') || document.querySelector('.combat-scenarios-btn')?.click()`)
+      await wait(300)
+      await combat.webContents.executeJavaScript(`document.querySelector('.combat-scenario-open')?.click()`)
+      await wait(1500)
+      if ((await verdict()) !== changed) crashes.push(`simulator: the saved scenario did not open as saved ("${changed}" → "${await verdict()}")`)
+      // What-if: the outcome by distance and the levers come from fights of their own, a moment later.
+      let explored = false
+      const startedAt = Date.now()
+      for (let i = 0; i < 60 && !explored; i++) {
+        await wait(500)
+        explored = (await combat.webContents.executeJavaScript(`!!document.querySelector('.combat-explore:not(.busy) .combat-band')`)) as boolean
+      }
+      if (!explored) crashes.push('simulator: the outcome by distance did not appear in 30 s')
+      else console.log(`SMOKE what-if ready in ${((Date.now() - startedAt) / 1000).toFixed(1)} s`)
+      await combat.webContents.executeJavaScript(`document.querySelector('.combat-explore')?.scrollIntoView({ block: 'start' })`)
+      await shot(combat, 'Combat simulator - what if')
+      await combat.webContents.executeJavaScript(`document.querySelector('.combat-analysis')?.scrollIntoView({ block: 'start' })`)
+      await shot(combat, 'Combat simulator - analysis')
     } else crashes.push('combat window did not open')
 
     await contactSheet(dir, screens)
@@ -168,7 +220,10 @@ async function contactSheet(dir: string, screens: Screen[]): Promise<void> {
     figcaption{padding:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis} .bad figcaption{color:#ff6b6b} .bad img{outline:3px solid #ff6b6b}
   </style><div class="g">${cells}</div></body></html>`
   const sheet = new BrowserWindow({ show: false, width: cols * (w + 8) + 8, height: rows * (h + 30) + 16, webPreferences: { offscreen: true } })
-  await sheet.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
+  // From a file: fifty screens inlined as base64 pass the 2 MB a data: URL may carry.
+  const page = join(dir, 'sheet.html')
+  writeFileSync(page, html)
+  await sheet.loadFile(page)
   await wait(1500)
   writeFileSync(join(dir, 'sheet.png'), (await sheet.webContents.capturePage()).toPNG())
   sheet.destroy()

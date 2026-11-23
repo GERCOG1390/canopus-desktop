@@ -2,6 +2,7 @@
 
 import type { CombatPilot, CombatResult, CombatScenario } from './combat'
 import type { CombatAdvice } from './combatAdvice'
+import type { CombatExplore } from './combatExplore.ts'
 import type { Fight } from './combatReport'
 import type { Recipe } from './prodChain'
 import type { NpcFaction, NpcReport } from './npc'
@@ -282,6 +283,8 @@ export interface CanopusApi {
     simulate(a: CombatPilot, b: CombatPilot, scenario: CombatScenario): Promise<CombatResult>
     /** Tries ranges, flying modes, ammo and propulsion by running the fight. */
     advise(a: CombatPilot, b: CombatPilot, scenario: CombatScenario): Promise<CombatAdvice>
+    /** The setup at every distance and each single change of your side; null when a newer request replaced it */
+    explore(a: CombatPilot, b: CombatPilot, scenario: CombatScenario): Promise<CombatExplore | null>
     defaults(a: CombatPilot, b: CombatPilot): Promise<{ speedA: number; speedB: number; sigA: number; sigB: number }>
   }
   fit: {
