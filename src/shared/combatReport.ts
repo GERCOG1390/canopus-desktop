@@ -37,6 +37,20 @@ function party(text: string): { who: string; ship?: string } {
   return m ? { who: m[1].trim(), ship: m[2].trim() } : { who: text.trim() }
 }
 
+/**
+ * A translated client writes the hit quality in its own words; the report keeps the game's English ones, so the
+ * weak hits (Glances Off, Grazes) count whatever the client language. Russian client words are from real logs;
+ * which of each pair is which (Wrecks/Smashes, Glances Off/Grazes) is from how rare they are and what they mean.
+ */
+const QUALITY_WORDS: Record<string, string> = {
+  Сокрушил: 'Wrecks',
+  Раздробил: 'Smashes',
+  Пробил: 'Penetrates',
+  Попал: 'Hits',
+  Скользнул: 'Glances Off',
+  Царапнул: 'Grazes'
+}
+
 export function parseCombatLine(line: string): CombatEvent | null {
   const m = LINE_RE.exec(line.trim())
   if (!m) return null
@@ -51,7 +65,8 @@ export function parseCombatLine(line: string): CombatEvent | null {
     const dmg = /^(\d+)\s+\S+\s+(.*)$/.exec(text)
     if (dmg) {
       const parts = dmg[2].split(' - ')
-      const quality = parts.length > 1 ? parts[parts.length - 1].trim() : undefined
+      const word = parts.length > 1 ? parts[parts.length - 1].trim() : undefined
+      const quality = word === undefined ? undefined : (QUALITY_WORDS[word] ?? word)
       const weapon = parts.length > 2 ? parts.slice(1, -1).join(' - ').trim() : undefined
       return { t, kind: color === COLOR_OUT ? 'out' : 'in', amount: Number(dmg[1]), ...party(parts[0]), weapon, quality }
     }

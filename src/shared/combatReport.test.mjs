@@ -197,3 +197,12 @@ test("a Russian client's misses and warp scramble attempts", () => {
   const scram = parseCombatLine('[ 2026.11.10 05:25:14 ] (combat) <color=0xffffffff><b>Попытка варп-глушения:</b> <color=0x77ffffff><font size=10>источник</font> <color=0xffffffff><b><localized hint="Dire Pithi Imputor">Dire Pithi Imputor*,</b> <color=0x77ffffff><font size=10>цель <b><color=0xffffffff></font><font size=12><color=0xFFFFFFFF><b><localized hint="Loki">Loki*</b></color></font> <font size=11>[Alexandr Gercog] -</font>')
   assert.equal(scram.kind, 'ewar')
 })
+
+test("a Russian client's hit quality words are the game's own, so weak hits count and the report reads in either language", () => {
+  // Real lines from a Russian client's log (NPC targets).
+  const line = (q) => `[ 2026.11.08 07:01:56 ] (combat) <color=0xff00ffff><b>139</b> <color=0x77ffffff><font size=10>на</font> <b><color=0xffffffff><localized hint="Pithi Imputor">Pithi Imputor*</b><font size=10><color=0x77ffffff> - <localized hint="425mm AutoCannon II">425mm AutoCannon II*</localized> - ${q}`
+  const words = { Сокрушил: 'Wrecks', Раздробил: 'Smashes', Пробил: 'Penetrates', Попал: 'Hits', Скользнул: 'Glances Off', Царапнул: 'Grazes' }
+  for (const [ru, en] of Object.entries(words)) assert.equal(parseCombatLine(line(ru)).quality, en, ru)
+  const f = buildFights([line('Царапнул'), line('Скользнул'), line('Попал'), line('Пробил')].map(parseCombatLine))[0]
+  assert.equal(f.dealt.weapons[0].weak, 0.5)
+})
