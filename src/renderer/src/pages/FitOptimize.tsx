@@ -10,6 +10,9 @@ import { fmtIsk } from '../lib/format'
 import { jitaPrices } from '../lib/market'
 import { useAsync } from '../lib/useAsync'
 import { locale, translate } from '../i18n'
+import { useLang } from '../AppContext'
+import { tn } from '../lib/sde'
+import { shownChange, workLoss, type AttrChange } from '../../../shared/moduleCompare.ts'
 
 type Mode = 'cheaper' | 'better'
 export type Metric = 'dps' | 'ehp' | 'activeTank' | 'speed' | 'align' | 'lockRange' | 'cap' | 'range' | 'application'
@@ -98,6 +101,34 @@ export function sideEffects(m: FitMetrics, b: FitMetrics, skip?: Metric): string
     .join(' · ')
 }
 
+/**
+ * What the module itself does differently, by the game's own attribute names: "Optimal Range −17%". Losses first;
+ * fitting costs only when they grow. Heat only matters when overheating, so it is left out here.
+ */
+export function OwnEffects({ own }: { own: AttrChange[] }) {
+  const lang = useLang()
+  const shown = own.filter((c) => Math.abs(c.change) >= 0.01 && (c.role === 'work' || (c.role === 'cost' && c.worse)))
+  if (!shown.length) return null
+  return (
+    <span translate="no">
+      {shown.map((c, i) => (
+        <span key={c.attr} className={c.worse ? 'bad' : 'good'}>
+          {i > 0 && <span className="muted">{' · '}</span>}
+          {`${c.dn ? tn(c.dn, lang) : c.name} ${pct(shownChange(c) * 100)}`}
+        </span>
+      ))}
+    </span>
+  )
+}
+
+/** The same, as plain English text for the assistant: "Optimal Range -17%, CPU usage +20%". */
+export function ownText(own: AttrChange[]): string {
+  return own
+    .filter((c) => Math.abs(c.change) >= 0.01 && (c.role === 'work' || (c.role === 'cost' && c.worse)))
+    .map((c) => `${c.dn?.[0] || c.name} ${shownChange(c) > 0 ? '+' : ''}${(shownChange(c) * 100).toFixed(1)}%${c.worse ? ' (worse)' : ''}`)
+    .join(', ')
+}
+
 export function swap(fit: FitSpec, v: FitVariant): FitSpec {
   return v.kind === 'module'
     ? { ...fit, modules: fit.modules.map((m) => (m.typeId === v.from ? { ...m, typeId: v.to } : m)) }
@@ -124,7 +155,8 @@ export async function findCheaper(d: Variants, fit: FitSpec, skills: SkillSource
   for (const v of d.options) {
     const a = d.price(v.from)
     const b = d.price(v.to)
-    if (a === undefined || b === undefined || v.missingSkills || b >= a || !keeps(v.metrics, d.base, tol)) continue
+    // The fit's numbers hold, and so does what the module itself does (a scrambler's range, a web's strength…).
+    if (a === undefined || b === undefined || v.missingSkills || b >= a || !keeps(v.metrics, d.base, tol) || workLoss(v.own) > tol + 1e-9) continue
     const saving = (a - b) * v.count
     if ((best.get(v.from)?.saving ?? 0) < saving) best.set(v.from, { v, saving })
   }
@@ -154,6 +186,7 @@ export function findUpgrades(d: Variants, metric: Metric, budget: number) {
       if (g < 0.5) return null
       // A gain bought with a big loss elsewhere (Polarized weapons: no resists) is not an upgrade.
       if (METRICS.some(([k]) => k !== metric && gain(v.metrics, d.base, k) < -3)) return null
+      if (workLoss(v.own) > 0.03) return null
       const cost = (b - a) * v.count
       if (cost > budget) return null
       return { v, g, cost }
@@ -229,7 +262,11 @@ export function FitOptimize({ fit, skills, onChange }: { fit: FitSpec; skills: S
                         <TypeLink id={v.to} size={18} />
                       </td>
                       <td className="num good">{fmtIsk(saving, true)}</td>
-                      <td className="muted small">{sideEffects(v.metrics, d.base) || 'без изменений'}</td>
+                      <td className="muted small">
+                        {sideEffects(v.metrics, d.base) && <div>{sideEffects(v.metrics, d.base)}</div>}
+                        <OwnEffects own={v.own} />
+                        {!sideEffects(v.metrics, d.base) && !v.own.some((c) => c.role === 'work' && Math.abs(c.change) >= 0.01) && <span>без изменений</span>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -239,14 +276,20 @@ export function FitOptimize({ fit, skills, onChange }: { fit: FitSpec; skills: S
                   cheaper.data.picks.reduce((s, p) => s + p.saving, 0),
                   true
                 )}`}</b>
-                {cheaper.data.combined && <span className="muted small">{sideEffects(cheaper.data.combined, d.base) || 'ТТХ не меняются'}</span>}
+                {cheaper.data.combined && (
+                  <span className="muted small">
+                    {sideEffects(cheaper.data.combined, d.base) ||
+                      (cheaper.data.picks.some((p) => p.v.own.some((c) => c.role === 'work' && Math.abs(c.change) >= 0.01)) ? 'Цифры фита те же; что меняется в модулях — в таблице' : 'ТТХ не меняются')}
+                  </span>
+                )}
                 <button onClick={() => onChange(cheaper.data!.picks.reduce((f, p) => swap(f, p.v), fit))}>Применить все замены</button>
               </div>
             </>
           )}
           <p className="muted small">
-            Сравниваются урон, дальность и применение оружия, EHP, активный танк, скорость, разгон, сигнатура, захват (дальность и разрешение) и накопитель; фит должен по-прежнему влезать по процессору,
-            энергосети и калибровке. Цены — минимальные ордера на продажу в Jita.
+            Сравниваются урон, дальность и применение оружия, EHP, активный танк, скорость, разгон, сигнатура, захват (дальность и разрешение) и накопитель, а также
+            собственные характеристики каждого модуля: дальность, сила, количество, время цикла. Фит должен по-прежнему влезать по процессору, энергосети и калибровке.
+            Цены — минимальные ордера на продажу в Jita.
           </p>
         </>
       )}
@@ -295,7 +338,10 @@ export function FitOptimize({ fit, skills, onChange }: { fit: FitSpec; skills: S
                     </td>
                     <td className="num good">{pct(g)}</td>
                     <td className={`num ${cost <= 0 ? 'good' : ''}`}>{cost <= 0 ? `дешевле на ${fmtIsk(-cost, true)}` : fmtIsk(cost, true)}</td>
-                    <td className="muted small">{sideEffects(v.metrics, d.base, metric)}</td>
+                    <td className="muted small">
+                      {sideEffects(v.metrics, d.base, metric) && <div>{sideEffects(v.metrics, d.base, metric)}</div>}
+                      <OwnEffects own={v.own} />
+                    </td>
                     <td>
                       <button className="ghost small" onClick={() => onChange(swap(fit, v))}>
                         Заменить
@@ -308,7 +354,7 @@ export function FitOptimize({ fit, skills, onChange }: { fit: FitSpec; skills: S
           )}
           <p className="muted small">
             Каждая строка — замена всех модулей этого типа; сначала то, что даёт больше всего на каждый миллион ISK. Не показаны замены, после которых фит не
-            влезает по ресурсам или что-то другое ухудшается больше чем на 3%. Цены — минимальные ордера на продажу в Jita.
+            влезает по ресурсам или что-то другое, в фите или в самом модуле, ухудшается больше чем на 3%. Цены — минимальные ордера на продажу в Jita.
           </p>
         </>
       )}

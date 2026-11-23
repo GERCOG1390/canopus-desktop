@@ -1,4 +1,5 @@
 import { app } from 'electron'
+import { compareModules } from '../../shared/moduleCompare.ts'
 import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -73,19 +74,20 @@ export function fitVariants(spec: FitSpec, skills: SkillSource): { base: FitMetr
   const allowed = new Set(fittableFor(spec.shipTypeId))
   const lacks = (id: number) => skills.mode === 'char' && Object.entries(requiredSkills([id])).some(([sk, r]) => (skills.levels[Number(sk)] ?? 0) < r.level)
   const options: FitVariant[] = []
+  const own = (from: number, to: number) => compareModules(db.dogma[from]?.a ?? {}, db.dogma[to]?.a ?? {}, db.attributes)
   for (const from of new Set(spec.modules.map((m) => m.typeId))) {
     const count = spec.modules.filter((m) => m.typeId === from).length
     for (const to of variantsOf(from)) {
       if (!allowed.has(to)) continue
       const next = { ...spec, modules: spec.modules.map((m) => (m.typeId === from ? { ...m, typeId: to } : m)) }
-      options.push({ from, to, kind: 'module', count, metrics: fitMetrics(calculate(db, next, skills)), missingSkills: lacks(to) })
+      options.push({ from, to, kind: 'module', count, metrics: fitMetrics(calculate(db, next, skills)), own: own(from, to), missingSkills: lacks(to) })
     }
   }
   for (const d of spec.drones) {
     for (const to of variantsOf(d.typeId)) {
       if (!allowed.has(to) || spec.drones.some((x) => x.typeId === to)) continue
       const next = { ...spec, drones: spec.drones.map((x) => (x.typeId === d.typeId ? { ...x, typeId: to } : x)) }
-      options.push({ from: d.typeId, to, kind: 'drone', count: d.count, metrics: fitMetrics(calculate(db, next, skills)), missingSkills: lacks(to) })
+      options.push({ from: d.typeId, to, kind: 'drone', count: d.count, metrics: fitMetrics(calculate(db, next, skills)), own: own(d.typeId, to), missingSkills: lacks(to) })
     }
   }
   return { base, options }

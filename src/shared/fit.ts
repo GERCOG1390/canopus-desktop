@@ -1,5 +1,7 @@
 // Fit description sent to the dogma engine, and the stats it returns.
 
+import type { AttrChange } from './moduleCompare.ts'
+
 export type Slot = 'hi' | 'med' | 'lo' | 'rig' | 'sub'
 export type ModuleState = 'offline' | 'online' | 'active' | 'overload'
 
@@ -321,6 +323,8 @@ export interface FitVariant {
   kind: 'module' | 'drone'
   count: number
   metrics: FitMetrics
+  /** What the module (or drone) itself does differently: range, strength, amount… (shared/moduleCompare) */
+  own: AttrChange[]
   /** The character lacks a skill for it */
   missingSkills: boolean
 }
