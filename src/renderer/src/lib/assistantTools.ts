@@ -525,13 +525,13 @@ const TOOLS: Tool[] = [
         const result = r.picks.reduce((f, p) => swap(f, p.v), fit)
         await names([result.shipTypeId, ...result.modules.flatMap((m) => [m.typeId, m.chargeTypeId ?? 0]), ...result.drones.map((x) => x.typeId)])
         return {
-          swaps: r.picks.map((p) => ({ from: `${p.v.count}x ${en(p.v.from)}`, to: en(p.v.to), saving_isk: Math.round(p.saving), changes: sideEffects(p.v.metrics, d.base) || 'none', module_changes: ownText(p.v.own) || 'none' })),
+          swaps: r.picks.map((p) => ({ from: `${p.v.count}x ${en(p.v.from)}`, to: en(p.v.to), saving_isk: Math.round(p.saving), changes: sideEffects(p.v.metrics, d.base) || 'none', module_changes: ownText(p.v.own) || 'none', on_sale_in_jita: d.buy(p.v.to, p.v.count)?.thin ? d.buy(p.v.to, p.v.count)?.available : undefined })),
           total_saving_isk: Math.round(r.picks.reduce((s, p) => s + p.saving, 0)),
           optimized_eft: r.picks.length ? toEft(result) : null
         }
       }
       const list = findUpgrades(d, (a.metric ?? 'dps') as Metric, a.budget_isk ?? 200e6)
-      return list.map((u) => ({ from: `${u.v.count}x ${en(u.v.from)}`, to: en(u.v.to), gain: `${r1(u.g)}%`, extra_cost_isk: Math.round(u.cost), side_effects: sideEffects(u.v.metrics, d.base, (a.metric ?? 'dps') as Metric), module_changes: ownText(u.v.own) || 'none' }))
+      return list.map((u) => ({ from: `${u.v.count}x ${en(u.v.from)}`, to: en(u.v.to), gain: `${r1(u.g)}%`, extra_cost_isk: Math.round(u.cost), side_effects: sideEffects(u.v.metrics, d.base, (a.metric ?? 'dps') as Metric), module_changes: ownText(u.v.own) || 'none', on_sale_in_jita: d.buy(u.v.to, u.v.count)?.thin ? d.buy(u.v.to, u.v.count)?.available : undefined }))
     }
   ),
 

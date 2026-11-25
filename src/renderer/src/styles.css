@@ -6433,3 +6433,28 @@ label.file-button:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Fit optimizer: every version of one module side by side */
+.fit-variants {
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.fit-variants-scroll {
+  overflow-x: auto;
+}
+.fit-variants-scroll .table th {
+  white-space: normal;
+  min-width: 80px;
+  max-width: 130px;
+  vertical-align: bottom;
+  line-height: 1.25;
+}
+.fit-variants-scroll .table td:first-child,
+.fit-variants-scroll .table td:nth-child(2),
+.fit-variants-scroll .table td:nth-child(3) {
+  white-space: nowrap;
+}
+.fit-variants-current td {
+  background: var(--panel-2, rgba(255, 255, 255, 0.03));
+}
