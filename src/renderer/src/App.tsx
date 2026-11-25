@@ -231,7 +231,7 @@ function Shell() {
       <nav className="sidebar" aria-label="Разделы">
         <div className="brand">
           <span className="brand-star">
-            <BrandMark size={26} />
+            <BrandMark size={26} animated />
           </span>
           <span translate="no">CANOPUS</span>
         </div>

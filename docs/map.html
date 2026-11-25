@@ -17,13 +17,62 @@
 <link rel="apple-touch-icon" href="assets/icon.png" />
 <link rel="preload" href="assets/fonts/exo-2-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="assets/site.css" />
+<link rel="stylesheet" href="assets/mark.css" />
 <script src="assets/site.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site-head">
   <div class="wrap">
-    <a class="brand" href="./" aria-label="Canopus home"><img src="assets/icon.svg" alt="" width="30" height="30" /><span>CANOPUS</span></a>
+    <a class="brand" href="./" aria-label="Canopus home"><svg class="mark intro" viewBox="60 60 392 392" width="30" height="30" aria-hidden="true">
+  <defs>
+    <linearGradient id="hd-star" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff6e0" /><stop offset="0.5" stop-color="#ffd98a" /><stop offset="1" stop-color="#e0a94a" />
+    </linearGradient>
+    <radialGradient id="hd-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd98a" stop-opacity="0.55" /><stop offset="1" stop-color="#ffd98a" stop-opacity="0" />
+    </radialGradient>
+    <clipPath id="hd-front"><rect x="0" y="256" width="512" height="256" /></clipPath>
+    <clipPath id="hd-back"><rect x="0" y="0" width="512" height="256" /></clipPath>
+  </defs>
+  <circle class="mk-glow" cx="256" cy="256" r="170" fill="url(#hd-glow)" />
+  <g transform="rotate(-24 256 256)">
+    <g clip-path="url(#hd-back)">
+      <path class="mk-ring" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#3dbf9c" stroke-opacity="0.75" stroke-width="14" />
+      
+    <path class="mk-trail" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#8fe0c8" stroke-opacity="0.35" stroke-width="16" stroke-linecap="round" stroke-dasharray="170 830">
+      <animate attributeName="stroke-dashoffset" values="170;-830" dur="9s" repeatCount="indefinite" />
+    </path>
+    <path class="mk-trail" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#d9fff3" stroke-opacity="0.9" stroke-width="10" stroke-linecap="round" stroke-dasharray="60 940">
+      <animate attributeName="stroke-dashoffset" values="60;-940" dur="9s" repeatCount="indefinite" />
+    </path>
+    <g class="mk-dot">
+      <circle r="30" fill="#8fe0c8" opacity="0.28" />
+      <circle r="14" fill="#f4fffb" />
+      <animateMotion dur="9s" repeatCount="indefinite" path="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" />
+    </g>
+    </g>
+  </g>
+  <path class="mk-star" d="M256 70 C 270 190, 322 242, 442 256 C 322 270, 270 322, 256 442 C 242 322, 190 270, 70 256 C 190 242, 242 190, 256 70 Z" fill="url(#hd-star)" />
+  <path class="mk-glint" d="M256 120 L264 248 L392 256 L264 264 L256 392 L248 264 L120 256 L248 248 Z" fill="#fffaf0" />
+  <g transform="rotate(-24 256 256)">
+    <g clip-path="url(#hd-front)">
+      <path class="mk-ring" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#3dbf9c" stroke-opacity="0.75" stroke-width="14" />
+      
+    <path class="mk-trail" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#8fe0c8" stroke-opacity="0.35" stroke-width="16" stroke-linecap="round" stroke-dasharray="170 830">
+      <animate attributeName="stroke-dashoffset" values="170;-830" dur="9s" repeatCount="indefinite" />
+    </path>
+    <path class="mk-trail" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#d9fff3" stroke-opacity="0.9" stroke-width="10" stroke-linecap="round" stroke-dasharray="60 940">
+      <animate attributeName="stroke-dashoffset" values="60;-940" dur="9s" repeatCount="indefinite" />
+    </path>
+    <g class="mk-dot">
+      <circle r="30" fill="#8fe0c8" opacity="0.28" />
+      <circle r="14" fill="#f4fffb" />
+      <animateMotion dur="9s" repeatCount="indefinite" path="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" />
+    </g>
+    </g>
+  </g>
+</svg><span>CANOPUS</span></a>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
     <nav class="nav" id="site-nav" aria-label="Main">
         <a href="fitting.html">Fitting</a>
@@ -85,6 +134,55 @@
 </section>
 <section class="cta">
   <div class="wrap">
+    <div class="cta-mark"><svg class="mark " viewBox="60 60 392 392" width="112" height="112" aria-hidden="true">
+  <defs>
+    <linearGradient id="cta-star" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff6e0" /><stop offset="0.5" stop-color="#ffd98a" /><stop offset="1" stop-color="#e0a94a" />
+    </linearGradient>
+    <radialGradient id="cta-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ffd98a" stop-opacity="0.55" /><stop offset="1" stop-color="#ffd98a" stop-opacity="0" />
+    </radialGradient>
+    <clipPath id="cta-front"><rect x="0" y="256" width="512" height="256" /></clipPath>
+    <clipPath id="cta-back"><rect x="0" y="0" width="512" height="256" /></clipPath>
+  </defs>
+  <circle class="mk-glow" cx="256" cy="256" r="170" fill="url(#cta-glow)" />
+  <g transform="rotate(-24 256 256)">
+    <g clip-path="url(#cta-back)">
+      <path class="mk-ring" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#3dbf9c" stroke-opacity="0.75" stroke-width="14" />
+      
+    <path class="mk-trail" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#8fe0c8" stroke-opacity="0.35" stroke-width="16" stroke-linecap="round" stroke-dasharray="170 830">
+      <animate attributeName="stroke-dashoffset" values="170;-830" dur="9s" repeatCount="indefinite" />
+    </path>
+    <path class="mk-trail" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#d9fff3" stroke-opacity="0.9" stroke-width="10" stroke-linecap="round" stroke-dasharray="60 940">
+      <animate attributeName="stroke-dashoffset" values="60;-940" dur="9s" repeatCount="indefinite" />
+    </path>
+    <g class="mk-dot">
+      <circle r="30" fill="#8fe0c8" opacity="0.28" />
+      <circle r="14" fill="#f4fffb" />
+      <animateMotion dur="9s" repeatCount="indefinite" path="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" />
+    </g>
+    </g>
+  </g>
+  <path class="mk-star" d="M256 70 C 270 190, 322 242, 442 256 C 322 270, 270 322, 256 442 C 242 322, 190 270, 70 256 C 190 242, 242 190, 256 70 Z" fill="url(#cta-star)" />
+  <path class="mk-glint" d="M256 120 L264 248 L392 256 L264 264 L256 392 L248 264 L120 256 L248 248 Z" fill="#fffaf0" />
+  <g transform="rotate(-24 256 256)">
+    <g clip-path="url(#cta-front)">
+      <path class="mk-ring" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#3dbf9c" stroke-opacity="0.75" stroke-width="14" />
+      
+    <path class="mk-trail" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#8fe0c8" stroke-opacity="0.35" stroke-width="16" stroke-linecap="round" stroke-dasharray="170 830">
+      <animate attributeName="stroke-dashoffset" values="170;-830" dur="9s" repeatCount="indefinite" />
+    </path>
+    <path class="mk-trail" d="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" pathLength="1000" fill="none" stroke="#d9fff3" stroke-opacity="0.9" stroke-width="10" stroke-linecap="round" stroke-dasharray="60 940">
+      <animate attributeName="stroke-dashoffset" values="60;-940" dur="9s" repeatCount="indefinite" />
+    </path>
+    <g class="mk-dot">
+      <circle r="30" fill="#8fe0c8" opacity="0.28" />
+      <circle r="14" fill="#f4fffb" />
+      <animateMotion dur="9s" repeatCount="indefinite" path="M440 256 A184 60 0 1 1 72 256 A184 60 0 1 1 440 256" />
+    </g>
+    </g>
+  </g>
+</svg></div>
     <h2>Fight the battle before you undock</h2>
     <p>Free, no ads, no subscriptions. Windows, macOS and Linux — and a separate app for iPhone and iPad.</p>
     <div class="hero-actions">

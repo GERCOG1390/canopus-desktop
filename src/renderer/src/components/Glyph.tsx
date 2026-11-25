@@ -1,5 +1,7 @@
 // Line icons for the app chrome (navigation, top bar). Game items use their own CCP icons.
 
+import { MARK_CSS, markSvg } from '../../../shared/brandMark.ts'
+
 const PATHS = {
   stream: 'M12 12m-2 0a2 2 0 1 0 4 0a2 2 0 1 0-4 0M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8',
   character: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5',
@@ -64,7 +66,19 @@ export function Glyph({ name, size = 18, className = '' }: { name: GlyphName; si
 }
 
 /** The Canopus star, the same shape as the app icon. */
-export function BrandMark({ size = 22 }: { size?: number }) {
+let markStyle = false
+
+/** The star with its orbit. `animated`: the living one from the website (satellite, breathing star, intro). */
+export function BrandMark({ size = 22, animated = false }: { size?: number; animated?: boolean }) {
+  if (animated) {
+    if (!markStyle) {
+      const el = document.createElement('style')
+      el.textContent = MARK_CSS
+      document.head.appendChild(el)
+      markStyle = true
+    }
+    return <span className="brand-mark" dangerouslySetInnerHTML={{ __html: markSvg({ size, p: 'app', cls: 'intro', dur: 14 }) }} />
+  }
   return (
     <svg width={size} height={size} viewBox="60 60 392 392" aria-hidden="true">
       <defs>

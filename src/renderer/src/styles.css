@@ -6467,3 +6467,6 @@ label.file-button:hover {
 .fit-variants-tag {
   margin-left: 6px;
 }
+.brand-mark {
+  display: flex;
+}

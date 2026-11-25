@@ -5,6 +5,7 @@
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { MARK_CSS, markSvg } from '../../src/shared/brandMark.ts'
 
 const SITE = 'https://canopusapp.com/'
 /** Path of the site on its host (404.html needs absolute links); '/' on an own domain. */
@@ -57,13 +58,14 @@ function page({ file, title, description, body, image = 'media/trailer.png', cur
 <link rel="apple-touch-icon" href="assets/icon.png" />
 <link rel="preload" href="assets/fonts/exo-2-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="assets/site.css" />
+<link rel="stylesheet" href="assets/mark.css" />
 <script src="assets/site.js" defer></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="site-head">
   <div class="wrap">
-    <a class="brand" href="./" aria-label="Canopus home"><img src="assets/icon.svg" alt="" width="30" height="30" /><span>CANOPUS</span></a>
+    <a class="brand" href="./" aria-label="Canopus home">${markSvg({ size: 30, p: 'hd', cls: 'intro' })}<span>CANOPUS</span></a>
     <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
     <nav class="nav" id="site-nav" aria-label="Main">
         ${nav}
@@ -101,6 +103,7 @@ ${body}
 
 const cta = (text = 'Free, no ads, no subscriptions. Windows, macOS and Linux — and a separate app for iPhone and iPad.') => `<section class="cta">
   <div class="wrap">
+    <div class="cta-mark">${markSvg({ size: 112, p: 'cta' })}</div>
     <h2>Fight the battle before you undock</h2>
     <p>${text}</p>
     <div class="hero-actions">
@@ -715,6 +718,7 @@ files['404.html'] = page({
 
 // ---------------------------------------------------------------- write
 for (const [name, html] of Object.entries(files)) writeFileSync(join(OUT, name), html)
+writeFileSync(join(OUT, 'assets', 'mark.css'), `/* The animated Canopus mark — generated from src/shared/brandMark.ts by tools/site/build.mjs. */${MARK_CSS}\n`)
 const indexed = Object.keys(files).filter((f) => f !== '404.html')
 writeFileSync(
   join(OUT, 'sitemap.xml'),
