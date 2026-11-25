@@ -6,9 +6,9 @@ import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const SITE = 'https://gercog1390.github.io/canopus-desktop/'
+const SITE = 'https://canopusapp.com/'
 /** Path of the site on its host (404.html needs absolute links); '/' on an own domain. */
-const BASE = '/canopus-desktop/'
+const BASE = '/'
 const REPO = 'https://github.com/GERCOG1390/canopus-desktop'
 const RELEASES = `${REPO}/releases/latest`
 const APP_STORE = 'https://apps.apple.com/us/app/canopus-for-eve-online/id6829985678'
