@@ -341,7 +341,7 @@ files['fitting.html'] = featurePage({
     {
       title: 'Try a skill before you train it',
       text: 'Set skills to trial levels and see what they change in the fit: arrows on the numbers show the difference from all skills at V.',
-      items: ['<b>Price optimizer</b>: the same stats for less ISK, or the upgrades that add the most per million ISK', '<b>Fit snapshot</b>: the whole fit and its stats on one picture'],
+      items: ['<b>Price optimizer</b>: the same stats for less ISK — the fit’s and each module’s own — or the upgrades that add the most per million ISK, with every version of a module side by side', '<b>Fit snapshot</b>: the whole fit and its stats on one picture'],
       img: 'screenshots/trial-skills.png',
       alt: 'Trial skill levels in the fitting tool'
     },
@@ -377,7 +377,7 @@ files['combat-simulator.html'] = featurePage({
         'Weapons cycle, reload and spool up; the capacitor drains and recharges; neutralizers and nosferatus bite',
         'Ancillary repairers run dry, the Reactive Armor Hardener adapts cycle by cycle, an assault damage control fires in bursts',
         'Applied DPS for every weapon with the reason it’s reduced: tracking, falloff, explosion radius or velocity',
-        'Webs, painters, scrams and prop modules with falloff and stacking penalties; boosters on either side'
+        'Webs, painters, scrams and prop modules with falloff and stacking penalties; boosters, fleet boosts and overheating with burnout on either side'
       ],
       img: 'screenshots/combat.png',
       alt: 'The combat simulator'
@@ -385,7 +385,7 @@ files['combat-simulator.html'] = featurePage({
     {
       title: 'Replay and “Find the best”',
       text: 'Replay the fight on the map — shots, hit-point rings, events — with the toughness, capacitor and distance charts as the seek bar.',
-      items: ['<b>Find the best</b> tries ranges, flying modes, ammo and MWD/AB as real fights and offers the winner', 'Shows how it holds if the opponent closes in or keeps away, and names what holds your fit back'],
+      items: ['<b>Find the best</b> tries ranges, flying modes, ammo and MWD/AB as real fights and offers the winner', 'Shows how it holds if the opponent closes in or keeps away, and names what holds your fit back', '<b>What if</b>: 24 starting distances and one change at a time, with the changes that matter most named', '<b>Compare with a baseline</b>, undo / redo, and <b>scenarios</b> to save or share as one line of text'],
       img: 'media/combat-replay.gif',
       alt: 'A fight replayed on the tactical map'
     },

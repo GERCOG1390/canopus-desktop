@@ -75,6 +75,20 @@ Your characters, fits from the same dogma engine as the desktop app, the market,
 
 **[Get it on the App Store](https://apps.apple.com/us/app/canopus-for-eve-online/id6829985678)** · iOS / iPadOS 26.5 or later
 
+## New in 1.5
+
+**Combat simulator, reworked around one question — what would change the outcome?**
+
+- **What if**: the fight is rerun from 24 starting distances and with one change at a time (ammo, overheating, prop module, range); a strip shows how each start ends, and a list names the changes that matter most.
+- **Compare with a baseline**: pin a setup, change things, and see what moved; **undo / redo** for every change (⌘Z / ⇧⌘Z).
+- **One timeline**: the replay, the events and the toughness, capacitor and distance charts share one seek bar; hover a chart and the map follows. Keys: Space, ← →, Home, End.
+- **Scenarios**: save a setup by name, reopen it later, or share it with a corpmate as one line of text.
+- **Overheating with burnout** (modules take heat damage and can burn out) and **fleet boosts** on either side.
+
+**Price optimizer that reads the whole module.** A cheaper version now has to keep what the module itself does — a scrambler's range, a web's strength, a neutralizer's amount, a power diagnostic's bonuses — not only the fit's DPS, tank and speed. What a swap costs you is listed by the game's own attribute names, and **All versions** shows every version of a module side by side, as Pyfa's Compare does, with why each is or isn't offered. Prices are the cheapest 5% of the volume on sale in Jita, not one cheap listing, and a version with only a few on sale is flagged.
+
+Combat log reports now read every hit from a Russian game client.
+
 ## New in 1.4
 
 **Coming from Pyfa?** Everything you theorycraft with is here, on the same numbers:
@@ -131,7 +145,7 @@ The fitting engine now needs a newer game-data format: Canopus rebuilds it once 
 - **Effects from other ships**: webs, painters, remote shield and armor repair, neutralizers, sensor dampeners, tracking and guidance disruptors (with scripts) and ECM — one module on the hull carrying it, or a whole saved fit such as a logistics cruiser.
 - Fit cost at Jita prices, side-by-side fit comparison and **popular fits from zKillboard** for the same hull.
 - Import / export EFT (mutated modules included), **all your Pyfa fits at once** (several EFT fits or Pyfa's XML file), open fits from your character, current ship, a killmail or Show Info — and **save a fit straight to your in-game fittings**.
-- **Price optimizer**: the same stats for less ISK (cheaper versions of your modules that keep every number), or the upgrades that add the most to a chosen stat per million ISK within a budget.
+- **Price optimizer**: the same stats for less ISK (cheaper versions of your modules that keep every number of the fit and of the module itself), or the upgrades that add the most to a chosen stat per million ISK within a budget; **All versions** compares every version of a module side by side. Prices are volume-aware Jita sell prices.
 - **Fit snapshot**: the whole fit and its stats on one picture, to copy or save as PNG.
 - **Boosters**: all 300 combat boosters in the game (147 on the market), one per slot; the bonus always applies and you tick the side effects that struck.
 - Tactical destroyer modes, Triglavian disintegrators (with spool-up), Vorton projectors, smartbombs, Bastion and siege modules, ancillary repairers and the reactive armor hardener. The engine was checked against Pyfa 2.69.3 on 44 fits, with no differences.
@@ -146,7 +160,9 @@ A separate window that pits your fit against an opponent — any saved fit, one 
 - **Replay** the fight on the map — shots, hit-point rings, events — with the toughness, capacitor and distance charts as the seek bar.
 - Applied DPS for every weapon with the reason it's reduced (tracking, falloff, explosion radius or velocity), webs, painters, scrams and prop modules with their falloff and stacking penalties, and who dies first.
 - **Find the best** tries ranges, flying modes, ammo and MWD/AB as real fights, offers the winner, shows how it holds if the opponent closes in or keeps away, and names what holds your fit back.
-- **Boosters** on either side, acting from the first second. The **missile lab** shows missile application in 3D.
+- **What if**: 24 starting distances and one change at a time (ammo, overheating, prop module, range), with the changes that matter most named.
+- **Compare with a baseline**, **undo / redo**, one timeline for the replay and the charts, and **scenarios** to save or share as one line of text.
+- **Overheating with burnout**, **fleet boosts** and **boosters** on either side, acting from the first second. The **missile lab** shows missile application in 3D.
 
 ### PvP
 - **Battle report** from zKillboard by a kill link, a system and time: both sides, what they flew and what they lost.
