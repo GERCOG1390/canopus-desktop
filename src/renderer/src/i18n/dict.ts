@@ -2163,6 +2163,8 @@ export const EXACT: Record<string, string> = {
   'Все версии: цена и чем отличаются от установленной': 'All versions: price and how each differs from the fitted one',
   'Версия': 'Version',
   'Цена за шт.': 'Price each',
+  'Вердикт': 'Verdict',
+  ', но': ', but',
   'Цифры фита': 'Fit figures',
   'установлен': 'fitted',
   'подходит': 'offered',

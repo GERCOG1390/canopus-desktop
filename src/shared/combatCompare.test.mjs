@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { compareFights, historyPush, historyRedo, historyStart, historyUndo, summarize } from './combatCompare.ts'
+import { compareFights, explainChange, historyPush, historyRedo, historyStart, historyUndo, summarize } from './combatCompare.ts'
 
 const hp = { hp: { shield: 400, armor: 300, hull: 300 } }
 const side = (left, averageDps = 100, burnt = []) => ({ left, averageDps, heat: burnt.length ? { modules: burnt.map((b) => ({ burnt: b })) } : undefined })
@@ -72,4 +72,18 @@ test('the history keeps the last steps only', () => {
   for (let i = 1; i <= 150; i++) h = historyPush(h, i, undefined, 100)
   assert.equal(h.past.length, 100)
   assert.equal(h.past[0], 50)
+})
+
+test('a lever rated worse is not explained by the one thing it does better: the loss is named too', () => {
+  // Thermal missiles kill the Tornado 6.6 s sooner, but the Raven ends with less left: rated worse overall.
+  const base = summarize(fight('a', 50.4, side(full), side(gone)))
+  const now = summarize(fight('a', 43.8, side({ s: 0.9, a: 1, h: 1 }), side(gone)))
+  const c = compareFights(base, now)
+  assert.equal(c[0].kind, 'kill')
+  assert.equal(c[0].better, true)
+  const worse = explainChange(c, false)
+  assert.deepEqual(worse.map((x) => [x.kind, x.better]), [['kill', true], ['left', false]])
+  // Rated better: the first change agrees, it alone is enough.
+  assert.deepEqual(explainChange(c, true).map((x) => x.kind), ['kill'])
+  assert.deepEqual(explainChange([], false), [])
 })

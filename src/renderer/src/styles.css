@@ -6458,3 +6458,12 @@ label.file-button:hover {
 .fit-variants-current td {
   background: var(--panel-2, rgba(255, 255, 255, 0.03));
 }
+.fit-variant-chips {
+  flex-wrap: wrap;
+}
+.fit-variant-chips .chip-btn {
+  white-space: nowrap;
+}
+.fit-variants-tag {
+  margin-left: 6px;
+}

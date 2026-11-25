@@ -6,7 +6,7 @@ import type { FitBooster, FitSpec, FittableType, FleetBoost, SavedFit, SkillSour
 import type { HeatPolicy } from '../../shared/heat.ts'
 import { outcomeBands, rankLevers, type CombatExplore, type Lever, type OutcomeKind } from '../../shared/combatExplore.ts'
 import { addScenario, decodeScenario, encodeScenario, removeScenario, type SavedScenario, type ScenarioSetup } from '../../shared/combatScenario.ts'
-import { compareFights, historyPush, historyRedo, historyStart, historyUndo, summarize, type Change, type FightSummary } from '../../shared/combatCompare.ts'
+import { compareFights, explainChange, historyPush, historyRedo, historyStart, historyUndo, summarize, type Change, type FightSummary } from '../../shared/combatCompare.ts'
 import { FleetPanel } from './components/FleetPanel'
 import { AppProvider, useApp, useLang } from './AppContext'
 import { ChargePicker } from './components/ChargePicker'
@@ -1852,8 +1852,20 @@ function LeverList({ x, onApply, children }: { x: CombatExplore | null; onApply:
             <span>Чем кончится бой</span>
           </div>
           {ranked.map((l, i) => {
-            const c = compareFights(x!.current, l.summary)[0]
-            const effect = c?.kind === 'result' ? outcomeText(l.summary) : c ? changeText(c) : l.delta > 0 ? 'чуть лучше' : 'чуть хуже'
+            const shown = explainChange(compareFights(x!.current, l.summary), l.delta > 0)
+            const effect =
+              shown[0]?.kind === 'result'
+                ? outcomeText(l.summary)
+                : shown.length
+                  ? shown.map((c, k) => (
+                      <span key={k}>
+                        {k > 0 && <span>{', но '}</span>}
+                        <span>{changeText(c)}</span>
+                      </span>
+                    ))
+                  : l.delta > 0
+                    ? 'чуть лучше'
+                    : 'чуть хуже'
             return (
               <button key={i} className={`combat-lever ${l.delta > 0 ? 'up' : 'down'}`} title="Применить" onClick={() => onApply(l.lever)}>
                 <span className="combat-lever-name">

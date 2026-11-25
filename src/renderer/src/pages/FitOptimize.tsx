@@ -168,7 +168,7 @@ function VariantTable({ d, from, why, onClose }: { d: Variants; from: number; wh
             <tr>
               <th>Версия</th>
               <th className="num">Цена за шт.</th>
-              <th>Итог</th>
+              <th>Вердикт</th>
               {order.map((c) => (
                 <th key={c.attr} className="num" translate="no">
                   {c.dn ? tn(c.dn, lang) : c.name}
@@ -180,7 +180,8 @@ function VariantTable({ d, from, why, onClose }: { d: Variants; from: number; wh
           <tbody>
             <tr className="fit-variants-current">
               <td>
-                <TypeLink id={from} size={18} /> <span className="muted small">установлен</span>
+                <TypeLink id={from} size={18} />
+                <span className="muted small fit-variants-tag">установлен</span>
               </td>
               <td className="num">{cur === undefined ? '—' : fmtIsk(cur, true)}</td>
               <td />
@@ -226,7 +227,7 @@ function VariantPicker({ d, open, setOpen }: { d: Variants; open: number | null;
   const basic = useTypeBasics(ids)
   if (!ids.length) return null
   return (
-    <div className="row">
+    <div className="row fit-variant-chips">
       <span className="muted small">Все версии модуля:</span>
       {ids.map((id) => (
         <button key={id} className={`chip-btn ${open === id ? 'active' : ''}`} translate="no" onClick={() => setOpen(open === id ? null : id)}>

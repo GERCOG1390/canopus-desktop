@@ -92,6 +92,18 @@ export function compareFights(base: FightSummary, now: FightSummary): Change[] {
   return out
 }
 
+/**
+ * What to say about a change rated better (`up`) or worse overall: the most important difference that agrees with
+ * the rating, and before it the more important one that points the other way, if any ("kills sooner, but less is
+ * left"), so the words never contradict the colour.
+ */
+export function explainChange(changes: Change[], up: boolean): Change[] {
+  const agree = changes.findIndex((c) => c.better === up)
+  if (agree < 0) return changes.slice(0, 1)
+  const against = changes.findIndex((c) => c.better !== up)
+  return against >= 0 && against < agree ? [changes[against], changes[agree]] : [changes[agree]]
+}
+
 // ---------- undo history ----------
 
 export interface History<T> {
