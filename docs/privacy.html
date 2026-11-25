@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy — Canopus</title>
+<meta name="description" content="What Canopus stores, where it connects, and what is never sent." />
+<link rel="canonical" href="https://gercog1390.github.io/canopus-desktop/privacy.html" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Canopus" />
+<meta property="og:title" content="Privacy — Canopus" />
+<meta property="og:description" content="What Canopus stores, where it connects, and what is never sent." />
+<meta property="og:image" content="https://gercog1390.github.io/canopus-desktop/media/trailer.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#131416" />
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="assets/icon.png" />
+<link rel="preload" href="assets/fonts/exo-2-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="stylesheet" href="assets/site.css" />
+<script src="assets/site.js" defer></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="./" aria-label="Canopus home"><img src="assets/icon.svg" alt="" width="30" height="30" /><span>CANOPUS</span></a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+    <nav class="nav" id="site-nav" aria-label="Main">
+        <a href="fitting.html">Fitting</a>
+        <a href="combat-simulator.html">Simulator</a>
+        <a href="intel.html">Intel</a>
+        <a href="map.html">Map</a>
+        <a href="market-industry.html">Market</a>
+        <a href="faq.html">FAQ</a>
+        <a class="btn" href="download.html">Download</a>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<section class="hero">
+  <div class="wrap" style="grid-template-columns: 1fr">
+    <div><div class="eyebrow">Privacy</div><h1>Your data stays on your computer</h1><p class="lead">Canopus has no accounts, no telemetry and no server of its own. Nothing is sent to the developer.</p></div>
+  </div>
+</section>
+<section class="block" style="border-top: 0; padding-top: 0">
+  <div class="wrap"><div class="prose">
+    <h2>What Canopus stores</h2>
+    <p>Everything is stored on your computer: settings, saved fits, notes, game data and caches. EVE login tokens are encrypted with the system’s own protection (Windows DPAPI, the macOS Keychain or the Linux keyring) and never leave your computer.</p>
+    <h2>Where Canopus connects</h2>
+    <table>
+      <tr><th>Service</th><th>What for</th></tr>
+      <tr><td>CCP: EVE SSO, ESI, image server, static data</td><td>Login, your characters’ data (only the permissions you granted), game data and icons</td></tr>
+      <tr><td>zKillboard</td><td>Kills, pilot statistics, popular fits, kill radar</td></tr>
+      <tr><td>EVE-Scout</td><td>Thera and Turnur connections</td></tr>
+      <tr><td>Fuzzwork Market</td><td>Market prices</td></tr>
+      <tr><td>GitHub</td><td>Checking for and downloading updates (can be turned off)</td></tr>
+      <tr><td>OpenAI — only if you set up the assistant</td><td>Your questions and the data the assistant fetches to answer them; never your EVE tokens or passwords</td></tr>
+      <tr><td>EVE University wiki, CCP news — only for the assistant</td><td>Downloading the local knowledge base</td></tr>
+      <tr><td>Discord — only if you add a webhook</td><td>Posting your intel and price alerts to your channel</td></tr>
+    </table>
+    <h2>This website</h2>
+    <p>The site is hosted on GitHub Pages; GitHub may log visits as described in its privacy statement. To show the latest version and the list of changes, your browser asks GitHub’s public API about releases. The site uses no cookies, analytics or trackers, and its fonts are served from the site itself.</p>
+    <h2>Questions</h2>
+    <p>Ask in <a href="https://github.com/GERCOG1390/canopus-desktop/discussions">Discussions</a>.</p>
+  </div></div>
+</section>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <div class="cols">
+      <nav aria-label="Features">
+        <a href="fitting.html">Fitting tool</a>
+        <a href="combat-simulator.html">Combat simulator</a>
+        <a href="intel.html">Intel and overlay</a>
+        <a href="map.html">3D map and travel</a>
+        <a href="market-industry.html">Market and industry</a>
+        <a href="character.html">Characters</a>
+        <a href="assistant.html">AI assistant</a>
+      </nav>
+      <nav aria-label="More">
+        <a href="download.html">Download</a>
+        <a href="changelog.html">What's new</a>
+        <a href="faq.html">FAQ</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="trailer.html">Trailer</a>
+        <a href="https://github.com/GERCOG1390/canopus-desktop">GitHub</a>
+        <a href="https://github.com/GERCOG1390/canopus-desktop/discussions">Discussions</a>
+        <a href="https://github.com/GERCOG1390/canopus-desktop/issues">Report a bug</a>
+      </nav>
+    </div>
+    <p class="legal">Canopus is free and source-available (<a href="https://github.com/GERCOG1390/canopus-desktop/blob/main/LICENSE">PolyForm Strict 1.0.0</a>). EVE Online and all related materials are trademarks or property of CCP hf. Canopus is a third-party application and is not affiliated with or endorsed by CCP hf. Game data and images are used under CCP's developer license.</p>
+  </div>
+</footer>
+</body>
+</html>

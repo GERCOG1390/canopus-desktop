@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://gercog1390.github.io/canopus-desktop/sitemap.xml
