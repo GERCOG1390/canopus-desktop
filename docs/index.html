@@ -37,7 +37,8 @@
   </div>
 </header>
 <main id="main">
-<section class="hero">
+<section class="hero hero-home">
+  <div class="hero-ship" aria-hidden="true"></div>
   <div class="wrap">
     <div>
       <div class="eyebrow">Free EVE Online companion</div>
@@ -51,8 +52,17 @@
       <div class="platforms"><span class="chip">Windows 10/11</span><span class="chip">macOS 12+ · signed by Apple</span><span class="chip">Linux</span><span class="chip">iPhone &amp; iPad</span><span class="chip">English / Русский</span></div>
     </div>
     <div class="hero-media">
-      <video src="media/canopus-trailer.mp4" poster="media/trailer.png" controls muted playsinline preload="none" aria-label="Canopus trailer, 53 seconds"></video>
+      <img class="hero-shot" src="shots/simulator.webp" width="1920" height="1200" alt="The combat simulator: a Raven Navy Issue against a Tengu, with the verdict, the tactical map and the fight over time" fetchpriority="high" />
     </div>
+  </div>
+</section>
+
+<section class="facts" aria-label="Canopus in numbers">
+  <div class="wrap facts-row">
+    <div><b>0</b><span>differences from Pyfa 2.69.3 on 44 test fits</span></div>
+    <div><b>24</b><span>starting distances fought in every “what if”</span></div>
+    <div><b>300</b><span>combat boosters — every one in the game</span></div>
+    <div><b>0</b><span>bytes sent to the developer: no telemetry, no accounts</span></div>
   </div>
 </section>
 
@@ -70,6 +80,14 @@
   </div>
   <figure><img src="media/combat-replay.gif" alt="A fight replayed on the tactical map" loading="lazy" /></figure>
 </div>
+<div class="feature wide">
+  <div class="feature-text">
+    <h3>Know what would change the fight</h3>
+    <p>Canopus reruns the fight from 24 starting distances and with one change at a time — ammo, overheating, prop module, range — then names what matters most, and warns when a win only holds because the opponent stays out of reach.</p>
+    
+  </div>
+  <figure><img src="shots/what-if.webp" alt="What if: the outcome by starting distance, damage by distance and the changes that matter most" loading="lazy" /></figure>
+</div>
 <div class="feature flip">
   <div class="feature-text">
     <h3>Every number, live</h3>
@@ -78,13 +96,21 @@
   </div>
   <figure><img src="media/live-preview.gif" alt="Live preview in the fitting tool" loading="lazy" /></figure>
 </div>
-<div class="feature">
+<div class="feature wide">
+  <div class="feature-text">
+    <h3>Pay less for the same fit</h3>
+    <p>The price optimizer swaps each module for a cheaper version only when nothing it does gets worse — not just the fit’s DPS and tank, but a scrambler’s range or a guidance computer’s bonuses — and shows every version side by side when you want to decide yourself.</p>
+    
+  </div>
+  <figure><img src="shots/optimizer.webp" alt="The price optimizer with every version of a module side by side" loading="lazy" /></figure>
+</div>
+<div class="feature flip">
   <div class="feature-text">
     <h3>See why your missiles miss</h3>
     <p>Fire any missile at any ship in 3D: the blast grows at its explosion velocity while the target slips away, both to scale, with the game’s formula and its numbers next to it.</p>
     
   </div>
-  <figure><img src="media/missile-lab.gif" alt="The missile lab: the blast grows while the target slips away" loading="lazy" /></figure>
+  <figure><img src="shots/missile-lab.webp" alt="The missile lab: the blast at its full radius while a Tengu has already moved away" loading="lazy" /></figure>
 </div>
   </div>
 </section>
@@ -98,15 +124,15 @@
     </div>
     <div class="grid three">
       <a class="card-link" href="fitting.html"><div class="card">
-        <img class="shot" src="screenshots/fitting.png" alt="" loading="lazy" />
+        <img class="shot" src="shots/fitting-card.webp" alt="" loading="lazy" />
         <h3>Fitting tool</h3>
-        <p>A dogma engine of its own, checked against Pyfa. Live preview, damage graph, boosters, fleet boosts.</p>
+        <p>A dogma engine of its own, checked against Pyfa. Live preview, damage graph, boosters, fleet boosts, a price optimizer.</p>
         <span class="more">More</span>
       </div></a>
       <a class="card-link" href="combat-simulator.html"><div class="card">
-        <img class="shot" src="screenshots/combat.png" alt="" loading="lazy" />
+        <img class="shot" src="shots/simulator-card.webp" alt="" loading="lazy" />
         <h3>Combat simulator</h3>
-        <p>Your fit against theirs, flown second by second, with a replay and “Find the best”.</p>
+        <p>Your fit against theirs, flown second by second, with a replay, “what if” and “Find the best”.</p>
         <span class="more">More</span>
       </div></a>
       <a class="card-link" href="intel.html"><div class="card">
@@ -139,7 +165,7 @@
         <p>An optional chat that answers from your own Canopus data, not from guesses.</p>
         <span class="more">More</span>
       </div></a>
-      <a class="card-link" href="https://apps.apple.com/us/app/canopus-for-eve-online/id6829985678"><div class="card">
+      <a class="card-link wide" href="https://apps.apple.com/us/app/canopus-for-eve-online/id6829985678"><div class="card">
         <img class="shot" src="media/mobile.png" alt="" loading="lazy" />
         <h3>iPhone and iPad</h3>
         <p>A separate mobile app: characters, fits from the same engine, market, industry, PI and the map, with notifications.</p>

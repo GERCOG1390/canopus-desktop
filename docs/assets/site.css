@@ -705,3 +705,135 @@ details.faq > div p + p {
 .feature.text-only ul.ticks li {
   break-inside: avoid;
 }
+
+/* ---------- home: a ship behind the hero, the app in front ---------- */
+.hero-home {
+  position: relative;
+  overflow: hidden;
+  padding: 88px 0 72px;
+}
+.hero-ship {
+  position: absolute;
+  top: -12%;
+  right: -10%;
+  width: min(1000px, 78vw);
+  aspect-ratio: 1;
+  background: url('../shots/hero-ship.webp') center / contain no-repeat;
+  opacity: 0.6;
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 55%, transparent 100%);
+}
+.hero-home .wrap {
+  position: relative;
+  z-index: 1;
+}
+.hero-shot {
+  transform: perspective(1600px) rotateY(-6deg) rotateX(2deg);
+  transform-origin: left center;
+}
+@media (max-width: 960px) {
+  .hero-ship {
+    top: auto;
+    bottom: -6%;
+    right: -30%;
+    width: 120vw;
+    opacity: 0.4;
+  }
+  .hero-shot {
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero-shot {
+    transition: transform 0.6s ease;
+  }
+  .hero-media:hover .hero-shot {
+    transform: perspective(1600px) rotateY(-2deg) rotateX(1deg);
+  }
+}
+
+/* ---------- facts band ---------- */
+.facts {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, var(--panel), var(--bg));
+}
+.facts-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.facts-row > div {
+  padding: 28px 24px;
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.facts-row > div:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+.facts-row b {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1;
+  color: var(--accent-text);
+}
+.facts-row span {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.45;
+}
+@media (max-width: 860px) {
+  .facts-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .facts-row > div:nth-child(3) {
+    border-left: 0;
+    padding-left: 0;
+  }
+  .facts-row > div:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* ---------- feature rows: pictures with depth; a wide row with the picture across ---------- */
+.feature figure img {
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.feature.wide {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  padding: 48px 0;
+}
+.feature.wide .feature-text {
+  max-width: 760px;
+  order: 0;
+}
+
+/* ---------- card grid: the phone card takes two columns so the last row is full ---------- */
+@media (min-width: 900px) {
+  .grid.three {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .card-link.wide {
+    grid-column: span 2;
+  }
+  .card-link.wide .shot {
+    aspect-ratio: 32 / 10;
+    object-position: center;
+  }
+}
+.card-link {
+  transition: transform 0.2s ease;
+}
+.card-link:hover {
+  transform: translateY(-2px);
+}
+.grid.three > .card-link,
+.grid.three > .card-link > .card {
+  height: 100%;
+}

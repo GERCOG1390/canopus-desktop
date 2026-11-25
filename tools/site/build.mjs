@@ -24,8 +24,8 @@ const NAV = [
 ]
 
 const FEATURE_PAGES = [
-  ['fitting.html', 'Fitting tool', 'A dogma engine of its own, checked against Pyfa. Live preview, damage graph, boosters, fleet boosts.', 'screenshots/fitting.png'],
-  ['combat-simulator.html', 'Combat simulator', 'Your fit against theirs, flown second by second, with a replay and “Find the best”.', 'screenshots/combat.png'],
+  ['fitting.html', 'Fitting tool', 'A dogma engine of its own, checked against Pyfa. Live preview, damage graph, boosters, fleet boosts, a price optimizer.', 'shots/fitting-card.webp'],
+  ['combat-simulator.html', 'Combat simulator', 'Your fit against theirs, flown second by second, with a replay, “what if” and “Find the best”.', 'shots/simulator-card.webp'],
   ['intel.html', 'Intel and overlay', 'Local scan, intel channels, D-scan, an always-on-top overlay and Discord alerts.', 'screenshots/intel-local.png'],
   ['map.html', '3D map and travel', 'New Eden in 3D with kills, routes, jump bridges, sovereignty and route safety.', 'screenshots/galaxy-map.png'],
   ['market-industry.html', 'Market and industry', 'Honest market numbers, arbitrage, production chains, invention and PI.', 'screenshots/production-chain.png'],
@@ -114,8 +114,8 @@ const cta = (text = 'Free, no ads, no subscriptions. Windows, macOS and Linux �
 const ticks = (items) => `<ul class="ticks">\n${items.map((i) => `  <li>${i}</li>`).join('\n')}\n</ul>`
 
 /** A text block beside its picture; without a picture (no screenshot shows it) the text gets the whole width. */
-function feature({ title, text, items, img, alt, flip = false, level = 'h2' }) {
-  return `<div class="feature${flip ? ' flip' : ''}${img ? '' : ' text-only'}">
+function feature({ title, text, items, img, alt, flip = false, wide = false, level = 'h2' }) {
+  return `<div class="feature${flip ? ' flip' : ''}${wide ? ' wide' : ''}${img ? '' : ' text-only'}">
   <div class="feature-text">
     <${level}>${title}</${level}>
     ${[].concat(text).map((p) => `<p>${p}</p>`).join('\n    ')}
@@ -157,7 +157,8 @@ files['index.html'] = page({
   title: 'Canopus — the free EVE Online companion',
   description:
     'Canopus is a free EVE Online companion for Windows, macOS and Linux: a combat simulator, a fitting tool checked against Pyfa, Local and intel channel monitoring with an overlay, a 3D map, honest market numbers and industry.',
-  body: `<section class="hero">
+  body: `<section class="hero hero-home">
+  <div class="hero-ship" aria-hidden="true"></div>
   <div class="wrap">
     <div>
       <div class="eyebrow">Free EVE Online companion</div>
@@ -171,8 +172,17 @@ files['index.html'] = page({
       <div class="platforms"><span class="chip">Windows 10/11</span><span class="chip">macOS 12+ · signed by Apple</span><span class="chip">Linux</span><span class="chip">iPhone &amp; iPad</span><span class="chip">English / Русский</span></div>
     </div>
     <div class="hero-media">
-      <video src="media/canopus-trailer.mp4" poster="media/trailer.png" controls muted playsinline preload="none" aria-label="Canopus trailer, 53 seconds"></video>
+      <img class="hero-shot" src="shots/simulator.webp" width="1920" height="1200" alt="The combat simulator: a Raven Navy Issue against a Tengu, with the verdict, the tactical map and the fight over time" fetchpriority="high" />
     </div>
+  </div>
+</section>
+
+<section class="facts" aria-label="Canopus in numbers">
+  <div class="wrap facts-row">
+    <div><b>0</b><span>differences from Pyfa 2.69.3 on 44 test fits</span></div>
+    <div><b>24</b><span>starting distances fought in every “what if”</span></div>
+    <div><b>300</b><span>combat boosters — every one in the game</span></div>
+    <div><b>0</b><span>bytes sent to the developer: no telemetry, no accounts</span></div>
   </div>
 </section>
 
@@ -190,6 +200,14 @@ ${feature({
   alt: 'A fight replayed on the tactical map'
 })}
 ${feature({
+  title: 'Know what would change the fight',
+  level: 'h3',
+  wide: true,
+  text: 'Canopus reruns the fight from 24 starting distances and with one change at a time — ammo, overheating, prop module, range — then names what matters most, and warns when a win only holds because the opponent stays out of reach.',
+  img: 'shots/what-if.webp',
+  alt: 'What if: the outcome by starting distance, damage by distance and the changes that matter most'
+})}
+${feature({
   title: 'Every number, live',
   level: 'h3',
   flip: true,
@@ -198,11 +216,20 @@ ${feature({
   alt: 'Live preview in the fitting tool'
 })}
 ${feature({
+  title: 'Pay less for the same fit',
+  level: 'h3',
+  wide: true,
+  text: 'The price optimizer swaps each module for a cheaper version only when nothing it does gets worse — not just the fit’s DPS and tank, but a scrambler’s range or a guidance computer’s bonuses — and shows every version side by side when you want to decide yourself.',
+  img: 'shots/optimizer.webp',
+  alt: 'The price optimizer with every version of a module side by side'
+})}
+${feature({
   title: 'See why your missiles miss',
   level: 'h3',
+  flip: true,
   text: 'Fire any missile at any ship in 3D: the blast grows at its explosion velocity while the target slips away, both to scale, with the game’s formula and its numbers next to it.',
-  img: 'media/missile-lab.gif',
-  alt: 'The missile lab: the blast grows while the target slips away'
+  img: 'shots/missile-lab.webp',
+  alt: 'The missile lab: the blast at its full radius while a Tengu has already moved away'
 })}
   </div>
 </section>
@@ -223,7 +250,7 @@ ${FEATURE_PAGES.map(
         <span class="more">More</span>
       </div></a>`
 ).join('\n')}
-      <a class="card-link" href="${APP_STORE}"><div class="card">
+      <a class="card-link wide" href="${APP_STORE}"><div class="card">
         <img class="shot" src="media/mobile.png" alt="" loading="lazy" />
         <h3>iPhone and iPad</h3>
         <p>A separate mobile app: characters, fits from the same engine, market, industry, PI and the map, with notifications.</p>
@@ -324,8 +351,20 @@ files['fitting.html'] = featurePage({
         'Only modules that fit the ship are offered; turret and launcher hardpoints are enforced',
         'Fit cost at Jita, side-by-side comparison and popular fits from zKillboard'
       ],
-      img: 'screenshots/fitting.png',
+      img: 'shots/fitting.webp',
       alt: 'The fitting tool with key numbers on top'
+    },
+    {
+      title: 'Pay less for the same fit',
+      text: 'The price optimizer swaps each module for a cheaper version only when nothing it does gets worse: the fit’s numbers and the module’s own — a scrambler’s range, a web’s strength, a guidance computer’s bonuses.',
+      items: [
+        'Allow no loss, or up to 2, 5 or 10% — what each swap costs you is named in the game’s own words',
+        '<b>All versions</b>: every version of a module side by side, as Pyfa’s Compare, with why each is or isn’t offered',
+        'Or the other way: the upgrades that add the most to a chosen stat per million ISK',
+        'Prices from the cheapest 5% of the volume on sale in Jita, not one cheap listing; thin markets are flagged'
+      ],
+      img: 'shots/optimizer.webp',
+      alt: 'The price optimizer with every version of a module side by side'
     },
     {
       title: 'Damage graph and ammo table',
@@ -341,7 +380,7 @@ files['fitting.html'] = featurePage({
     {
       title: 'Try a skill before you train it',
       text: 'Set skills to trial levels and see what they change in the fit: arrows on the numbers show the difference from all skills at V.',
-      items: ['<b>Price optimizer</b>: the same stats for less ISK — the fit’s and each module’s own — or the upgrades that add the most per million ISK, with every version of a module side by side', '<b>Fit snapshot</b>: the whole fit and its stats on one picture'],
+      items: ['<b>Fit snapshot</b>: the whole fit and its stats on one picture'],
       img: 'screenshots/trial-skills.png',
       alt: 'Trial skill levels in the fitting tool'
     },
@@ -379,21 +418,28 @@ files['combat-simulator.html'] = featurePage({
         'Applied DPS for every weapon with the reason it’s reduced: tracking, falloff, explosion radius or velocity',
         'Webs, painters, scrams and prop modules with falloff and stacking penalties; boosters, fleet boosts and overheating with burnout on either side'
       ],
-      img: 'screenshots/combat.png',
-      alt: 'The combat simulator'
+      img: 'shots/simulator.webp',
+      alt: 'The combat simulator: a Raven Navy Issue against a Tengu'
+    },
+    {
+      title: 'What would change the fight',
+      text: 'The same setup fought from 24 starting distances and with one change at a time — ammo, overheating, prop module, range — and the changes that matter most named, the bad ones too.',
+      items: ['The verdict warns when a result only holds because the opponent’s damage doesn’t reach you, and says what happens if they close in', '<b>Compare with a baseline</b>: pin a setup and see what each change moved; undo / redo for every change', '<b>Scenarios</b> to save by name or share with a corpmate as one line of text'],
+      img: 'shots/what-if.webp',
+      alt: 'What if: the outcome by starting distance, damage by distance and the changes that matter most'
     },
     {
       title: 'Replay and “Find the best”',
       text: 'Replay the fight on the map — shots, hit-point rings, events — with the toughness, capacitor and distance charts as the seek bar.',
-      items: ['<b>Find the best</b> tries ranges, flying modes, ammo and MWD/AB as real fights and offers the winner', 'Shows how it holds if the opponent closes in or keeps away, and names what holds your fit back', '<b>What if</b>: 24 starting distances and one change at a time, with the changes that matter most named', '<b>Compare with a baseline</b>, undo / redo, and <b>scenarios</b> to save or share as one line of text'],
+      items: ['<b>Find the best</b> tries ranges, flying modes, ammo and MWD/AB as real fights and offers the winner', 'Shows how it holds if the opponent closes in or keeps away, and names what holds your fit back'],
       img: 'media/combat-replay.gif',
       alt: 'A fight replayed on the tactical map'
     },
     {
       title: 'Missile lab',
       text: 'Fire any missile at any ship in 3D: the blast grows at its explosion velocity while the target slips away, both to scale, with the game’s formula next to it. Signature, speed, explosion radius and velocity finally make sense.',
-      img: 'screenshots/missile-lab.png',
-      alt: 'The missile lab'
+      img: 'shots/missile-lab.webp',
+      alt: 'The missile lab: the blast at its full radius while a Tengu has already moved away'
     }
   ]
 })
