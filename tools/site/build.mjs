@@ -2,7 +2,7 @@
 // Run: node tools/site/build.mjs — then commit docs/. Facts come from README.md; keep them in step.
 // When the site moves to its own domain: change SITE and BASE below and add docs/CNAME.
 
-import { writeFileSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { MARK_CSS, markSvg } from '../../src/shared/brandMark.ts'
@@ -36,7 +36,11 @@ const FEATURE_PAGES = [
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-function page({ file, title, description, body, image = 'media/trailer.png', current = file }) {
+function page({ file, title, description, body, current = file }) {
+  // Link preview card from tools/site/og.mjs; pages without their own (404) share the home page's.
+  const card = `og/${file.replace(/\.html$/, '')}.png`
+  const image = existsSync(join(OUT, card)) ? card : 'og/index.png'
+  if (file !== '404.html' && image !== card) throw new Error(`No link preview card for ${file}: add it to tools/site/og.mjs and run it`)
   const nav = NAV.map(([href, label]) => `<a href="${href}"${href === current ? ' aria-current="page"' : ''}>${label}</a>`).join('\n        ')
   const full = file === 'index.html' ? title : `${title} — Canopus`
   return `<!doctype html>
@@ -52,7 +56,11 @@ function page({ file, title, description, body, image = 'media/trailer.png', cur
 <meta property="og:title" content="${esc(full)}" />
 <meta property="og:description" content="${esc(description)}" />
 <meta property="og:image" content="${SITE}${image}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content="${SITE}${file === 'index.html' ? '' : file}" />
 <meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="${SITE}${image}" />
 <meta name="theme-color" content="#131416" />
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml" />
 <link rel="apple-touch-icon" href="assets/icon.png" />
@@ -116,6 +124,13 @@ const cta = (text = 'Free, no ads, no subscriptions. Windows, macOS and Linux �
 
 const ticks = (items) => `<ul class="ticks">\n${items.map((i) => `  <li>${i}</li>`).join('\n')}\n</ul>`
 
+/** A screenshot, or a short silent clip (.mp4) that loops while it's on screen — site.js plays it, and leaves the poster
+ *  still for anyone who asked their system for reduced motion. */
+const shot = (src, alt) =>
+  src.endsWith('.mp4')
+    ? `<video class="clip" src="${src}" poster="${src.replace(/\.mp4$/, '.jpg')}" muted loop playsinline preload="none" aria-label="${esc(alt)}"></video>`
+    : `<img src="${src}" alt="${esc(alt)}" loading="lazy" />`
+
 /** A text block beside its picture; without a picture (no screenshot shows it) the text gets the whole width. */
 function feature({ title, text, items, img, alt, flip = false, wide = false, level = 'h2' }) {
   return `<div class="feature${flip ? ' flip' : ''}${wide ? ' wide' : ''}${img ? '' : ' text-only'}">
@@ -124,16 +139,15 @@ function feature({ title, text, items, img, alt, flip = false, wide = false, lev
     ${[].concat(text).map((p) => `<p>${p}</p>`).join('\n    ')}
     ${items ? ticks(items) : ''}
   </div>
-  ${img ? `<figure><img src="${img}" alt="${esc(alt)}" loading="lazy" /></figure>` : ''}
+  ${img ? `<figure>${shot(img, alt)}</figure>` : ''}
 </div>`
 }
 
-function featurePage({ file, title, description, eyebrow, lead, image, sections }) {
+function featurePage({ file, title, description, eyebrow, lead, sections }) {
   return page({
     file,
     title,
     description,
-    image,
     body: `<section class="hero">
   <div class="wrap" style="grid-template-columns: 1fr">
     <div>
@@ -161,6 +175,7 @@ files['index.html'] = page({
   description:
     'Canopus is a free EVE Online companion for Windows, macOS and Linux: a combat simulator, a fitting tool checked against Pyfa, Local and intel channel monitoring with an overlay, a 3D map, honest market numbers and industry.',
   body: `<section class="hero hero-home">
+  <canvas class="stars" aria-hidden="true"></canvas>
   <div class="hero-ship" aria-hidden="true"></div>
   <div class="wrap">
     <div>
@@ -199,7 +214,7 @@ ${feature({
   title: 'Fly the fight before you take it',
   level: 'h3',
   text: 'Your fit against theirs, flown second by second: orbits with real inertia, reloads, capacitor, neuts, webs and scrams, the Reactive Armor Hardener adapting, boosters from the first second. Then watch the replay — and press <b>Find the best</b> to let Canopus try every range, ammo and prop module for you.',
-  img: 'media/combat-replay.gif',
+  img: 'media/combat-replay.mp4',
   alt: 'A fight replayed on the tactical map'
 })}
 ${feature({
@@ -215,7 +230,7 @@ ${feature({
   level: 'h3',
   flip: true,
   text: 'Hover a module and every stat updates with the difference highlighted — before you fit it. A dogma engine of its own, checked against Pyfa 2.69.3 on 44 fits with no differences, with all 300 combat boosters in the game.',
-  img: 'media/live-preview.gif',
+  img: 'media/live-preview.mp4',
   alt: 'Live preview in the fitting tool'
 })}
 ${feature({
@@ -293,10 +308,14 @@ files['download.html'] = page({
       <div class="eyebrow">Version <span data-version>latest</span></div>
       <h1>Download Canopus</h1>
       <p class="lead">Free, no ads, no subscriptions. The Windows, macOS and AppImage builds update themselves after the first install.</p>
+      <div class="hero-actions">
+        <a class="btn btn-big" data-download-primary href="#systems">Choose your system below</a>
+      </div>
+      <p class="hero-note" data-download-note></p>
     </div>
   </div>
 </section>
-<section class="block" style="border-top: 0; padding-top: 0">
+<section class="block" id="systems" style="border-top: 0; padding-top: 0">
   <div class="wrap">
     <div class="download-grid">
       <div class="card dl" data-os="windows">
@@ -340,7 +359,6 @@ files['fitting.html'] = featurePage({
   file: 'fitting.html',
   title: 'Fitting tool',
   eyebrow: 'Coming from Pyfa?',
-  image: 'screenshots/fitting.png',
   description:
     'An EVE Online fitting tool with its own dogma engine, checked against Pyfa on 44 fits: live preview, damage graph, ammo table, damage profiles, fleet boosts, boosters, projected effects and Pyfa import.',
   lead: 'Everything you theorycraft with, on the same numbers: a dogma engine driven by CCP’s game data, checked against Pyfa 2.69.3 on 44 fits with no differences. Import all your Pyfa fits at once.',
@@ -407,7 +425,6 @@ files['combat-simulator.html'] = featurePage({
   file: 'combat-simulator.html',
   title: 'Combat simulator',
   eyebrow: 'Fly the fight before you take it',
-  image: 'screenshots/combat.png',
   description:
     'An EVE Online combat simulator: your fit against an opponent, flown second by second with inertia, reloads, capacitor, neuts, webs and scrams, a replay on the tactical map and “Find the best”.',
   lead: 'A separate window that pits your fit against an opponent — any saved fit, one of your in-game fits, an EFT paste or a bare hull — and flies the fight over time.',
@@ -435,7 +452,7 @@ files['combat-simulator.html'] = featurePage({
       title: 'Replay and “Find the best”',
       text: 'Replay the fight on the map — shots, hit-point rings, events — with the toughness, capacitor and distance charts as the seek bar.',
       items: ['<b>Find the best</b> tries ranges, flying modes, ammo and MWD/AB as real fights and offers the winner', 'Shows how it holds if the opponent closes in or keeps away, and names what holds your fit back'],
-      img: 'media/combat-replay.gif',
+      img: 'media/combat-replay.mp4',
       alt: 'A fight replayed on the tactical map'
     },
     {
@@ -451,7 +468,6 @@ files['intel.html'] = featurePage({
   file: 'intel.html',
   title: 'Intel and overlay',
   eyebrow: 'Know who is in Local',
-  image: 'screenshots/intel-local.png',
   description:
     'EVE Online intel tool: Local scan with threat levels, intel channel monitoring with jump distances, D-scan analysis, an always-on-top overlay, multi-client previews and Discord alerts.',
   lead: 'Copy Local and every pilot is checked. Canopus follows your alliance’s intel channels and tells you how many jumps away each report is — with an overlay over the game.',
@@ -484,7 +500,6 @@ files['map.html'] = featurePage({
   file: 'map.html',
   title: '3D map and travel',
   eyebrow: 'New Eden at real coordinates',
-  image: 'screenshots/galaxy-map.png',
   description:
     'EVE Online 3D galaxy map with kills in the last hour, routes, Ansiblex jump bridges, sovereignty and Skyhooks, plus route safety with gate camps, a capital jump planner, wormholes and a hauling plan.',
   lead: 'Rotate and zoom New Eden at the real coordinates from CCP’s game data, with security colours, stargates, recent kills and your routes.',
@@ -516,7 +531,6 @@ files['market-industry.html'] = featurePage({
   file: 'market-industry.html',
   title: 'Market and industry',
   eyebrow: 'Honest numbers',
-  image: 'screenshots/production-chain.png',
   description:
     'EVE Online market and industry tools: arbitrage through the real order books, real sale prices, LP store, production chains, invention, ore for minerals, PI calculator and moon mining.',
   lead: 'What selling really fetches — not a lone listing nobody takes. Fees from your skills and standings, batches bought up the order book, and the real trades behind every price.',
@@ -548,7 +562,6 @@ files['character.html'] = featurePage({
   file: 'character.html',
   title: 'Characters',
   eyebrow: 'All your pilots',
-  image: 'screenshots/overview.png',
   description:
     'Every EVE Online character on one screen: skill queue and planner with remaps, assets with Jita value, wallet by day, net worth, blueprints, doctrines, mail, fleet and notifications.',
   lead: 'Where every character is and in what, their skill queues, ISK, industry, PI, jump fatigue and clone jumps — on one screen.',
@@ -668,7 +681,7 @@ files['changelog.html'] = page({
   </div>
 </section>
 <section class="block" style="border-top: 0; padding-top: 0">
-  <div class="wrap"><div class="prose" id="changelog"><p class="notice">Loading releases… If nothing appears, see <a href="${REPO}/releases">releases on GitHub</a>.</p></div></div>
+  <div class="wrap"><div class="timeline" id="changelog"><p class="notice">Loading releases… If nothing appears, see <a href="${REPO}/releases">releases on GitHub</a>.</p></div></div>
 </section>`
 })
 

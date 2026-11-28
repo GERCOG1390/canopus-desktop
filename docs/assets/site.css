@@ -436,7 +436,8 @@ section.block {
 .feature figure {
   margin: 0;
 }
-.feature figure img {
+.feature figure img,
+.feature figure video {
   border-radius: 10px;
   border: 1px solid var(--line);
 }
@@ -614,31 +615,130 @@ details.faq > div {
 details.faq > div p + p {
   margin-top: 10px;
 }
+/* ---------- what's new: a timeline of releases ---------- */
+.timeline {
+  max-width: 980px;
+}
 .release {
-  border-top: 1px solid var(--line);
-  padding: 28px 0;
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 0 40px;
+  position: relative;
+}
+.release-head {
+  position: sticky;
+  top: 84px;
+  align-self: start;
+  padding: 30px 0 0;
+  text-align: right;
 }
 .release h2 {
-  font-size: 24px;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.release.major h2 {
+  font-size: 30px;
+}
+.release h2 a {
+  color: var(--text);
+  text-decoration: none;
+}
+.release h2 a:hover {
+  color: var(--accent-text);
+}
+.release-tag {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 .release .date {
   color: var(--muted);
-  font-size: 14px;
-  margin: 6px 0 14px;
+  font-size: 13px;
+  margin-top: 8px;
 }
 .release .body {
   color: var(--text-2);
+  position: relative;
+  padding: 30px 0 30px 32px;
+  border-left: 1px solid var(--line-strong);
+}
+.release .body::before {
+  content: '';
+  position: absolute;
+  left: -6px;
+  top: 40px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--line-strong);
+}
+.release.major .body::before {
+  border-color: var(--accent);
+}
+.release.latest .body::before {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 5px rgba(61, 191, 156, 0.18), 0 0 18px rgba(61, 191, 156, 0.6);
+}
+.release:first-child .body {
+  border-image: linear-gradient(180deg, transparent 0, var(--line-strong) 44px) 1;
+}
+.release:last-child .body {
+  border-image: linear-gradient(180deg, var(--line-strong) 60%, transparent) 1;
+}
+.release .body > p:first-child {
+  font-size: 18px;
+  color: var(--text);
+  margin-bottom: 6px;
 }
 .release .body h3,
 .release .body h4 {
-  font-size: 17px;
-  margin: 18px 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  margin: 22px 0 8px;
 }
 .release .body ul {
-  padding-left: 22px;
+  padding-left: 20px;
+}
+.release .body li + li {
+  margin-top: 6px;
+}
+.release .body p + p {
+  margin-top: 10px;
 }
 .release .body table {
   display: none;
+}
+.timeline > .notice {
+  max-width: 720px;
+}
+@media (max-width: 760px) {
+  .release {
+    grid-template-columns: 1fr;
+  }
+  .release-head {
+    position: static;
+    text-align: left;
+    padding: 28px 0 0 32px;
+    border-left: 1px solid var(--line-strong);
+  }
+  .release .body {
+    padding-top: 12px;
+  }
+  .release .body::before {
+    top: -40px;
+  }
 }
 .notice {
   border: 1px solid var(--line-strong);
@@ -800,7 +900,8 @@ details.faq > div p + p {
 }
 
 /* ---------- feature rows: pictures with depth; a wide row with the picture across ---------- */
-.feature figure img {
+.feature figure img,
+.feature figure video {
   border-radius: 12px;
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
@@ -845,4 +946,28 @@ details.faq > div p + p {
   display: flex;
   justify-content: center;
   margin-bottom: 18px;
+}
+
+/* ---------- download page: one big button for your system ---------- */
+.btn-big {
+  padding: 16px 30px;
+  font-size: 18px;
+  box-shadow: 0 10px 40px -12px rgba(61, 191, 156, 0.7);
+}
+
+/* ---------- home: a slow starfield behind the hero ---------- */
+.stars {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent);
+  mask-image: linear-gradient(180deg, #000 70%, transparent);
+}
+.feature figure video {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--panel);
 }

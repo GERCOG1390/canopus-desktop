@@ -96,7 +96,8 @@ async function setupDownloads() {
         a.textContent = `Download for ${OS_LABEL[os]}`
       })
       document.querySelectorAll('[data-download-note]').forEach((el) => {
-        el.innerHTML = `Version <span class="version">${version}</span> · ${mb(main.size)} · <a href="download.html">other systems</a>`
+        const others = /download(\.html)?$/.test(location.pathname) ? '#systems' : 'download.html'
+        el.innerHTML = `Version <span class="version">${version}</span> · ${mb(main.size)} · <a href="${others}">other systems</a>`
       })
     }
   }
@@ -112,24 +113,27 @@ function markdown(md) {
       .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" rel="noopener">$1</a>')
   const out = []
   let list = false
-  for (const raw of md.split(/\r?\n/)) {
+  const lines = md.split(/\r?\n/)
+  lines.forEach((raw, i) => {
     const line = raw.trimEnd()
     const item = line.match(/^\s*[-*]\s+(.*)/)
     if (item) {
       if (!list) out.push('<ul>')
       list = true
       out.push(`<li>${inline(item[1])}</li>`)
-      continue
+      return
     }
     if (list) {
       out.push('</ul>')
       list = false
     }
-    if (/^\s*\|/.test(line) || !line.trim()) continue
+    if (/^\s*\|/.test(line) || !line.trim()) return
     const h = line.match(/^(#+)\s+(.*)/)
     if (h) out.push(`<h${Math.min(4, h[1].length + 1)}>${inline(h[2])}</h${Math.min(4, h[1].length + 1)}>`)
+    // A short line right above a list is that list's heading ("Combat simulator").
+    else if (line.length <= 48 && !/[.:!?]$/.test(line) && /^\s*[-*]\s+/.test(lines[i + 1] || '')) out.push(`<h4>${inline(line)}</h4>`)
     else out.push(`<p>${inline(line)}</p>`)
-  }
+  })
   if (list) out.push('</ul>')
   return out.join('\n')
 }
@@ -148,18 +152,134 @@ async function setupChangelog() {
         .replace(/^\s*#+\s*Canopus[^\n]*\n/, '')
         .replace(/^\s*\*\*English\*\*\s*$/m, '')
     box.innerHTML = releases
-      .map(
-        (r) => `<article class="release">
-  <h2>${r.name ? r.name.replace(/[<>&]/g, '') : r.tag_name}</h2>
-  <div class="date">${new Date(r.published_at).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })} · <a href="${r.html_url}">on GitHub</a></div>
+      .map((r, i) => {
+        const version = r.tag_name.replace(/^v/, '').replace(/[<>&"]/g, '')
+        const major = /\.0$/.test(version) ? ' major' : ''
+        return `<article class="release${major}${i === 0 ? ' latest' : ''}" id="v${version}">
+  <header class="release-head">
+    <h2><a href="#v${version}">${version}</a></h2>
+    ${i === 0 ? '<span class="release-tag">Latest</span>' : ''}
+    <div class="date">${new Date(r.published_at).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' })}<br /><a href="${r.html_url}">on GitHub</a></div>
+  </header>
   <div class="body">${markdown(strip(r.body))}</div>
 </article>`
-      )
+      })
       .join('')
+    if (location.hash) document.getElementById(location.hash.slice(1))?.scrollIntoView()
   } catch {
     box.innerHTML = `<p class="notice">The list of changes couldn't be loaded right now. All releases are on <a href="https://github.com/${REPO}/releases">GitHub</a>.</p>`
   }
 }
 
+
+/** The home page's starfield: three depths drifting slowly, a few stars twinkling, a little parallax
+ *  with the pointer. Drawn once and still with reduced motion; paused when off screen or in a hidden tab. */
+function setupStars() {
+  const canvas = document.querySelector('canvas.stars')
+  if (!canvas || !canvas.getContext) return
+  const ctx = canvas.getContext('2d')
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches
+  // Seeded, so the sky is the same on every visit.
+  let seed = 7
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
+  const layers = [
+    { n: 150, size: 0.6, speed: 2, alpha: 0.45, depth: 4 },
+    { n: 70, size: 0.95, speed: 5, alpha: 0.65, depth: 10 },
+    { n: 22, size: 1.4, speed: 9, alpha: 0.9, depth: 20 }
+  ]
+  const stars = layers.flatMap((l) =>
+    Array.from({ length: l.n }, () => ({
+      l,
+      x: rnd(),
+      y: rnd(),
+      r: l.size * (0.7 + rnd() * 0.6),
+      tw: rnd() < 0.25 ? 0.6 + rnd() * 1.6 : 0,
+      ph: rnd() * Math.PI * 2,
+      // Mostly white, some warm like the mark, some cool like the accent.
+      c: rnd() < 0.12 ? '255,217,138' : rnd() < 0.15 ? '143,224,200' : '230,236,245'
+    }))
+  )
+  let w = 0, h = 0, dpr = 1
+  const size = () => {
+    dpr = Math.min(2, devicePixelRatio || 1)
+    w = canvas.clientWidth
+    h = canvas.clientHeight
+    canvas.width = Math.round(w * dpr)
+    canvas.height = Math.round(h * dpr)
+  }
+  let px = 0, py = 0, tx = 0, ty = 0
+  const draw = (t) => {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.clearRect(0, 0, w, h)
+    px += (tx - px) * 0.04
+    py += (ty - py) * 0.04
+    for (const s of stars) {
+      const x = (((s.x * w - (t / 1000) * s.l.speed + px * s.l.depth) % w) + w) % w
+      const y = (((s.y * h + py * s.l.depth) % h) + h) % h
+      const a = s.l.alpha * (s.tw ? 0.55 + 0.45 * Math.sin((t / 1000) * s.tw + s.ph) : 1)
+      ctx.fillStyle = `rgba(${s.c},${a.toFixed(3)})`
+      ctx.beginPath()
+      ctx.arc(x, y, s.r, 0, Math.PI * 2)
+      ctx.fill()
+      if (s.r > 1.5 && a > 0.75) {
+        ctx.fillStyle = `rgba(${s.c},${(a * 0.12).toFixed(3)})`
+        ctx.beginPath()
+        ctx.arc(x, y, s.r * 3.2, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }
+  }
+  size()
+  addEventListener('resize', () => {
+    size()
+    if (still) draw(0)
+  })
+  if (still) return draw(0)
+  addEventListener('pointermove', (e) => {
+    tx = (e.clientX / innerWidth - 0.5) * -1
+    ty = (e.clientY / innerHeight - 0.5) * -1
+  }, { passive: true })
+  let visible = true, frame = 0
+  const loop = (t) => {
+    frame = 0
+    if (!visible || document.hidden) return
+    draw(t)
+    frame = requestAnimationFrame(loop)
+  }
+  const start = () => {
+    if (!frame && visible && !document.hidden) frame = requestAnimationFrame(loop)
+  }
+  new IntersectionObserver(([e]) => {
+    visible = e.isIntersecting
+    start()
+  }).observe(canvas)
+  document.addEventListener('visibilitychange', start)
+  start()
+}
+
+/** Short clips play only while on screen; with reduced motion they stay on their poster, with controls to play. */
+function setupClips() {
+  const clips = document.querySelectorAll('video.clip')
+  if (!clips.length) return
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    clips.forEach((v) => (v.controls = true))
+    return
+  }
+  const seen = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          e.target.preload = 'auto'
+          e.target.play().catch(() => (e.target.controls = true))
+        } else e.target.pause()
+      }
+    },
+    { threshold: 0.25 }
+  )
+  clips.forEach((v) => seen.observe(v))
+}
+
+void setupClips()
+void setupStars()
 void setupDownloads()
 void setupChangelog()
